@@ -33,6 +33,7 @@ struct RootView: View {
         }
         .task {
             await model.loadIfNeeded()
+            ScreenshotRoute.current?.apply(to: model)
         }
     }
 }

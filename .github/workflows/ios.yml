@@ -15,6 +15,9 @@ concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  BUNDLE_ID: com.example.storageapp
+
 jobs:
   core-tests:
     name: StorageCore tests (swift test)
@@ -28,7 +31,7 @@ jobs:
         run: swift test
 
   app:
-    name: Build and test app (iOS Simulator)
+    name: Build, screenshot, and test (iOS Simulator)
     runs-on: macos-15
     needs: core-tests
     steps:
@@ -44,22 +47,58 @@ jobs:
           UDID=$(xcrun simctl list devices available -j | python3 -c '
           import json, sys
           devices = json.load(sys.stdin)["devices"]
-          for runtime in sorted(devices, reverse=True):
-              if "iOS" not in runtime:
-                  continue
-              for d in devices[runtime]:
-                  if d["name"].startswith("iPhone"):
-                      print(d["udid"]); sys.exit()
+          phones = [d for runtime in sorted(devices, reverse=True) if "iOS" in runtime
+                    for d in devices[runtime] if d["name"].startswith("iPhone")]
+          # Prefer a standard-size Pro model for representative screenshots.
+          preferred = [d for d in phones if "Pro" in d["name"] and "Max" not in d["name"]]
+          print((preferred or phones)[0]["udid"])
           ')
           echo "Using simulator $UDID"
           echo "udid=$UDID" >> "$GITHUB_OUTPUT"
-      - name: Build and test
+      - name: Build
         working-directory: ios
         run: |
-          xcodebuild test \
+          xcodebuild build-for-testing \
             -project StorageApp.xcodeproj \
             -scheme StorageApp \
             -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+      - name: Take screenshots
+        working-directory: ios
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/StorageApp.app
+          mkdir -p screenshots
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+          xcrun simctl install "$UDID" "$APP"
+          for appearance in light dark; do
+            xcrun simctl ui "$UDID" appearance "$appearance"
+            for screen in home library library-list library-selecting review settings; do
+              xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
+              sleep 4
+              xcrun simctl io "$UDID" screenshot "screenshots/$screen-$appearance.png"
+              xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
+            done
+          done
+          ls screenshots
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: Screenshots
+          path: ios/screenshots
+          if-no-files-found: warn
+      - name: Run app tests
+        working-directory: ios
+        run: |
+          xcodebuild test-without-building \
+            -project StorageApp.xcodeproj \
+            -scheme StorageApp \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
             -resultBundlePath TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO
       - name: Upload test results
@@ -69,3 +108,38 @@ jobs:
           name: TestResults
           path: ios/TestResults.xcresult
           if-no-files-found: ignore
+
+  unsigned-ipa:
+    name: Unsigned .ipa (for Sideloadly)
+    runs-on: macos-15
+    needs: core-tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+      - name: Build for device without signing
+        working-directory: ios
+        run: |
+          xcodebuild build \
+            -project StorageApp.xcodeproj \
+            -scheme StorageApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: Package .ipa
+        working-directory: ios
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/StorageApp.app Payload/
+          zip -qry StorageApp-unsigned.ipa Payload
+          ls -lh StorageApp-unsigned.ipa
+      - name: Upload .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: StorageApp-unsigned-ipa
+          path: ios/StorageApp-unsigned.ipa

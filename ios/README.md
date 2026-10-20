@@ -120,6 +120,24 @@ Or press **⌘U** in Xcode.
 
 `.github/workflows/ios.yml` runs on changes under `ios/`. On a macOS runner it runs the safety check and `swift test`, then installs XcodeGen, generates the project, builds the app for the iOS Simulator, and runs the app tests. Nothing is signed, deployed, or published.
 
+### Seeing the app without a Mac
+
+Every CI run uploads two downloadable artifacts (GitHub → Actions → the run → **Artifacts**):
+
+- **Screenshots**: every main screen in light and dark mode, taken in the iOS Simulator. CI opens each screen by launching the app with `-screenshotScreen <name>` (see `App/ScreenshotRoute.swift`).
+- **StorageApp-unsigned-ipa**: an unsigned device build for installing with Sideloadly.
+
+#### Installing on an iPhone from Windows with Sideloadly (free)
+
+1. Install Apple's device drivers: the **Apple Devices** app from the Microsoft Store (or iTunes from apple.com).
+2. Install [Sideloadly](https://sideloadly.io) for Windows.
+3. Download the `StorageApp-unsigned-ipa` artifact from the latest CI run and unzip it to get `StorageApp-unsigned.ipa`.
+4. Connect the iPhone by USB, unlock it, and tap **Trust** on the phone.
+5. In Sideloadly, drag in the `.ipa`, choose the iPhone, enter an Apple ID (a free one works; a secondary Apple ID is a sensible choice because Sideloadly signs in to Apple with it), and click **Start**.
+6. On the iPhone: Settings → Privacy & Security → **Developer Mode** → on (the phone restarts). Then Settings → General → VPN & Device Management → trust your Apple ID.
+
+With a free Apple ID the app stops opening after 7 days; re-run step 5 to refresh it. A free account can have up to 3 sideloaded apps at a time.
+
 ### Developing on Windows
 
 Install the Swift toolchain with `winget install Swift.Toolchain` (it also needs Visual Studio Build Tools with the C++ workload and a Windows SDK). Open a new terminal afterwards so `PATH` and `SDKROOT` are set, then run `swift test` in `ios/StorageCore`. SwiftUI and UIKit are not available on Windows, so the app target itself can only be compiled on a Mac or in CI; `swiftc -parse` can still catch syntax errors in app files.
