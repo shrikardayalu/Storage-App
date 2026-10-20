@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <path d="M15.3,46.3 Q45.3,47.4 75.3,47.1 Q73.4,65.8 71.2,84.4 Q45.6,83.9 19.9,84.4 Q17.3,65.4 15.3,46.3 Z" fill="#1A1A17"/>
+  <path d="M20.1,41.5 Q50.6,41.0 81.0,42.0 Q77.9,61.0 76.4,80.2 Q50.6,79.7 24.7,79.4 Q22.4,60.5 20.1,41.5 Z" fill="#5ED49B"/>
+  <path d="M18.5,43.9 Q48.2,44.5 78.0,44.4 Q76.6,63.3 73.9,82.0 Q47.9,82.6 21.8,82.1 Q19.6,63.0 18.5,43.9 Z" fill="none" stroke="#1A1A17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M18.4,44.3 Q11.7,39.1 5.6,33.3 Q16.7,30.0 27.9,27.1 Q33.4,35.5 38.2,44.2 Q28.3,45.0 18.4,44.3 Z" fill="#FBF8F1"/>
+  <path d="M17.7,44.4 Q11.5,38.7 5.7,32.6 Q16.9,30.4 27.9,27.1 Q33.7,35.1 38.5,43.8 Q28.1,44.7 17.7,44.4 Z" fill="none" stroke="#1A1A17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M78.3,44.4 Q84.8,39.3 90.3,33.1 Q79.5,29.6 68.5,27.1 Q63.5,35.7 58.1,44.1 Q68.2,44.2 78.3,44.4 Z" fill="#FBF8F1"/>
+  <path d="M77.6,44.2 Q83.9,38.6 90.4,33.2 Q78.8,30.5 67.6,26.7 Q63.1,35.7 58.1,44.4 Q67.9,44.5 77.6,44.2 Z" fill="none" stroke="#1A1A17" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33.9,62.3 Q47.8,62.7 61.7,62.5" fill="none" stroke="#1A1A17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="30.0" cy="71.7" r="1.15" fill="#1A1A17"/>
+  <circle cx="65.9" cy="72.0" r="1.15" fill="#1A1A17"/>
+  <circle cx="47.8" cy="73.8" r="1.15" fill="#1A1A17"/>
+  <path d="M43.4,23.4 Q41.1,21.2 38.9,19.0" fill="none" stroke="#1A1A17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M47.9,21.5 Q48.3,18.7 48.8,15.8" fill="none" stroke="#1A1A17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52.7,23.3 Q54.9,21.5 56.9,19.3" fill="none" stroke="#1A1A17" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
