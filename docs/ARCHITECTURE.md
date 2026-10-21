@@ -6,16 +6,18 @@ This repository holds several **independent** pieces of one product. They share 
 Storage App/
 ├── web/          Next.js marketing site (deployed to Vercel)
 ├── ios/          Native SwiftUI app (built in Xcode on macOS, shipped via App Store Connect)
-├── automation/   Future SEO and content tooling (not implemented)
+├── automation/   Planned SEO and content loop (documented, not implemented)
 └── docs/         Project documentation
 ```
 
 ## web/
 
 - Next.js (App Router) with React, TypeScript, Tailwind CSS v4, and ESLint, using `src/` and the `@/*` import alias.
-- Static marketing pages for now. No backend, database, or accounts.
+- Static, prerendered pages: home, `/guides` hub, one page per guide, about, privacy. No database or accounts. The only server code is the waitlist server action, which forwards signups to `WAITLIST_WEBHOOK_URL`.
+- Guides are Markdown files in `web/content/guides/`, loaded and validated at build time by `src/lib/guides.ts` (format: `web/content/README.md`). Broken internal links fail the build.
+- SEO/AEO surface: per-page canonicals and Open Graph images, JSON-LD (`src/lib/schema.ts`), `sitemap.xml`, `robots.txt`, `/guides/feed.xml`, and `/llms.txt`.
+- Design language matches the app (`Theme.swift`): paper, ink, and mint, with the app's hand-inked illustrations copied into `public/illustrations/`.
 - Configuration comes from environment variables. Only `NEXT_PUBLIC_*` values reach the browser, and they are inlined at build time, so they must never hold secrets.
-- `web/content/blog/` is reserved for Markdown/MDX articles. Nothing renders them yet.
 - Deployment: Vercel imports this repository with **Root Directory = `web`**.
 
 ## ios/
@@ -28,7 +30,7 @@ Storage App/
 
 ## automation/
 
-- Planned tooling that produces content (Markdown/MDX in `web/content/blog/`) and SEO reports. It is meant to write files for the site, not run inside it.
+- Planned tooling that produces content (Markdown in `web/content/guides/`) and SEO reports. It is meant to write files for the site, not run inside it. See `automation/README.md` for the loop.
 
 ## How they relate
 

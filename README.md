@@ -8,9 +8,9 @@ This repository contains the marketing website and, later, the iOS app and conte
 
 | Folder | Contents |
 | --- | --- |
-| [`web/`](web) | Next.js marketing website (TypeScript, Tailwind CSS, App Router). |
+| [`web/`](web) | Next.js marketing website and guides library (TypeScript, Tailwind CSS, App Router). Guides live in [`web/content/guides`](web/content). |
 | [`ios/`](ios) | Native SwiftUI app (Phase 1: Demo Mode with simulated data). The Xcode project is generated with XcodeGen on macOS. |
-| [`automation/`](automation) | Placeholder for future SEO and content workflows. |
+| [`automation/`](automation) | Plan for the AI-assisted SEO/AEO content loop (not implemented yet). |
 | [`docs/`](docs) | Project documentation. |
 
 ## Requirements
@@ -43,7 +43,7 @@ npm run start       # Serve the production build locally
 
 ### Environment variables
 
-`web/.env.example` lists every variable the site reads, with safe defaults. Copy it to `web/.env.local` (Git-ignored) for local overrides. No API keys are needed right now. Variables prefixed with `NEXT_PUBLIC_` are bundled into browser code, so never use that prefix for secrets.
+`web/.env.example` lists every variable the site reads, with safe defaults. Copy it to `web/.env.local` (Git-ignored) for local overrides. Production needs `NEXT_PUBLIC_SITE_URL` (canonical URLs and sitemap) and `WAITLIST_WEBHOOK_URL` (where signups go). Variables prefixed with `NEXT_PUBLIC_` are bundled into browser code, so never use that prefix for secrets.
 
 ## Deployment (website)
 

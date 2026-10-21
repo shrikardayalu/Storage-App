@@ -82,3 +82,6 @@ $RECYCLE.BIN/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Downloaded CI screenshots and builds
+ios/ci-artifacts/

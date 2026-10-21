@@ -1,19 +1,430 @@
 @import "tailwindcss";
 
+/*
+  Design language, shared with the iOS app (ios/StorageApp/Views/Components/Theme.swift):
+  clean, quiet layout first, with hand-printed touches: ink outlines, mint
+  fills printed slightly off-register, and hard offset "sticker" shadows.
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+  --paper: #f4f1ea;
+  --paper-deep: #ebe6da;
+  --surface: #fffdf8;
+  --ink: #1a1a17;
+  --ink-soft: #55534c;
+  --ink-faint: #8a877e;
+  --mint: #5ed49b;
+  --mint-soft: #cdefdc;
+  --mint-deep: #1c7d50;
+  --tomato: #ef6a4c;
+  --hairline: rgb(26 26 23 / 0.1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-mint: var(--mint);
+  --color-mint-soft: var(--mint-soft);
+  --color-mint-deep: var(--mint-deep);
+  --color-tomato: var(--tomato);
+  --color-hairline: var(--hairline);
+  --font-display: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-hand: var(--font-gochi), "Comic Sans MS", cursive;
+  --ease-spring: cubic-bezier(0.22, 1.2, 0.36, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--mint);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Fine paper grain over everything; pointer-events off so it never blocks. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@layer components {
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.035em;
+    font-feature-settings: "ss02";
+  }
+
+  .font-hand {
+    font-family: var(--font-hand);
+    letter-spacing: 0;
+  }
+
+  /* Sticker: surface card with an ink outline and a hard offset shadow.
+     Slightly uneven corner radii make the outline read as hand-cut. */
+  .sticker {
+    position: relative;
+    isolation: isolate;
+    background: var(--surface);
+    border-radius: 22px 26px 20px 25px / 25px 20px 26px 22px;
+    box-shadow: 5px 6px 0 var(--ink);
+    transition:
+      transform 0.45s var(--ease-spring),
+      box-shadow 0.45s var(--ease-spring);
+  }
+  .sticker::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 2.25px solid var(--ink);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .sticker-lift:hover {
+    transform: translate(-2px, -3px) rotate(-0.4deg);
+    box-shadow: 8px 10px 0 var(--ink);
+  }
+
+  /* Off-register mint plate behind an element, like a two-color print. */
+  .misprint {
+    position: relative;
+    isolation: isolate;
+  }
+  .misprint::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--mint);
+    transform: translate(7px, 7px) rotate(0.6deg);
+  }
+
+  .btn-ink {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--paper);
+    font-weight: 650;
+    box-shadow: 0 0 0 0 var(--mint);
+    transition:
+      transform 0.35s var(--ease-spring),
+      box-shadow 0.35s var(--ease-spring),
+      background 0.2s;
+  }
+  .btn-ink:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 0 var(--mint);
+  }
+  .btn-ink:active {
+    transform: translate(0, 0);
+    box-shadow: 0 0 0 0 var(--mint);
+  }
+
+  /* Ticket edge: a perforated left border for stub-style cards. */
+  .perforated {
+    -webkit-mask: radial-gradient(circle 7px at 0 50%, #0000 98%, #000) 0 0 / 100% 22px;
+    mask: radial-gradient(circle 7px at 0 50%, #0000 98%, #000) 0 0 / 100% 22px;
+  }
+
+  /* Torn receipt: rounded top, zigzag bottom edge. */
+  .receipt {
+    border-radius: 18px 18px 0 0;
+    -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 100%;
+    mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 100%;
+  }
+
+  .eyebrow {
+    font-family: var(--font-hand);
+    font-size: 1.35rem;
+    line-height: 1;
+    color: var(--mint-deep);
+  }
+
+  /* Article typography for rendered Markdown guides. */
+  .prose-guide {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+    color: var(--ink-soft);
+  }
+  .prose-guide > * + * {
+    margin-top: 1.15em;
+  }
+  .prose-guide h2 {
+    margin-top: 2.4em;
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-weight: 750;
+    color: var(--ink);
+  }
+  .prose-guide h3 {
+    margin-top: 1.8em;
+    font-family: var(--font-display);
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .prose-guide strong {
+    color: var(--ink);
+    font-weight: 650;
+  }
+  .prose-guide a {
+    color: var(--ink);
+    font-weight: 550;
+    text-decoration: underline;
+    text-decoration-color: var(--mint);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.2s;
+  }
+  .prose-guide a:hover {
+    text-decoration-color: var(--ink);
+  }
+  .prose-guide ul,
+  .prose-guide ol {
+    padding-left: 1.4em;
+  }
+  .prose-guide ul {
+    list-style: none;
+  }
+  .prose-guide ul > li {
+    position: relative;
+  }
+  .prose-guide ul > li::before {
+    content: "";
+    position: absolute;
+    left: -1.05em;
+    top: 0.72em;
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 45% 55% 50% 50%;
+    background: var(--mint);
+    box-shadow: 1px 1px 0 var(--ink);
+  }
+  .prose-guide ol {
+    list-style: none;
+    counter-reset: step;
+  }
+  .prose-guide ol > li {
+    position: relative;
+    counter-increment: step;
+    padding-left: 0.6em;
+  }
+  .prose-guide ol > li::before {
+    content: counter(step);
+    position: absolute;
+    left: -1.45em;
+    top: 0.2em;
+    display: grid;
+    place-items: center;
+    width: 1.55em;
+    height: 1.55em;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    font: 700 0.8rem/1 var(--font-display);
+  }
+  .prose-guide li + li {
+    margin-top: 0.5em;
+  }
+  .prose-guide blockquote {
+    border-left: 4px solid var(--mint);
+    padding: 0.2em 0 0.2em 1.1em;
+    color: var(--ink);
+  }
+  .prose-guide code {
+    background: var(--paper-deep);
+    border-radius: 6px;
+    padding: 0.1em 0.35em;
+    font-size: 0.92em;
+  }
+  .prose-guide .table-scroll {
+    overflow-x: auto;
+    border: 2px solid var(--ink);
+    border-radius: 16px;
+    background: var(--surface);
+  }
+  .prose-guide table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  .prose-guide th {
+    background: var(--mint-soft);
+    color: var(--ink);
+    text-align: left;
+    font-weight: 700;
+  }
+  .prose-guide th,
+  .prose-guide td {
+    padding: 0.75em 1em;
+    border-bottom: 1px solid var(--hairline);
+    vertical-align: top;
+  }
+  .prose-guide tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Motion. Everything here is decorative and switched off for reduced motion.
+   --------------------------------------------------------------------------- */
+
+/* Scroll reveal: elements start visible; the `js` class (set before paint)
+   opts them into the entrance so the page still works without JavaScript. */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(28px) scale(0.985);
+  transition:
+    opacity 0.9s var(--ease-out-soft),
+    transform 0.9s var(--ease-out-soft);
+  transition-delay: calc(var(--reveal-delay, 0) * 1ms);
+}
+.js [data-reveal="tilt"] {
+  transform: translateY(36px) rotate(calc(var(--tilt, -3) * 1deg));
+}
+.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+.js [data-reveal="tilt"].is-in {
+  transform: rotate(calc(var(--rest, 0) * 1deg));
+}
+
+/* Hand-drawn strokes that ink themselves in. */
+.draw path {
+  stroke-dasharray: var(--len, 600);
+  stroke-dashoffset: var(--len, 600);
+}
+.draw.is-in path,
+.draw-now path {
+  animation: draw 1.1s var(--ease-out-soft) forwards;
+  animation-delay: calc(var(--draw-delay, 250) * 1ms);
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(var(--r, 0deg));
+  }
+  50% {
+    transform: translateY(-10px) rotate(calc(var(--r, 0deg) + 3deg));
+  }
+}
+.bob {
+  animation: bob 6s ease-in-out infinite;
+  animation-delay: var(--bob-delay, 0s);
+}
+
+@keyframes fill-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+.fill-bar {
+  transform-origin: left;
+  animation: fill-bar 1.6s var(--ease-out-soft) both;
+  animation-delay: var(--bar-delay, 0.4s);
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee {
+  animation: marquee 38s linear infinite;
+}
+
+/* Scroll-linked parallax where supported (no JS). */
+@supports (animation-timeline: view()) {
+  .parallax {
+    animation: parallax linear both;
+    animation-timeline: view();
+  }
+  @keyframes parallax {
+    from {
+      translate: 0 calc(var(--depth, 40) * 1px);
+    }
+    to {
+      translate: 0 calc(var(--depth, 40) * -1px);
+    }
+  }
+
+  .shrink-on-scroll {
+    animation: shrink linear both;
+    animation-timeline: view();
+    animation-range: entry 20% cover 55%;
+  }
+  @keyframes shrink {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(var(--to, 0.3));
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+  .draw path {
+    stroke-dashoffset: 0;
+  }
+  .parallax,
+  .shrink-on-scroll {
+    animation: none !important;
+  }
 }
