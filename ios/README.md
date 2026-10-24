@@ -142,6 +142,8 @@ With a free Apple ID the app stops opening after 7 days; re-run step 5 to refres
 
 Install the Swift toolchain with `winget install Swift.Toolchain` (it also needs Visual Studio Build Tools with the C++ workload and a Windows SDK). Open a new terminal afterwards so `PATH` and `SDKROOT` are set, then run `swift test` in `ios/StorageCore`. SwiftUI and UIKit are not available on Windows, so the app target itself can only be compiled on a Mac or in CI; `swiftc -parse` can still catch syntax errors in app files.
 
+To build the full app and install it on an iPhone from Windows (through WSL2), see [XTOOL_SETUP.md](XTOOL_SETUP.md).
+
 ## Changing demo datasets
 
 - **In the app:** Settings → Sample Library. Switching or resetting regenerates the chosen library and discards simulated changes.

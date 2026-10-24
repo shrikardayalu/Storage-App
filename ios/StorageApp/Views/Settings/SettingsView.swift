@@ -4,8 +4,10 @@ import SwiftUI
 /// Demo status, sample-library choice, reset, and version.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
     @State private var pendingScenario: DemoScenario?
     @State private var confirmingReset = false
+    @State private var showingPaywall = false
 
     var body: some View {
         Form {
@@ -51,6 +53,10 @@ struct SettingsView: View {
                 Text("Restores \(model.scenario.title) to its original state and clears simulated deletions, compression, and selection.")
             }
 
+            if PaywallConfig.isEnabled {
+                ProSection(showingPaywall: $showingPaywall)
+            }
+
             Section("About") {
                 LabeledContent("Version", value: AppInfo.versionString)
                 LabeledContent("Mode", value: "Demo (simulated data)")
@@ -90,6 +96,31 @@ struct SettingsView: View {
             if model.isWorking {
                 WorkingOverlay(message: "Preparing library…")
             }
+        }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallFlow()
+        }
+    }
+}
+
+/// Pro status, the way into the paywall, and a reset for testing the
+/// simulated purchases. Only shown while the paywall is enabled.
+private struct ProSection: View {
+    @Environment(PurchaseStore.self) private var purchases
+    @Binding var showingPaywall: Bool
+
+    var body: some View {
+        Section {
+            if let plan = purchases.activePlan {
+                LabeledContent("Plan", value: plan.title)
+            } else {
+                Button("Upgrade to Pro") { showingPaywall = true }
+            }
+            Button("Reset Simulated Purchase", role: .destructive) { purchases.reset() }
+        } header: {
+            Text("Pro")
+        } footer: {
+            Text("Purchases are simulated. Nothing is charged, and resetting also brings back the one-time lifetime offer.")
         }
     }
 }
@@ -132,4 +163,5 @@ enum AppInfo {
 #Preview {
     NavigationStack { SettingsView() }
         .environment(AppModel.preview())
+        .environment(PurchaseStore())
 }

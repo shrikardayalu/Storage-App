@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllGuides } from "@/lib/guides";
+import { pricingLive } from "@/lib/pricing";
 import { absoluteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -13,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: absoluteUrl(`/guides/${guide.slug}`),
       lastModified: guide.updated,
     })),
+    ...(pricingLive ? [{ url: absoluteUrl("/pricing") }] : []),
     { url: absoluteUrl("/about") },
     { url: absoluteUrl("/privacy") },
   ];

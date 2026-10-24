@@ -41,5 +41,6 @@ struct RootView: View {
 #Preview {
     RootView()
         .environment(AppModel.preview())
+        .environment(PurchaseStore())
         .tint(Theme.accent)
 }

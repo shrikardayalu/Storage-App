@@ -4,11 +4,13 @@ import SwiftUI
 /// Review the current selection and choose to simulate compression or deletion.
 struct CleanupReviewView: View {
     @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
     @Environment(\.dismiss) private var dismiss
 
     @State private var level: CompressionLevel = .balanced
     @State private var confirmingDelete = false
     @State private var confirmingCompress = false
+    @State private var showingPaywall = false
     @State private var result: CleanupResult?
 
     var body: some View {
@@ -50,6 +52,9 @@ struct CleanupReviewView: View {
             }
         }
         .interactiveDismissDisabled(model.isWorking)
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallFlow()
+        }
     }
 
     private var review: some View {
@@ -61,7 +66,12 @@ struct CleanupReviewView: View {
                 SelectionSummaryCard(items: items, totalBytes: totalBytes)
 
                 CompressionCard(plan: plan, level: $level) {
-                    confirmingCompress = true
+                    // Shrinking is Pro; deleting stays free. No-op while the paywall is off.
+                    if purchases.requiresPro {
+                        showingPaywall = true
+                    } else {
+                        confirmingCompress = true
+                    }
                 }
 
                 DeletionCard(count: items.count, bytes: totalBytes) {
@@ -296,4 +306,5 @@ private struct CardHeading: View {
     model.reviewCleanup()
     return CleanupReviewView()
         .environment(model)
+        .environment(PurchaseStore())
 }

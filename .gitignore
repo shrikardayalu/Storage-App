@@ -34,6 +34,11 @@ ios/StorageApp.xcodeproj/
 ios/StorageApp/Info.plist
 *.xcresult
 ios/Tools/illustrations/preview.html
+# xtool (Linux/WSL builds) output and editor support files.
+ios/xtool/
+ios/.bsp/
+ios/.swiftpm/
+ios/Package.resolved
 __pycache__/
 DerivedData/
 xcuserdata/
