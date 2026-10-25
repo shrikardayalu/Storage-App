@@ -8,262 +8,307 @@ enum AppTab: Hashable {
     case settings
 }
 
-enum LibraryLayout: String, CaseIterable, Identifiable {
-    case grid
-    case list
+/// What the Recently Deleted guide is following up on.
+struct CleanupGuide: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case deleted(DeletionReceipt)
+        case convertedLivePhotos([StillConversion])
+    }
 
-    var id: String { rawValue }
-    var title: String { self == .grid ? "Grid" : "List" }
-    var systemImage: String { self == .grid ? "square.grid.3x3" : "list.bullet" }
+    let id = UUID()
+    let kind: Kind
+    /// IDs of what went to Recently Deleted, for the "look for these" thumbnails.
+    let removedIDs: [MediaItem.ID]
+    /// Space that should come back once Recently Deleted is emptied.
+    let expectedBytes: Int64
+
+    var count: Int { removedIDs.count }
 }
 
-/// Shared app state: the current library snapshot, navigation, filters, and
-/// selection. Views read from it and call its methods; all data changes go
-/// through the injected `MediaLibraryService`, so swapping the mock for a
-/// PhotoKit-backed service later doesn't touch the views.
+/// Shared app state: real device storage readings, the Test Mode album scan,
+/// selection, changes, and navigation. Views read from it and call its methods;
+/// all device access goes through the injected services, so tests and previews
+/// swap in mocks. The only changes go through `TestAlbumChangeService`, which
+/// can reach nothing outside the test album.
 @MainActor
 @Observable
 final class AppModel {
-    // MARK: Library snapshot
+    // MARK: Device storage
 
-    private(set) var items: [MediaItem] = []
-    private(set) var summary = LibrarySummary.empty
-    private(set) var savings = SessionSavings()
-    private(set) var canUndo = false
-    private(set) var scenario: DemoScenario = .typical
-    private(set) var hasLoaded = false
-    /// True while a simulated operation is running.
-    private(set) var isWorking = false
+    /// The most recent reading of the phone's storage.
+    private(set) var deviceStorage: StorageSnapshot?
+    /// Saved readings, oldest first. At most one per minute.
+    private(set) var storageHistory = StorageHistory()
+    private(set) var storageReadFailed = false
+
+    // MARK: Test album scan
+
+    /// The latest read-only scan of the test album, if one has run.
+    private(set) var albumScan: LibraryScan?
+    private(set) var photoAccess: PhotoAccess = .notDetermined
+    private(set) var isScanning = false
+    /// Why the last scan didn't finish, shown on the scan card.
+    private(set) var scanError: PhotoScanError?
     var errorMessage: String?
 
-    // MARK: Navigation and library UI state
+    // MARK: Cleanup
+
+    /// Items picked in the Library. Only IDs from the latest scan can be in it.
+    private(set) var selection = MediaSelection()
+    var isSelecting = false
+    /// True while a delete or conversion is running.
+    private(set) var isChanging = false
+    /// The review sheet is open.
+    var isReviewing = false
+    /// Shown full screen after a cleanup, until the person closes it.
+    var guide: CleanupGuide?
+    /// The latest cleanup's guide, so it can be opened again from Home.
+    private(set) var lastGuide: CleanupGuide?
+    /// Waits for the review sheet to close before the guide opens.
+    private var pendingGuide: CleanupGuide?
+    /// Free space before the last cleanup, and since.
+    private(set) var reclaim: ReclaimMeasurement?
+
+    // MARK: Navigation
 
     var selectedTab: AppTab = .home
-    var libraryFilter: MediaFilter = .all
-    var librarySort: MediaSort = .largestFirst
-    var libraryLayout: LibraryLayout = .grid
-    var isSelecting = false
-    var isReviewPresented = false
-    private(set) var selection = MediaSelection()
+    /// Library tab filter; nil shows everything.
+    var libraryGroup: ScanGroup?
 
     // MARK: Dependencies
 
-    let isSimulated: Bool
-    private let service: any MediaLibraryService
-    private let demo: (any DemoLibraryControlling)?
-    @ObservationIgnored private var itemsByID: [MediaItem.ID: MediaItem] = [:]
-    /// Bumped whenever `items` changes, so cached query results know to refresh.
-    private var revision = 0
-    @ObservationIgnored private var visibleCache: (key: VisibleKey, items: [MediaItem])?
+    private let storageService: any DeviceStorageService
+    private let historyStore: StorageHistoryStore
+    private let photoScanner: any PhotoScanService
+    private let photoChanges: any TestAlbumChangeService
 
-    private struct VisibleKey: Equatable {
-        let filter: MediaFilter
-        let sort: MediaSort
-        let revision: Int
+    init(
+        storage: any DeviceStorageService = MockDeviceStorageService(),
+        historyStore: StorageHistoryStore = .inMemory,
+        photoScanner: any PhotoScanService = MockPhotoScanService(items: []),
+        photoChanges: any TestAlbumChangeService = MockPhotoLibrary(items: [])
+    ) {
+        self.storageService = storage
+        self.historyStore = historyStore
+        self.photoScanner = photoScanner
+        self.photoChanges = photoChanges
+        self.storageHistory = historyStore.load()
+        self.deviceStorage = storageHistory.latest
     }
 
-    init(service: any MediaLibraryService, demo: (any DemoLibraryControlling)?) {
-        self.service = service
-        self.demo = demo
-        self.isSimulated = service.isSimulated
+    /// One mock library that both scans and changes, for tests and previews.
+    convenience init(storage: any DeviceStorageService = MockDeviceStorageService(), library: MockPhotoLibrary) {
+        self.init(storage: storage, photoScanner: library, photoChanges: library)
     }
 
-    /// The app's only Phase 1 configuration: an in-memory demo library.
-    static func demo(scenario: DemoScenario = .typical) -> AppModel {
-        let service = MockMediaLibraryService(scenario: scenario, latency: .milliseconds(450))
-        return AppModel(service: service, demo: service)
+    /// The real configuration: volume readings saved in Application Support,
+    /// a PhotoKit scanner, and PhotoKit changes, both limited to the Test Mode album.
+    static func live() -> AppModel {
+        AppModel(
+            storage: VolumeStorageService(),
+            historyStore: .applicationSupport,
+            photoScanner: PhotoKitScanService(),
+            photoChanges: PhotoKitTestAlbumChanges()
+        )
     }
 
-    // MARK: Derived data
+    // MARK: Device storage
 
-    /// Items for the Library tab after filtering and sorting. Cached, because
-    /// sorting the 20,000-item scenario on every view update would be wasteful.
-    var visibleItems: [MediaItem] {
-        let key = VisibleKey(filter: libraryFilter, sort: librarySort, revision: revision)
-        if let cache = visibleCache, cache.key == key {
-            return cache.items
-        }
-        let result = MediaQuery.apply(filter: libraryFilter, sort: librarySort, to: items)
-        visibleCache = (key, result)
-        return result
-    }
-
-    var visibleBytes: Int64 {
-        visibleItems.reduce(0) { $0 + $1.currentBytes }
-    }
-
-    var selectedItems: [MediaItem] {
-        items.filter { selection.contains($0.id) }
-    }
-
-    var selectedBytes: Int64 {
-        _ = revision // sizes change when items are compressed
-        return selection.ids.reduce(0) { $0 + (itemsByID[$1]?.currentBytes ?? 0) }
-    }
-
-    /// Screenshots plus large videos: the default set for "Review suggestions".
-    var suggestedIDs: Set<MediaItem.ID> {
-        Set(items.lazy.filter { MediaFilter.screenshots.includes($0) || MediaFilter.largeVideos.includes($0) }.map(\.id))
-    }
-
-    var areAllVisibleSelected: Bool {
-        selection.containsAll(visibleItems)
-    }
-
-    func item(withID id: MediaItem.ID) -> MediaItem? {
-        itemsByID[id]
-    }
-
-    // MARK: Loading
-
-    func loadIfNeeded() async {
-        guard !hasLoaded else { return }
-        if let demo {
-            scenario = await demo.currentScenario()
-        }
-        await refresh()
-    }
-
-    private func refresh() async {
+    /// Reads the phone's storage and saves the reading. Called on launch and
+    /// whenever the app comes back to the foreground. The card always shows the
+    /// fresh reading; history skips it if the last one is under a minute old.
+    func refreshDeviceStorage() async {
         do {
-            apply(items: try await service.loadItems())
-            savings = await service.sessionSavings()
-            canUndo = await service.canUndo()
-            hasLoaded = true
+            let snapshot = try await storageService.currentSnapshot()
+            deviceStorage = snapshot
+            storageReadFailed = false
+            reclaim?.record(snapshot)
+            if storageHistory.append(snapshot) {
+                try? historyStore.save(storageHistory)
+            }
+        } catch {
+            storageReadFailed = deviceStorage == nil
+        }
+    }
+
+    // MARK: Test album scan
+
+    /// Reads the current Photos permission without prompting.
+    func refreshPhotoAccess() async {
+        photoAccess = await photoScanner.access()
+    }
+
+    /// Scans again on launch if Photos access was already given, so the
+    /// Library is filled without a tap. Never shows the permission prompt.
+    func scanIfAllowed() async {
+        await refreshPhotoAccess()
+        if photoAccess.canRead, albumScan == nil {
+            await scanTestAlbum()
+        }
+    }
+
+    /// Scans only the Test Mode album, asking for Photos access first if needed.
+    /// Read-only: nothing in Photos changes.
+    func scanTestAlbum() async {
+        guard !isScanning else { return }
+        isScanning = true
+        defer { isScanning = false }
+        photoAccess = await photoScanner.access()
+        if photoAccess == .notDetermined {
+            photoAccess = await photoScanner.requestAccess()
+        }
+        do {
+            let scan = LibraryScan(items: try await photoScanner.scanAlbum(named: TestMode.albumName))
+            albumScan = scan
+            selection.prune(keeping: Set(scan.items.map(\.id)))
+            scanError = nil
+        } catch let error as PhotoScanError {
+            scanError = error
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func apply(items newItems: [MediaItem]) {
-        items = newItems
-        itemsByID = Dictionary(uniqueKeysWithValues: newItems.map { ($0.id, $0) })
-        summary = LibrarySummary(items: newItems)
-        selection.prune(keeping: Set(itemsByID.keys))
-        revision += 1
-    }
-
-    // MARK: Navigation
-
-    func showLibrary(filter: MediaFilter, sort: MediaSort = .largestFirst) {
-        libraryFilter = filter
-        librarySort = sort
-        selectedTab = .library
-    }
-
-    /// Opens cleanup review. With nothing selected, pre-selects the suggestions.
-    func reviewCleanup() {
-        if selection.isEmpty {
-            selection.select(suggestedIDs)
-        }
-        isReviewPresented = true
-    }
-
     // MARK: Selection
 
-    func isSelected(_ item: MediaItem) -> Bool {
-        selection.contains(item.id)
-    }
-
-    func toggleSelection(_ item: MediaItem) {
-        selection.toggle(item.id)
-    }
-
-    func selectAllVisible() {
-        selection.select(visibleItems.map(\.id))
-    }
-
-    func deselectAllVisible() {
-        selection.deselect(visibleItems.map(\.id))
+    func toggleSelection(_ id: MediaItem.ID) {
+        // Only items the latest scan found in the test album can be picked.
+        guard albumScan?.items.contains(where: { $0.id == id }) == true else { return }
+        selection.toggle(id)
     }
 
     func clearSelection() {
         selection.clear()
     }
 
-    func endSelecting() {
-        isSelecting = false
+    /// The picked items, biggest first.
+    var selectedItems: [MediaItem] {
+        albumScan?.items.filter { selection.contains($0.id) } ?? []
     }
 
-    // MARK: Simulated cleanup
-
-    func compressionPlan(level: CompressionLevel) -> CompressionPlan {
-        CompressionPlan(items: selectedItems, level: level)
+    var convertibleLivePhotos: [MediaItem] {
+        albumScan?.items.filter(\.isConvertibleLivePhoto) ?? []
     }
 
-    /// Simulates deleting the selected items. Returns the result, or nil on failure.
-    func deleteSelected() async -> CleanupResult? {
-        await perform { [service = self.service, ids = self.selection.ids] in
-            try await service.deleteItems(withIDs: ids)
-        }
-    }
+    // MARK: Changes (test album only)
 
-    /// Simulates compressing the selected items at `level`.
-    func compressSelected(level: CompressionLevel) async -> CleanupResult? {
-        await perform { [service = self.service, ids = self.selection.ids] in
-            try await service.compressItems(withIDs: ids, level: level)
-        }
-    }
-
-    func undoLastChange() async {
-        isWorking = true
-        defer { isWorking = false }
+    /// Checks the approved items against the album without changing anything.
+    func safetyCheck(_ approved: Set<MediaItem.ID>) async -> Result<SafetyCheck, PhotoChangeError> {
         do {
-            _ = try await service.undoLastChange()
+            return .success(try await photoChanges.check(approved))
+        } catch let error as PhotoChangeError {
+            return .failure(error)
         } catch {
-            errorMessage = error.localizedDescription
+            return .failure(.verificationFailed(error.localizedDescription))
         }
-        await refresh()
     }
 
-    private func perform(_ operation: @escaping @Sendable () async throws -> CleanupResult) async -> CleanupResult? {
-        guard !selection.isEmpty else {
-            errorMessage = MediaLibraryError.noItemsSelected.localizedDescription
-            return nil
+    /// Deletes exactly the items the person approved on the review screen, then
+    /// opens the Recently Deleted guide. Returns nil on success, or why nothing changed.
+    @discardableResult
+    func delete(approved: Set<MediaItem.ID>) async -> PhotoChangeError? {
+        await change(approved) { changes in
+            let receipt = try await changes.delete(approved)
+            return CleanupGuide(kind: .deleted(receipt), removedIDs: Array(receipt.deleted), expectedBytes: receipt.deletedBytes)
         }
-        isWorking = true
-        defer { isWorking = false }
+    }
+
+    /// Turns the approved Live Photos into stills, then opens the guide, since
+    /// the originals wait in Recently Deleted. Returns nil on success, or why nothing changed.
+    @discardableResult
+    func convertToStills(approved: Set<MediaItem.ID>) async -> PhotoChangeError? {
+        await change(approved) { changes in
+            let results = try await changes.convertLivePhotosToStills(approved)
+            let saved = results.reduce(Int64(0)) { $0 + $1.savedBytes }
+            return CleanupGuide(kind: .convertedLivePhotos(results), removedIDs: results.map(\.originalID), expectedBytes: saved)
+        }
+    }
+
+    private func change(
+        _ approved: Set<MediaItem.ID>,
+        _ work: (any TestAlbumChangeService) async throws -> CleanupGuide
+    ) async -> PhotoChangeError? {
+        guard !approved.isEmpty else { return .unsafe(SafetyCheck(approved: [], outsideTestAlbum: [], inOtherAlbums: [])) }
+        guard !isChanging else { return .cancelled }
+        isChanging = true
+        defer { isChanging = false }
+
+        // Free space before anything changes, to measure what comes back.
+        await refreshDeviceStorage()
+        let baseline = deviceStorage
         do {
-            let result = try await operation()
-            selection.clear()
+            let guide = try await work(photoChanges)
+            if let baseline {
+                reclaim = ReclaimMeasurement(baseline: baseline, expectedBytes: guide.expectedBytes)
+            }
+            selection.deselect(approved)
             isSelecting = false
-            await refresh()
-            return result
-        } catch {
-            errorMessage = error.localizedDescription
+            lastGuide = guide
+            if isReviewing {
+                pendingGuide = guide
+                isReviewing = false
+            } else {
+                self.guide = guide
+            }
+            // Re-read the album so the Library shows what's really there now.
+            await scanTestAlbum()
             return nil
+        } catch let error as PhotoChangeError {
+            return error
+        } catch {
+            return .verificationFailed(error.localizedDescription)
         }
     }
 
-    // MARK: Demo controls
+    /// Reads free space again for the guide's "space back" figure.
+    func measureReclaim() async {
+        await refreshDeviceStorage()
+    }
 
-    var canResetDemo: Bool { demo != nil }
+    /// Called once the review sheet has finished closing.
+    func presentPendingGuide() {
+        guard let pendingGuide else { return }
+        self.pendingGuide = nil
+        guide = pendingGuide
+    }
 
-    /// Regenerates the demo library, discarding simulated changes and selection.
-    func resetDemo(to newScenario: DemoScenario? = nil) async {
-        guard let demo else { return }
-        isWorking = true
-        defer { isWorking = false }
-        let target = newScenario ?? scenario
-        await demo.reset(to: target)
-        scenario = target
-        selection.clear()
-        isSelecting = false
-        libraryFilter = .all
-        await refresh()
+    /// Opens the latest guide again, for when space is still waiting in Recently Deleted.
+    func reopenGuide() {
+        guide = lastGuide
+    }
+
+    /// Space still waiting in Recently Deleted from the latest cleanup, if any.
+    var spaceWaiting: Int64? {
+        guard let reclaim, !reclaim.isDone, reclaim.expectedBytes > 0 else { return nil }
+        return reclaim.expectedBytes - reclaim.reclaimedBytes
+    }
+
+    func closeGuide() {
+        guide = nil
+    }
+
+    // MARK: Navigation
+
+    func showLibrary(group: ScanGroup?) {
+        libraryGroup = group
+        selectedTab = .library
     }
 }
 
 // MARK: - Previews
 
 extension AppModel {
-    /// A model already populated with a scenario, for SwiftUI previews.
-    static func preview(_ scenario: DemoScenario = .typical) -> AppModel {
-        let service = MockMediaLibraryService(scenario: scenario)
-        let model = AppModel(service: service, demo: service)
-        model.scenario = scenario
-        model.apply(items: MockMediaFactory.makeLibrary(for: scenario))
-        model.hasLoaded = true
+    /// A model already filled with sample readings and scan results, for SwiftUI previews.
+    static func preview(items: [MediaItem] = []) -> AppModel {
+        let model = AppModel()
+        model.deviceStorage = StorageSnapshot(
+            date: Date(),
+            totalBytes: 127_400_000_000,
+            availableBytes: 2_290_000_000,
+            availableForImportantUsageBytes: 9_100_000_000
+        )
+        model.albumScan = LibraryScan(items: items)
+        model.photoAccess = .granted
         return model
     }
 }

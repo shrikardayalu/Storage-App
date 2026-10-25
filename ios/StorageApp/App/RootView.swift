@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Tab bar shell. The cleanup review sheet and error alerts live here so any
-/// tab can open them.
+/// Tab bar shell. Error alerts live here so any tab can raise them.
 struct RootView: View {
     @Environment(AppModel.self) private var model
 
@@ -20,9 +19,6 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(AppTab.settings)
         }
-        .sheet(isPresented: $model.isReviewPresented) {
-            CleanupReviewView()
-        }
         .alert(
             "Something went wrong",
             isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })
@@ -31,9 +27,15 @@ struct RootView: View {
         } message: {
             Text(model.errorMessage ?? "")
         }
+        // After a delete or Live Photo conversion: help empty Recently Deleted.
+        .fullScreenCover(item: $model.guide) { guide in
+            RecentlyDeletedGuideView(guide: guide)
+                .environment(model)
+                .tint(Theme.accent)
+        }
         .task {
-            await model.loadIfNeeded()
             ScreenshotRoute.current?.apply(to: model)
+            await model.scanIfAllowed()
         }
     }
 }

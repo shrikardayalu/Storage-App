@@ -1,10 +1,7 @@
 import Foundation
 
-/// One simulated photo, video, or screenshot.
-///
-/// In Phase 1 every `MediaItem` is generated in memory by `MockMediaFactory`.
-/// A later PhotoKit-backed service will map `PHAsset`s onto this same type, so
-/// the UI never needs to know where an item came from.
+/// One photo, video, or screenshot from the library, mapped from a `PHAsset`
+/// by the app's PhotoKit scanner. Tests build them by hand.
 public struct MediaItem: Identifiable, Hashable, Codable, Sendable {
     public let id: String
     public let category: MediaCategory
@@ -23,6 +20,12 @@ public struct MediaItem: Identifiable, Hashable, Codable, Sendable {
     public var compressionLevel: CompressionLevel?
     /// Seed that picks the placeholder thumbnail artwork and tint.
     public let thumbnailSeed: UInt32
+    /// Capture details that matter for grouping, such as Live Photo or slo-mo.
+    public let traits: MediaTraits
+    /// Shared by every shot in one burst; nil for everything else.
+    public let burstID: String?
+    /// A Live Photo's paired video, which turning it into a still removes. 0 otherwise.
+    public let livePhotoVideoBytes: Int64
 
     public init(
         id: String,
@@ -36,7 +39,10 @@ public struct MediaItem: Identifiable, Hashable, Codable, Sendable {
         originalBytes: Int64,
         currentBytes: Int64? = nil,
         compressionLevel: CompressionLevel? = nil,
-        thumbnailSeed: UInt32
+        thumbnailSeed: UInt32,
+        traits: MediaTraits = [],
+        burstID: String? = nil,
+        livePhotoVideoBytes: Int64 = 0
     ) {
         self.id = id
         self.category = category
@@ -50,6 +56,9 @@ public struct MediaItem: Identifiable, Hashable, Codable, Sendable {
         self.currentBytes = currentBytes ?? originalBytes
         self.compressionLevel = compressionLevel
         self.thumbnailSeed = thumbnailSeed
+        self.traits = traits
+        self.burstID = burstID
+        self.livePhotoVideoBytes = livePhotoVideoBytes
     }
 
     public var isCompressed: Bool { compressionLevel != nil }
@@ -62,7 +71,26 @@ public struct MediaItem: Identifiable, Hashable, Codable, Sendable {
         CompressionModel.unsupportedReason(for: self) == nil
     }
 
+    /// A Live Photo that can become a still. Shots in a burst are left to the burst step.
+    public var isConvertibleLivePhoto: Bool {
+        category == .photo && traits.contains(.livePhoto) && burstID == nil
+    }
+
     public var megapixels: Double {
         Double(pixelWidth * pixelHeight) / 1_000_000
     }
+}
+
+/// Capture details beyond category and format.
+public struct MediaTraits: OptionSet, Hashable, Codable, Sendable {
+    public let rawValue: Int
+
+    public init(rawValue: Int) {
+        self.rawValue = rawValue
+    }
+
+    /// A photo with a short paired video.
+    public static let livePhoto = MediaTraits(rawValue: 1 << 0)
+    /// A high-frame-rate (slo-mo) video.
+    public static let slowMotion = MediaTraits(rawValue: 1 << 1)
 }

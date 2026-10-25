@@ -24,7 +24,7 @@ export function GuideCard({ guide, index = 0 }: { guide: GuideMeta; index?: numb
         <Illustration
           name={guide.illustration}
           size={64}
-          className="absolute -top-5 right-4 transition-transform duration-500 ease-[var(--ease-spring)] group-hover:-translate-y-1 group-hover:rotate-6"
+          className="pointer-events-none absolute -top-5 right-4 z-10 rounded-2xl bg-surface transition-transform duration-500 ease-[var(--ease-spring)] group-hover:-translate-y-1 group-hover:rotate-6"
         />
         <h3 className="mt-2 pr-12 font-display text-xl leading-tight font-bold">
           <Link href={`/guides/${guide.slug}`} className="after:absolute after:inset-0 after:content-['']">

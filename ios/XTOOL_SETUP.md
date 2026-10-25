@@ -15,7 +15,8 @@
 - **Swift 6.4.1**, installed with [swiftly](https://www.swift.org/install/linux/) in `~/.local/share/swiftly`
 - **xtool** at `/usr/local/bin/xtool`, the AppImage from GitHub Releases
 - **usbmuxd** and **libimobiledevice-utils** (`idevice_id`, `ideviceinfo`, `idevicepair`, `idevicesyslog`)
-- **usbipd-win** on Windows, for USB passthrough to WSL
+- **Apple Devices** (Microsoft Store) and Apple's USB driver on Windows, which WSL reaches through mirrored networking
+- **usbipd-win** on Windows. It's no longer used for installs (see section 2)
 - The **Darwin SDK**, built from `Xcode_27.1.xip` (`swift sdk list` shows `darwin`)
 
 xtool, Swift and the device tools live inside WSL, not Windows. In PowerShell, prefix commands with `wsl -d Ubuntu-24.04 --` (for example `wsl -d Ubuntu-24.04 -- xtool auth status`), or open a Linux shell with `wsl -d Ubuntu-24.04` and type them there.
@@ -40,33 +41,31 @@ To open a WSL shell, run `wsl -d Ubuntu-24.04` (or pick Ubuntu-24.04 in Windows 
 
 ## 2. Connect the iPhone
 
-usbipd shares the phone with WSL. The device is already bound (`--force`, so Windows doesn't hold it), so after each reconnect only one step is needed:
+The phone stays connected to **Windows**. WSL talks to it through Apple's own device service (usbmuxd), which the **Apple Devices** app (Microsoft Store) runs on `127.0.0.1:27015`. USB passthrough with usbipd hangs at install time ([xtool#19](https://github.com/xtool-org/xtool/issues/19)), so it isn't used anymore.
 
-1. Connect the iPhone by USB and unlock it.
-2. Keep a WSL window open; usbipd needs a running WSL instance.
-3. In PowerShell (no admin needed):
+One-time setup (already done on this machine):
 
-   ```powershell
-   usbipd list                          # find "Apple iPhone" (VID 05ac); note its BUSID
-   usbipd attach --wsl --busid <BUSID>  # e.g. 2-1; it changes with the USB port
-   ```
+- Install **Apple Devices** from the Microsoft Store. Apple's USB driver ("Apple, Inc. - USBDevice") arrives separately through Windows Update: plug the phone in, run **Check for updates**, then install it from **Advanced options → Optional updates → Driver updates**. Without the driver, Apple Devices spins forever and sees no device.
+- Turn on WSL mirrored networking so WSL can reach Windows' `127.0.0.1`. `C:\Users\shrik\.wslconfig` contains:
 
-4. Check from WSL:
+  ```ini
+  [wsl2]
+  networkingMode=mirrored
+  ```
+
+  Then run `wsl --shutdown`.
+
+Each time:
+
+1. Plug in the iPhone (either USB-C port works) and unlock it. Tap **Trust** if it asks.
+2. Check from WSL:
 
    ```bash
-   idevicepair validate   # "SUCCESS: Validated pairing"
-   xtool devices          # "iPhone [usb]: <udid>"
+   export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015   # Tools/xtool-dev.sh sets this for you
+   xtool devices                                    # "shrik's iPhone [usb]: <udid>"
    ```
 
-If the phone shows **Trust This Computer?**, tap Trust and enter the passcode.
-
-While it's force-bound, Windows can't see the phone (no photo import in Explorer or the Photos app). To give it back to Windows, run this in an **admin** PowerShell:
-
-```powershell
-usbipd unbind --busid <BUSID>
-```
-
-To share it with WSL again afterwards, run `usbipd bind --force --busid <BUSID>` (admin), then unplug and replug the phone.
+The phone was earlier force-bound to usbipd. If `usbipd list` ever shows it as "Shared", release it from an **admin** PowerShell with `usbipd unbind --hardware-id 05ac:12a8`, then replug.
 
 ## 3. Sign in to Apple (once)
 
@@ -130,11 +129,11 @@ Add new Swift files under `StorageApp/`; SwiftPM picks them up automatically. On
 
 **Connection**
 
-- *`usbipd attach` says "Device busy"*: Windows still holds the phone. Make sure it's bound with `--force` (`usbipd list` shows "Shared (forced)"), then unplug and replug it.
-- *"There is no WSL 2 distribution running"*: open a WSL window and keep it open, then attach again.
-- *"There is no device with busid"*: the phone is on a different USB port. Check `usbipd list` and use the new bus ID.
-- *`xtool devices` hangs or shows nothing*: in WSL, check `systemctl status usbmuxd` (start it with `sudo systemctl restart usbmuxd`), then run `idevice_id -l`. Unlock the phone.
-- *`AFCClient.Error.muxError` during install*: this is a known WSL issue. The official workaround relays usbmuxd from the Apple Devices app on Windows instead of using usbipd: see [xtool#19](https://github.com/xtool-org/xtool/issues/19#issuecomment-2898986718).
+- *`xtool devices` shows nothing*: open Apple Devices and check that it shows the phone. Check that Windows listens on the port (`Get-NetTCPConnection -LocalPort 27015` in PowerShell), and that `USBMUXD_SOCKET_ADDRESS` is set in WSL. Unlock the phone.
+- *Apple Devices spins forever*: Apple's USB driver is missing; Device Manager shows the iPhone as "MTP USB Device". Install it from Windows Update's optional driver updates (see section 2).
+- *Connection refused on 127.0.0.1:27015 from WSL*: mirrored networking is off. Check `.wslconfig`, then run `wsl --shutdown`.
+- *Install hangs after `[Connecting] 100%`, or `AFCClient`/`LockdownClient.Error.muxError`*: you're on usbipd instead of Apple's service ([xtool#19](https://github.com/xtool-org/xtool/issues/19)). Use the section 2 setup.
+- *Microsoft Store downloads stay "Queued"*: Windows Update may be stuck ("StopPending" in `Get-Service wuauserv`). Restart the PC. `winget install --id 9NP83LWLPZ9K --source msstore` also installs Apple Devices without the Store window.
 
 **Compilation**
 
@@ -145,7 +144,9 @@ Add new Swift files under `StorageApp/`; SwiftPM picks them up automatically. On
 
 **Signing and login**
 
-- *`This action cannot be completed at this time. (-80045 / -80046)`*: Apple rejected the sign-in. These errors have come in waves that affect every xtool user, for example [xtool#329](https://github.com/xtool-org/xtool/issues/329), fixed in 1.22.2, and the open [xtool#378](https://github.com/xtool-org/xtool/issues/378), where -80046 happens after the 2FA code. Don't retry repeatedly, because Apple may stop sending codes. Watch the issue and update xtool when a fix is released (download the new AppImage over `/usr/local/bin/xtool`), then run `xtool auth login` again.
+- *`This action cannot be completed at this time. (-80045 / -80046)`*: Apple rejected the sign-in. These errors have come in waves that affect every xtool user, for example [xtool#329](https://github.com/xtool-org/xtool/issues/329) (fixed in 1.22.2) and [xtool#378](https://github.com/xtool-org/xtool/issues/378) (-80046 after the 2FA code, fixed in 1.23.0). Don't retry repeatedly, because Apple may stop sending codes. Update xtool when a fix is released (download the new AppImage over `/usr/local/bin/xtool`), then run `xtool auth login` again.
+- *`gsa.apple.com ... HTTP 503`*: Apple's sign-in server is temporarily down. Wait 20 minutes or more and try once.
+- *A "MacBook Pro" sign-in prompt on your devices*: expected. xtool signs in as a virtual Mac.
 - *Bundle ID unavailable*: `com.example.storageapp` may already be registered to another team. Change `bundleID` in `xtool.yml` to something unique, such as `com.<yourname>.storageapp`.
 - *App installs but won't open*: turn on Developer Mode and trust the developer profile (see section 4). With a free Apple ID, also check that the app isn't more than 7 days old.
 - *Maximum number of apps reached*: delete another sideloaded app from the phone (free accounts allow 3).

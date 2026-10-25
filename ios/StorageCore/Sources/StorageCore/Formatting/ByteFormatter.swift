@@ -40,8 +40,16 @@ public enum ByteFormatter {
         }
     }
 
+    /// How many decimals to show.
+    public enum Precision: Sendable {
+        /// One decimal below 10 ("4.2 GB"), none from 10 up ("512 MB").
+        case compact
+        /// Always two decimals, as Settings shows device storage ("125.11 GB").
+        case twoDecimals
+    }
+
     /// The number and unit that `string(_:)` would show.
-    public static func components(_ bytes: Int64) -> (value: String, unit: Unit) {
+    public static func components(_ bytes: Int64, precision: Precision = .compact) -> (value: String, unit: Unit) {
         let magnitude = Double(bytes.magnitude)
         var unit: Unit = switch magnitude {
         case ..<1e3: .bytes
@@ -52,38 +60,41 @@ public enum ByteFormatter {
         }
         if unit == .bytes { return (String(bytes), .bytes) }
 
-        // One decimal below 10 ("4.2 GB"), none from 10 up ("512 MB").
         var scaled = Double(bytes) / unit.divisor
-        var decimals = abs(scaled) < 9.95 ? 1 : 0
+        var decimals = switch precision {
+        case .compact: abs(scaled) < 9.95 ? 1 : 0
+        case .twoDecimals: 2
+        }
         // 999,700 bytes would round to "1000 KB"; show "1.0 MB" instead.
-        if decimals == 0, abs(scaled.rounded()) >= 1000, let next = unit.next {
+        let factor = pow(10, Double(decimals))
+        if abs((scaled * factor).rounded() / factor) >= 1000, let next = unit.next {
             unit = next
             scaled = Double(bytes) / unit.divisor
-            decimals = 1
+            decimals = precision == .compact ? 1 : 2
         }
         return (String(format: "%.\(decimals)f", scaled), unit)
     }
 
     /// Numeric part only, e.g. "1.4" for 1,400,000,000 bytes.
-    public static func value(_ bytes: Int64) -> String {
-        components(bytes).value
+    public static func value(_ bytes: Int64, precision: Precision = .compact) -> String {
+        components(bytes, precision: precision).value
     }
 
     /// Unit label only, e.g. "GB". Consistent with `value(_:)`.
-    public static func unitLabel(_ bytes: Int64) -> String {
-        let unit = components(bytes).unit
+    public static func unitLabel(_ bytes: Int64, precision: Precision = .compact) -> String {
+        let unit = components(bytes, precision: precision).unit
         if unit == .bytes { return bytes == 1 ? "byte" : "bytes" }
         return unit.rawValue
     }
 
     /// Full string, e.g. "1.4 GB", "512 MB", "0 bytes".
-    public static func string(_ bytes: Int64) -> String {
-        "\(value(bytes)) \(unitLabel(bytes))"
+    public static func string(_ bytes: Int64, precision: Precision = .compact) -> String {
+        "\(value(bytes, precision: precision)) \(unitLabel(bytes, precision: precision))"
     }
 
     /// Spoken form for VoiceOver, e.g. "1.4 gigabytes".
-    public static func accessibilityString(_ bytes: Int64) -> String {
-        let (value, unit) = components(bytes)
+    public static func accessibilityString(_ bytes: Int64, precision: Precision = .compact) -> String {
+        let (value, unit) = components(bytes, precision: precision)
         return "\(value) \(unit.spokenName)"
     }
 }

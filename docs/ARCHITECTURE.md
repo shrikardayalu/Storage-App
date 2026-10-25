@@ -23,9 +23,9 @@ Storage App/
 ## ios/
 
 - Swift and SwiftUI, iOS 17+. The Xcode project is generated from `ios/project.yml` with XcodeGen and is not committed.
-- `ios/StorageCore` is a Foundation-only Swift package with the models, demo data generator, compression model, and the `MediaLibraryService` protocol. Its tests run on any OS.
-- The app target (`ios/StorageApp`) holds one `@Observable` `AppModel` and the SwiftUI views. It talks to media only through `MediaLibraryService`.
-- Phase 1 uses only `MockMediaLibraryService` (Demo Mode). Later phases add PhotoKit (library access and deletion), AVFoundation (video compression), and possibly StoreKit 2, behind the same protocol.
+- `ios/StorageCore` is a Foundation-only Swift package with the models, scan grouping, storage history, compression estimates, and the `DeviceStorageService` and `PhotoScanService` protocols (with mocks). Its tests run on any OS.
+- The app target (`ios/StorageApp`) holds one `@Observable` `AppModel` and the SwiftUI views. It reads real free space and, in Test Mode, scans only the "Storage App Test" Photos album. All Photos code lives in `StorageApp/Photos/`. The only changes (delete, Live Photo → still) are in `TestAlbumChanges.swift`, behind StorageCore's `TestAlbumChangeService`, and can only reach approved items in the test album; `Tools/check-no-device-access.sh` enforces this.
+- Later steps add AVFoundation video compression and StoreKit 2, behind protocols in the same way.
 - CI: `.github/workflows/ios.yml` runs the core tests and builds/tests the app on a macOS runner.
 
 ## automation/

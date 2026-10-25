@@ -34,6 +34,15 @@ final class ByteFormatterTests: XCTestCase {
         }
     }
 
+    func testTwoDecimalsMatchesSettings() {
+        XCTAssertEqual(ByteFormatter.string(125_110_000_000, precision: .twoDecimals), "125.11 GB")
+        XCTAssertEqual(ByteFormatter.string(2_894_000_000, precision: .twoDecimals), "2.89 GB")
+        XCTAssertEqual(ByteFormatter.string(512_346_000, precision: .twoDecimals), "512.35 MB")
+        XCTAssertEqual(ByteFormatter.string(999_996_000, precision: .twoDecimals), "1.00 GB")
+        XCTAssertEqual(ByteFormatter.string(999, precision: .twoDecimals), "999 bytes")
+        XCTAssertEqual(ByteFormatter.accessibilityString(125_110_000_000, precision: .twoDecimals), "125.11 gigabytes")
+    }
+
     func testAccessibilityStringSpellsOutUnits() {
         XCTAssertEqual(ByteFormatter.accessibilityString(1_400_000_000), "1.4 gigabytes")
         XCTAssertEqual(ByteFormatter.accessibilityString(250_000_000), "250 megabytes")

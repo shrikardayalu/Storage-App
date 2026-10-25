@@ -29,11 +29,13 @@ enum Illustration: String, CaseIterable {
         }
     }
 
-    static func forScenario(_ scenario: DemoScenario) -> Illustration {
-        switch scenario {
-        case .typical: .stackSmall
-        case .large: .stackLarge
-        case .empty: .emptyBox
+    static func forGroup(_ group: ScanGroup) -> Illustration {
+        switch group {
+        case .photos, .livePhotos: .photo
+        case .bursts: .stackSmall
+        case .screenshots: .screenshot
+        case .videos: .video
+        case .bigFormats: .stackLarge
         }
     }
 }

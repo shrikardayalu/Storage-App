@@ -1,7 +1,7 @@
 import StorageCore
 import SwiftUI
 
-/// Dashboard: how much space the demo library could free, and where it is.
+/// Dashboard: the phone's real storage, and what takes up space in the test album.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
 
@@ -9,196 +9,304 @@ struct HomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-
-                if !model.hasLoaded {
-                    ProgressView("Loading demo library…")
-                        .frame(maxWidth: .infinity, minHeight: 240)
-                } else if model.summary.total.count == 0 {
-                    EmptyStateView(
-                        illustration: .emptyBox,
-                        title: "This demo library is empty",
-                        message: "Pick a different sample library in Settings to explore cleanup.",
-                        actionTitle: "Open Settings",
-                        action: { model.selectedTab = .settings }
-                    )
-                    .card()
-                } else {
-                    PotentialSavingsCard()
-                    if !model.savings.isEmpty {
-                        RecoveredCard()
-                    }
-                    StorageOverviewCard(summary: model.summary)
-                    categorySection
+                DeviceStorageCard()
+                TestAlbumCard()
+                if let waiting = model.spaceWaiting {
+                    SpaceWaitingCard(bytes: waiting)
                 }
-
+                if let scan = model.albumScan, scan.total.count > 0 {
+                    CleanupSection()
+                    groupSection(scan)
+                }
                 SafetyNote()
                     .padding(.top, 4)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 24)
         }
-        .background(Theme.background)
+        .background(PaperBackground())
         .toolbar(.hidden, for: .navigationBar)
     }
 
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             IllustrationView(.phoneSparkle, size: 48)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Storage App")
-                    .font(.largeTitle.bold())
-                    .accessibilityAddTraits(.isHeader)
-                Text(model.scenario.title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+            Text("Storage App")
+                .font(.largeTitle.bold())
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
-            DemoBadge()
+            TestModeBadge()
         }
         .padding(.top, 12)
     }
 
-    private var categorySection: some View {
+    private func groupSection(_ scan: LibraryScan) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Where the space is")
                 .font(.title3.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
-            CategoryCard(
-                illustration: .video,
-                title: "Large Videos",
-                subtitle: "\(ByteFormatter.string(LibrarySummary.largeVideoThreshold)) or more",
-                total: model.summary.largeVideos
-            ) { model.showLibrary(filter: .largeVideos) }
-            CategoryCard(
-                illustration: .screenshot,
-                title: "Screenshots",
-                subtitle: "Usually safe to clear",
-                total: model.summary[.screenshot]
-            ) { model.showLibrary(filter: .screenshots) }
-            CategoryCard(
-                illustration: .photo,
-                title: "Photos",
-                subtitle: "Compress to save space",
-                total: model.summary[.photo]
-            ) { model.showLibrary(filter: .photos) }
+            ForEach(ScanGroup.allCases.filter { scan[$0].count > 0 }) { group in
+                CategoryCard(
+                    illustration: Illustration.forGroup(group),
+                    title: group.title,
+                    subtitle: group.detail,
+                    total: scan[group]
+                ) { model.showLibrary(group: group) }
+            }
         }
     }
 }
 
-/// The headline figure: screenshots plus estimated compression savings.
-private struct PotentialSavingsCard: View {
+/// The phone's real used and free space, with two decimals like Settings.
+private struct DeviceStorageCard: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let summary = model.summary
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Potential space to recover")
-                        .font(.subheadline.weight(.medium))
+        VStack(alignment: .leading, spacing: 12) {
+            Text("iPhone storage")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            if let snapshot = model.deviceStorage {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    SizeText(bytes: snapshot.availableBytes, style: .largeTitle, unitStyle: .title2, precision: .twoDecimals)
+                    Text("free")
+                        .font(.title3.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    SizeText(bytes: summary.potentialSavings, style: .largeTitle, unitStyle: .title2)
-                    Squiggle()
-                        .stroke(Theme.mint, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                        .frame(width: 120, height: 7)
-                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: 8)
-                IllustrationView(.piggy, size: 76)
+                UsageBar(fraction: snapshot.usedFraction)
+                HStack {
+                    Text("\(ByteFormatter.string(snapshot.usedBytes, precision: .twoDecimals)) of \(ByteFormatter.string(snapshot.advertisedCapacityBytes)) used")
+                        .monospacedDigit()
+                    Spacer(minLength: 8)
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        Text(Self.updatedText(since: snapshot.date, now: context.date))
+                    }
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            } else if model.storageReadFailed {
+                Text("Couldn't read this iPhone's storage.")
+                    .font(.subheadline)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, minHeight: 60)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                breakdownRow("Clear screenshots", bytes: summary.screenshotBytes)
-                breakdownRow("Compress photos and videos (est.)", bytes: summary.compressionSavings)
-            }
-            .font(.footnote)
-
-            Button(action: model.reviewCleanup) {
-                Text(model.selection.isEmpty ? "Review Suggestions" : "Review \(model.selection.count) Selected")
-            }
-            .buttonStyle(.sticker)
-            .padding(.top, 2)
-            .accessibilityHint(model.selection.isEmpty ? "Selects all screenshots and large videos for review." : "")
+            Text("Settings may show slightly different numbers.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .sticker(padding: 18)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
     }
 
-    private func breakdownRow(_ title: String, bytes: Int64) -> some View {
-        HStack {
-            Text(title).foregroundStyle(.secondary)
-            Spacer()
-            Text(ByteFormatter.string(bytes)).monospacedDigit()
+    private var accessibilityText: String {
+        guard let snapshot = model.deviceStorage else {
+            return model.storageReadFailed ? "iPhone storage unavailable" : "iPhone storage, loading"
         }
-        .accessibilityElement(children: .combine)
+        return "iPhone storage, \(ByteFormatter.accessibilityString(snapshot.availableBytes, precision: .twoDecimals)) free, "
+            + "\(ByteFormatter.accessibilityString(snapshot.usedBytes, precision: .twoDecimals)) of "
+            + "\(ByteFormatter.accessibilityString(snapshot.advertisedCapacityBytes)) used. "
+            + Self.updatedText(since: snapshot.date, now: Date())
+    }
+
+    /// "Updated just now", "Updated 5 min ago", "Updated 2 hr ago", or a date.
+    static func updatedText(since date: Date, now: Date) -> String {
+        let minutes = Int(now.timeIntervalSince(date) / 60)
+        switch minutes {
+        case ..<1: return "Updated just now"
+        case ..<60: return "Updated \(minutes) min ago"
+        case ..<(24 * 60): return "Updated \(minutes / 60) hr ago"
+        default: return "Updated \(date.formatted(date: .abbreviated, time: .shortened))"
+        }
     }
 }
 
-/// What simulated cleanup has recovered so far, with undo.
-private struct RecoveredCard: View {
+/// A single used-of-capacity bar.
+private struct UsageBar: View {
+    let fraction: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(Theme.mint)
+                .frame(width: max(6, proxy.size.width * CGFloat(fraction)))
+        }
+        .frame(height: 18)
+        .padding(3)
+        .background(Theme.well, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .accessibilityHidden(true)
+    }
+}
+
+/// Test Mode: scans the "Storage App Test" album (read-only) and opens the Library.
+private struct TestAlbumCard: View {
     @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Test album")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            if let scan = model.albumScan {
+                Button {
+                    model.showLibrary(group: nil)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            SizeText(bytes: scan.total.bytes, style: .title, unitStyle: .headline, precision: .twoDecimals)
+                            Text("\(scan.total.count.formatted()) items · \(ScanSource.title(for: model.photoAccess))")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Test album, \(scan.total.count) items, \(ByteFormatter.accessibilityString(scan.total.bytes, precision: .twoDecimals))")
+                .accessibilityHint("Shows every item in the Library, biggest first.")
+                .accessibilityAddTraits(.isButton)
+            } else {
+                Text("See what takes up space in the \u{201C}\(TestMode.albumName)\u{201D} album. Scanning only reads it.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let error = model.scanError {
+                ScanErrorView(error: error)
+            }
+
+            Button {
+                Task { await model.scanTestAlbum() }
+            } label: {
+                if model.isScanning {
+                    ProgressView()
+                } else {
+                    Text(model.albumScan == nil ? "Scan Test Album" : "Scan Again")
+                }
+            }
+            .buttonStyle(.soft)
+            .disabled(model.isScanning)
+        }
+        .card(padding: 18)
+    }
+}
+
+/// Space from the latest cleanup still sitting in Recently Deleted.
+private struct SpaceWaitingCard: View {
+    let bytes: Int64
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Button {
+            model.reopenGuide()
+        } label: {
+            HStack(spacing: 14) {
+                IllustrationView(.trash, size: 50)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(ByteFormatter.string(bytes, precision: .twoDecimals)) waiting in Recently Deleted")
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("show me how to get it back")
+                        .font(.hand(16))
+                        .foregroundStyle(Theme.accent)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .foregroundStyle(.primary)
+            .sticker(fill: Theme.mintSoft, padding: 16)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// What the app can do to the test album so far.
+private struct CleanupSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let live = model.convertibleLivePhotos
+        let liveSaving = live.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Clean up")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text("only in the test album")
+                    .font(.hand(16))
+                    .foregroundStyle(Theme.accent)
+            }
+            if !live.isEmpty {
+                NavigationLink {
+                    LivePhotoStillsView()
+                } label: {
+                    ActionCard(
+                        illustration: .photo,
+                        title: "Live Photos \u{2192} stills",
+                        subtitle: "\(live.count) Live \(live.count == 1 ? "Photo" : "Photos"), same photos without the video",
+                        figure: "\u{2212}" + ByteFormatter.string(liveSaving, precision: .twoDecimals)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            Button {
+                model.isSelecting = true
+                model.showLibrary(group: nil)
+            } label: {
+                ActionCard(
+                    illustration: .trash,
+                    title: "Pick what to delete",
+                    subtitle: "Review it on a receipt before anything goes",
+                    figure: nil
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+private struct ActionCard: View {
+    let illustration: Illustration
+    let title: String
+    let subtitle: String
+    let figure: String?
 
     var body: some View {
         HStack(spacing: 14) {
-            IllustrationView(.shieldCheck, size: 52)
+            IllustrationView(illustration, size: 52)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Recovered in this demo")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(ByteFormatter.string(model.savings.totalBytes))
-                    .font(.metric(.title2))
-                    .monospacedDigit()
-                Text(detail)
+                Text(title).font(.headline)
+                Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 4)
-            if model.canUndo {
-                Button("Undo") {
-                    Task { await model.undoLastChange() }
-                }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.bordered)
-                .tint(Theme.accent)
-                .disabled(model.isWorking)
+            Spacer(minLength: 8)
+            if let figure {
+                Text(figure)
+                    .font(.metric(.headline))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.accent)
             }
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
-        .card()
-        .accessibilityElement(children: .combine)
-    }
-
-    private var detail: String {
-        var parts: [String] = []
-        if model.savings.deletedCount > 0 { parts.append("\(model.savings.deletedCount) deleted") }
-        if model.savings.compressedCount > 0 { parts.append("\(model.savings.compressedCount) compressed") }
-        return parts.joined(separator: " · ")
-    }
-}
-
-private struct StorageOverviewCard: View {
-    let summary: LibrarySummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Simulated library")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.secondary)
-                    SizeText(bytes: summary.total.bytes, style: .title, unitStyle: .headline)
-                }
-                Spacer()
-                Text("\(summary.total.count.formatted()) items")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            StorageBar(summary: summary)
-            VStack(spacing: 8) {
-                ForEach(MediaCategory.allCases) { category in
-                    StorageLegendRow(category: category, total: summary[category])
-                }
-            }
-        }
-        .card(padding: 18)
+        .foregroundStyle(.primary)
+        .sticker(padding: 14)
+        .contentShape(Rectangle())
     }
 }
 
@@ -219,7 +327,7 @@ private struct CategoryCard: View {
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(ByteFormatter.string(total.bytes))
+                    Text(ByteFormatter.string(total.bytes, precision: .twoDecimals))
                         .font(.metric(.headline))
                         .monospacedDigit()
                     Text("\(total.count.formatted()) items")
@@ -236,18 +344,13 @@ private struct CategoryCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(total.count) items, \(ByteFormatter.accessibilityString(total.bytes))")
+        .accessibilityLabel("\(title), \(total.count) items, \(ByteFormatter.accessibilityString(total.bytes, precision: .twoDecimals))")
         .accessibilityHint("Shows these items in the library.")
         .accessibilityAddTraits(.isButton)
     }
 }
 
-#Preview("Typical") {
+#Preview {
     NavigationStack { HomeView() }
-        .environment(AppModel.preview(.typical))
-}
-
-#Preview("Empty") {
-    NavigationStack { HomeView() }
-        .environment(AppModel.preview(.empty))
+        .environment(AppModel.preview())
 }

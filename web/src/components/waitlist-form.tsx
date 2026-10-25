@@ -40,11 +40,7 @@ export function WaitlistForm({
 
   return (
     <form action={formAction} className="w-full max-w-md">
-      <div
-        className={`flex items-center gap-1 rounded-full border-2 p-1.5 transition-shadow focus-within:shadow-[4px_4px_0_var(--mint)] ${
-          dark ? "border-paper bg-paper" : "border-ink bg-surface"
-        }`}
-      >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <label htmlFor={`${id}-email`} className="sr-only">
           Email address
         </label>
@@ -57,7 +53,11 @@ export function WaitlistForm({
           inputMode="email"
           placeholder="you@email.com"
           aria-describedby={`${id}-msg`}
-          className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-base text-ink placeholder:text-ink-faint focus:outline-none"
+          className={`min-w-0 flex-1 rounded-full px-5 py-3 text-base focus:outline-none ${
+            dark
+              ? "bg-paper/15 text-paper placeholder:text-paper/50"
+              : "bg-paper-deep text-ink placeholder:text-ink-faint"
+          }`}
         />
         <input type="hidden" name="source" value={source} />
         {/* Honeypot for bots; hidden from people and assistive tech. */}
@@ -72,7 +72,9 @@ export function WaitlistForm({
         <button
           type="submit"
           disabled={pending}
-          className="btn-ink shrink-0 px-5 py-3 text-sm whitespace-nowrap disabled:opacity-60"
+          className={`btn-ink shrink-0 px-5 py-3 text-sm whitespace-nowrap disabled:opacity-60 ${
+            dark ? "bg-paper text-ink" : ""
+          }`}
         >
           {pending ? "Joining…" : buttonLabel}
         </button>

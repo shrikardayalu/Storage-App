@@ -68,7 +68,6 @@ body {
 :focus-visible {
   outline: 2.5px solid var(--ink);
   outline-offset: 3px;
-  border-radius: 6px;
 }
 
 /* Fine paper grain over everything; pointer-events off so it never blocks. */
@@ -110,6 +109,7 @@ body::before {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 1;
     border: 2.25px solid var(--ink);
     border-radius: inherit;
     pointer-events: none;

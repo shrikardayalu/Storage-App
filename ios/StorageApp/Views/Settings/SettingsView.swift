@@ -1,23 +1,23 @@
 import StorageCore
 import SwiftUI
+import UIKit
 
-/// Demo status, sample-library choice, reset, and version.
+/// Test Mode status, Photos access, debug readings, and version.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
-    @State private var pendingScenario: DemoScenario?
-    @State private var confirmingReset = false
+    @Environment(\.openURL) private var openURL
     @State private var showingPaywall = false
 
     var body: some View {
         Form {
             Section {
                 HStack(spacing: 14) {
-                    IllustrationView(.beaker, size: 52)
+                    IllustrationView(.shieldCheck, size: 52)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Demo Mode is on")
+                        Text("Test Mode is on")
                             .font(.headline)
-                        Text("The app works on generated sample media. It never asks for access to your photos.")
+                        Text("Storage App sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. It changes only items in that album that you approve on a review screen.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -27,78 +27,63 @@ struct SettingsView: View {
             }
 
             Section {
-                ForEach(DemoScenario.allCases) { scenario in
-                    Button {
-                        if scenario != model.scenario {
-                            pendingScenario = scenario
+                LabeledContent("Album", value: TestMode.albumName)
+                LabeledContent("Photos access", value: photoAccessText)
+                if model.photoAccess == .limited {
+                    Button("Change Selected Photos") {
+                        Task {
+                            await LimitedPhotoPicker.present()
+                            await model.scanTestAlbum()
                         }
-                    } label: {
-                        ScenarioRow(scenario: scenario, isCurrent: scenario == model.scenario)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(scenario == model.scenario ? .isSelected : [])
+                }
+                if model.photoAccess == .limited || model.photoAccess == .denied,
+                   let url = URL(string: UIApplication.openSettingsURLString) {
+                    Button("Change Access in Settings") { openURL(url) }
                 }
             } header: {
-                Text("Sample Library")
+                Text("Photos")
             } footer: {
-                Text("Each sample library is generated the same way every time, so results are repeatable.")
-            }
-
-            Section {
-                Button("Reset Demo Library", role: .destructive) {
-                    confirmingReset = true
-                }
-                .disabled(!model.canResetDemo || model.isWorking)
-            } footer: {
-                Text("Restores \(model.scenario.title) to its original state and clears simulated deletions, compression, and selection.")
+                Text(photoFooter)
             }
 
             if PaywallConfig.isEnabled {
                 ProSection(showingPaywall: $showingPaywall)
             }
 
+            #if DEBUG
+            StorageHistoryDebugSection()
+            #endif
+
             Section("About") {
                 LabeledContent("Version", value: AppInfo.versionString)
-                LabeledContent("Mode", value: "Demo (simulated data)")
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("About Demo Mode")
-                        .font(.subheadline.weight(.semibold))
-                    Text("Every photo, video, and screenshot here is generated inside the app. Deleting or compressing only changes these samples. A future version will scan your real Photos library, with your permission, and always ask before changing anything.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
+                LabeledContent("Mode", value: "Test Mode (test album only)")
             }
         }
         .scrollContentBackground(.hidden)
         .background(Theme.background)
         .navigationTitle("Settings")
-        .confirmationDialog(
-            "Switch to \(pendingScenario?.title ?? "")?",
-            isPresented: Binding(get: { pendingScenario != nil }, set: { if !$0 { pendingScenario = nil } }),
-            titleVisibility: .visible,
-            presenting: pendingScenario
-        ) { scenario in
-            Button("Switch Library") {
-                Task { await model.resetDemo(to: scenario) }
-            }
-        } message: { _ in
-            Text("Simulated changes to the current sample library will be discarded.")
-        }
-        .confirmationDialog("Reset the demo library?", isPresented: $confirmingReset, titleVisibility: .visible) {
-            Button("Reset", role: .destructive) {
-                Task { await model.resetDemo() }
-            }
-        } message: {
-            Text("Deleted and compressed sample items come back.")
-        }
-        .overlay {
-            if model.isWorking {
-                WorkingOverlay(message: "Preparing library…")
-            }
-        }
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallFlow()
+        }
+        .task { await model.refreshPhotoAccess() }
+    }
+
+    private var photoAccessText: String {
+        switch model.photoAccess {
+        case .notDetermined: "Not asked yet"
+        case .granted: "Full"
+        case .limited: "Selected photos"
+        case .denied: "Not allowed"
+        }
+    }
+
+    private var photoFooter: String {
+        switch model.photoAccess {
+        case .limited:
+            "With selected-photos access, iOS hides albums, so the scan reads exactly the photos you picked. Pick everything in \u{201C}\(TestMode.albumName)\u{201D}."
+        default:
+            "With full access, the scan still reads only the \u{201C}\(TestMode.albumName)\u{201D} album. Nothing else in Photos is read."
         }
     }
 }
@@ -125,31 +110,39 @@ private struct ProSection: View {
     }
 }
 
-private struct ScenarioRow: View {
-    let scenario: DemoScenario
-    let isCurrent: Bool
+#if DEBUG
+/// The last 20 saved storage readings, newest first, for checking the meter on
+/// a real phone. Debug builds only; the purgeable figure isn't shown to people.
+private struct StorageHistoryDebugSection: View {
+    @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: 12) {
-            IllustrationView(Illustration.forScenario(scenario), size: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(scenario.title)
-                    .font(.body.weight(.medium))
-                Text(scenario.summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        Section {
+            let recent = Array(model.storageHistory.snapshots.suffix(20).reversed())
+            if recent.isEmpty {
+                Text("No readings yet").foregroundStyle(.secondary)
             }
-            Spacer(minLength: 8)
-            if isCurrent {
-                Image(systemName: "checkmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
+            ForEach(recent, id: \.date) { snapshot in
+                HStack {
+                    Text(snapshot.date.formatted(date: .abbreviated, time: .standard))
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text("\(ByteFormatter.string(snapshot.availableBytes, precision: .twoDecimals)) free")
+                        Text("purgeable ~\(ByteFormatter.string(snapshot.purgeableEstimateBytes, precision: .twoDecimals))")
+                            .foregroundStyle(.secondary)
+                    }
+                    .monospacedDigit()
+                }
+                .font(.caption)
             }
+        } header: {
+            Text("Debug: Storage Readings")
+        } footer: {
+            Text("\(model.storageHistory.snapshots.count) saved. A new reading is saved on each open, at most one per minute.")
         }
-        .contentShape(Rectangle())
-        .padding(.vertical, 2)
     }
 }
+#endif
 
 enum AppInfo {
     static var versionString: String {

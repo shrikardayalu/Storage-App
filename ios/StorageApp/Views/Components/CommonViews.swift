@@ -1,16 +1,16 @@
 import StorageCore
 import SwiftUI
 
-/// Small pill that marks everything on screen as simulated.
-struct DemoBadge: View {
+/// Small pill showing that the app reads only the test album.
+struct TestModeBadge: View {
     var body: some View {
-        Label("Demo Mode", systemImage: "flask")
+        Label("Test Mode", systemImage: "testtube.2")
             .font(.caption.weight(.semibold))
             .foregroundStyle(Theme.accent)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(Theme.mintSoft, in: Capsule())
-            .accessibilityLabel("Demo Mode. All media is simulated.")
+            .accessibilityLabel("Test Mode. Only the \(TestMode.albumName) album is read.")
     }
 }
 
@@ -46,66 +46,9 @@ struct EmptyStateView: View {
     }
 }
 
-/// A horizontal bar split into one segment per category, sized by storage.
-struct StorageBar: View {
-    let summary: LibrarySummary
-
-    var body: some View {
-        GeometryReader { proxy in
-            let total = max(summary.total.bytes, 1)
-            HStack(spacing: 3) {
-                ForEach(MediaCategory.allCases) { category in
-                    let bytes = summary[category].bytes
-                    if bytes > 0 {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(Theme.color(for: category))
-                            .frame(width: max(6, (proxy.size.width - 6) * CGFloat(bytes) / CGFloat(total)))
-                    }
-                }
-                if summary.total.bytes == 0 {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous).fill(Theme.well)
-                }
-            }
-        }
-        .frame(height: 18)
-        .padding(3)
-        .background(Theme.well, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
-    }
-
-    private var accessibilityText: String {
-        MediaCategory.allCases
-            .map { "\($0.title): \(ByteFormatter.accessibilityString(summary[$0].bytes))" }
-            .joined(separator: ", ")
-    }
-}
-
-/// Legend row for `StorageBar`.
-struct StorageLegendRow: View {
-    let category: MediaCategory
-    let total: CategoryTotal
-
-    var body: some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 3).fill(Theme.color(for: category)).frame(width: 12, height: 12)
-            Text(category.title)
-            Text(total.count, format: .number)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(ByteFormatter.string(total.bytes))
-                .font(.body.monospacedDigit())
-                .foregroundStyle(.secondary)
-        }
-        .font(.subheadline)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(category.title), \(total.count) items, \(ByteFormatter.accessibilityString(total.bytes))")
-    }
-}
-
-/// Banner note reminding people nothing real is touched.
+/// Banner note on what the app may read and change.
 struct SafetyNote: View {
-    var text = "Demo Mode uses generated sample media. Nothing on your iPhone is read, deleted, or compressed."
+    var text = "Test Mode: Storage App sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. It changes only items in that album that you approve, and nothing else on your iPhone."
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -119,7 +62,7 @@ struct SafetyNote: View {
     }
 }
 
-/// Full-screen dimmed progress overlay for simulated operations.
+/// Full-screen dimmed progress overlay for longer operations.
 struct WorkingOverlay: View {
     let message: String
 
@@ -134,20 +77,5 @@ struct WorkingOverlay: View {
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-extension MediaItem {
-    /// Short VoiceOver description, e.g. "Video, 1.2 gigabytes, 2:03, March 4, 2026".
-    var accessibilityDescription: String {
-        var parts = [category.singularTitle, ByteFormatter.accessibilityString(currentBytes)]
-        if let duration {
-            parts.append(DurationFormatter.string(duration))
-        }
-        if isCompressed {
-            parts.append("compressed")
-        }
-        parts.append(creationDate.formatted(date: .long, time: .omitted))
-        return parts.joined(separator: ", ")
     }
 }

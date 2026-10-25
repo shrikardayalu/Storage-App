@@ -1,42 +1,6 @@
 import XCTest
 @testable import StorageCore
 
-final class SummaryTests: XCTestCase {
-    func testTotalsDeriveFromItems() {
-        let summary = LibrarySummary(items: sampleItems())
-        XCTAssertEqual(summary.total.count, 7)
-        XCTAssertEqual(summary.total.bytes, 697_100_000)
-        XCTAssertEqual(summary[.photo], CategoryTotal(count: 3, bytes: 56_000_000))
-        XCTAssertEqual(summary[.video], CategoryTotal(count: 2, bytes: 640_000_000))
-        XCTAssertEqual(summary[.screenshot], CategoryTotal(count: 2, bytes: 1_100_000))
-    }
-
-    func testLargeVideosUseThreshold() {
-        let summary = LibrarySummary(items: sampleItems())
-        XCTAssertEqual(summary.largeVideos, CategoryTotal(count: 1, bytes: 600_000_000))
-    }
-
-    func testPotentialSavingsIsScreenshotsPlusBalancedCompression() {
-        let items = sampleItems()
-        let summary = LibrarySummary(items: items)
-        let expectedCompression = items
-            .filter { $0.category != .screenshot }
-            .map { CompressionModel.estimate(for: $0, level: .balanced).savedBytes }
-            .reduce(0, +)
-        XCTAssertEqual(summary.compressionSavings, expectedCompression)
-        XCTAssertEqual(summary.potentialSavings, 1_100_000 + expectedCompression)
-        // ProRAW contributes nothing.
-        XCTAssertEqual(expectedCompression, Int64(Double(4_000_000 + 2_000_000) * 0.38) + Int64(Double(640_000_000) * 0.55))
-    }
-
-    func testEmptyLibrary() {
-        let summary = LibrarySummary(items: [])
-        XCTAssertEqual(summary.total, .zero)
-        XCTAssertEqual(summary[.video], .zero)
-        XCTAssertEqual(summary.potentialSavings, 0)
-    }
-}
-
 final class QueryTests: XCTestCase {
     func testFilters() {
         let items = sampleItems()
@@ -58,12 +22,6 @@ final class QueryTests: XCTestCase {
     func testTiesBreakByIDSoOrderIsStable() {
         let items = [makeItem(id: "b"), makeItem(id: "a"), makeItem(id: "c")]
         XCTAssertEqual(MediaQuery.apply(filter: .all, sort: .largestFirst, to: items).map(\.id), ["a", "b", "c"])
-    }
-
-    func testSortReflectsCompressedSize() throws {
-        var library = MediaLibrary(items: [makeItem(id: "big", bytes: 10_000_000), makeItem(id: "mid", bytes: 7_000_000)])
-        try library.compress(ids: ["big"], level: .maximum)
-        XCTAssertEqual(MediaQuery.apply(filter: .all, sort: .largestFirst, to: library.items).map(\.id), ["mid", "big"])
     }
 
     func testEmptyInputGivesEmptyOutput() {

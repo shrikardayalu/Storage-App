@@ -4,7 +4,7 @@
   Info.plist keys for xtool builds, merged over xtool's defaults.
   Keep in sync with the StorageApp target's `info.properties` in project.yml.
   No UIColorName for the launch screen: the color lives in the asset catalog,
-  which xtool can't compile. Deliberately no NSPhotoLibraryUsageDescription.
+  which xtool can't compile.
 -->
 <plist version="1.0">
 <dict>
@@ -29,5 +29,9 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Storage App reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.</string>
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
 </dict>
 </plist>

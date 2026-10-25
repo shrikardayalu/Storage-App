@@ -2,116 +2,153 @@ import StorageCore
 import XCTest
 @testable import StorageApp
 
-/// Tests for the app's shared state, run against the mock service with no latency.
+/// Tests for the app's shared state, run against mock services.
 /// Pure business logic is covered in StorageCore's own tests.
 @MainActor
 final class AppModelTests: XCTestCase {
-    private func makeModel(_ scenario: DemoScenario = .typical) async -> AppModel {
-        let service = MockMediaLibraryService(scenario: scenario)
-        let model = AppModel(service: service, demo: service)
-        await model.loadIfNeeded()
-        return model
+    private func makeHistoryURL() -> URL {
+        FileManager.default.temporaryDirectory.appendingPathComponent("history-\(UUID().uuidString).json")
     }
 
-    func testLoadPopulatesSummaryFromItems() async {
-        let model = await makeModel()
-        XCTAssertTrue(model.hasLoaded)
-        XCTAssertEqual(model.summary, LibrarySummary(items: model.items))
-        XCTAssertGreaterThan(model.summary.total.count, 0)
+    // MARK: Device storage
+
+    func testStorageReadingIsShownAndSavedOncePerMinute() async throws {
+        let url = makeHistoryURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let service = MockDeviceStorageService(totalBytes: 100, availableBytes: 40, purgeableBytes: 5)
+        let model = AppModel(storage: service, historyStore: StorageHistoryStore(fileURL: url))
+
+        await model.refreshDeviceStorage()
+        await model.refreshDeviceStorage()
+        XCTAssertEqual(model.deviceStorage?.availableBytes, 40)
+        XCTAssertEqual(model.storageHistory.snapshots.count, 1)
+
+        // A new launch loads the saved history.
+        let reloaded = AppModel(historyStore: StorageHistoryStore(fileURL: url))
+        XCTAssertEqual(reloaded.storageHistory.snapshots.count, 1)
+        XCTAssertEqual(reloaded.deviceStorage?.purgeableEstimateBytes, 5)
     }
 
-    func testVisibleItemsFollowFilterAndSort() async {
-        let model = await makeModel()
-        model.libraryFilter = .videos
-        model.librarySort = .smallestFirst
-        let visible = model.visibleItems
-        XCTAssertTrue(visible.allSatisfy { $0.category == .video })
-        XCTAssertEqual(visible.map(\.currentBytes), visible.map(\.currentBytes).sorted())
+    func testCorruptHistoryFileStartsFresh() throws {
+        let url = makeHistoryURL()
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data("not json".utf8).write(to: url)
+        XCTAssertTrue(StorageHistoryStore(fileURL: url).load().snapshots.isEmpty)
     }
 
-    func testSelectAllVisibleAndTotals() async {
-        let model = await makeModel()
-        model.libraryFilter = .screenshots
-        model.selectAllVisible()
-        XCTAssertEqual(model.selection.count, model.summary[.screenshot].count)
-        XCTAssertEqual(model.selectedBytes, model.summary[.screenshot].bytes)
-        XCTAssertTrue(model.areAllVisibleSelected)
-        model.deselectAllVisible()
-        XCTAssertTrue(model.selection.isEmpty)
+    // MARK: Test album scan
+
+    func testScanGroupsTestAlbum() async {
+        let items = [
+            MediaItem(id: "a", category: .photo, format: .heic, filename: "a.HEIC", creationDate: Date(),
+                      pixelWidth: 4032, pixelHeight: 3024, duration: nil, originalBytes: 3_000_000, thumbnailSeed: 0),
+            MediaItem(id: "b", category: .video, format: .hevc, filename: "b.MOV", creationDate: Date(),
+                      pixelWidth: 3840, pixelHeight: 2160, duration: 60, originalBytes: 400_000_000, thumbnailSeed: 0),
+        ]
+        let model = AppModel(photoScanner: MockPhotoScanService(items: items))
+        await model.scanTestAlbum()
+        XCTAssertNil(model.scanError)
+        XCTAssertEqual(model.albumScan?.total.count, 2)
+        XCTAssertEqual(model.albumScan?.items.first?.id, "b")
+        XCTAssertEqual(model.albumScan?[.bigFormats].count, 1)
     }
 
-    func testDeleteUpdatesDashboardAndUndoRestores() async {
-        let model = await makeModel()
-        let before = model.summary
-        let video = model.items.filter { $0.category == .video }.max { $0.currentBytes < $1.currentBytes }!
-        model.toggleSelection(video)
+    func testScanReportsMissingAlbumAndDeniedAccess() async {
+        let missing = AppModel(photoScanner: MockPhotoScanService(items: [], albumExists: false))
+        await missing.scanTestAlbum()
+        XCTAssertEqual(missing.scanError, .albumNotFound(TestMode.albumName))
+        XCTAssertNil(missing.albumScan)
 
-        let result = await model.deleteSelected()
-        XCTAssertEqual(result?.bytesRecovered, video.currentBytes)
-        XCTAssertNil(model.item(withID: video.id))
-        XCTAssertEqual(model.summary.total.bytes, before.total.bytes - video.currentBytes)
-        XCTAssertEqual(model.summary[.video].count, before[.video].count - 1)
-        XCTAssertTrue(model.selection.isEmpty)
-        XCTAssertTrue(model.canUndo)
-
-        await model.undoLastChange()
-        XCTAssertEqual(model.summary, before)
-        XCTAssertNotNil(model.item(withID: video.id))
+        let denied = AppModel(photoScanner: MockPhotoScanService(items: [], access: .denied))
+        await denied.scanTestAlbum()
+        XCTAssertEqual(denied.scanError, .accessDenied)
     }
 
-    func testCompressUpdatesSizes() async {
-        let model = await makeModel()
-        let photo = model.items.first { $0.category == .photo && $0.isCompressionEligible }!
-        model.toggleSelection(photo)
-        let result = await model.compressSelected(level: .balanced)
-        XCTAssertEqual(result?.itemCount, 1)
-        XCTAssertLessThan(model.item(withID: photo.id)!.currentBytes, photo.currentBytes)
-        XCTAssertEqual(model.savings.compressedCount, 1)
+    func testScanIfAllowedNeverPrompts() async {
+        let model = AppModel(photoScanner: MockPhotoScanService(items: [], access: .notDetermined))
+        await model.scanIfAllowed()
+        XCTAssertNil(model.albumScan)
+        XCTAssertEqual(model.photoAccess, .notDetermined)
     }
 
-    func testCompressingOnlyUnsupportedItemsReportsError() async {
-        let model = await makeModel()
-        let raw = model.items.first { $0.format == .proRAW }!
-        model.toggleSelection(raw)
-        let result = await model.compressSelected(level: .maximum)
-        XCTAssertNil(result)
-        XCTAssertNotNil(model.errorMessage)
-    }
-
-    func testReviewCleanupSelectsSuggestionsWhenEmpty() async {
-        let model = await makeModel()
-        model.reviewCleanup()
-        XCTAssertTrue(model.isReviewPresented)
-        XCTAssertEqual(model.selection.ids, model.suggestedIDs)
-    }
-
-    func testShowLibraryNavigatesWithFilter() async {
-        let model = await makeModel()
-        model.showLibrary(filter: .largeVideos)
+    func testShowLibraryNavigatesWithGroup() {
+        let model = AppModel()
+        model.showLibrary(group: .videos)
         XCTAssertEqual(model.selectedTab, .library)
-        XCTAssertEqual(model.libraryFilter, .largeVideos)
+        XCTAssertEqual(model.libraryGroup, .videos)
     }
 
-    func testResetRestoresScenarioAndClearsState() async {
-        let model = await makeModel()
-        let original = model.items
-        model.selectAllVisible()
-        _ = await model.deleteSelected()
-        XCTAssertTrue(model.items.isEmpty)
+    // MARK: Safe delete (Build Plan step 3)
 
-        await model.resetDemo()
-        XCTAssertEqual(model.items, original)
-        XCTAssertFalse(model.canUndo)
-        XCTAssertTrue(model.savings.isEmpty)
+    private func item(_ id: String, bytes: Int64 = 1_000_000, live: Int64? = nil) -> MediaItem {
+        MediaItem(id: id, category: .photo, format: .heic, filename: "\(id).HEIC", creationDate: Date(),
+                  pixelWidth: 4032, pixelHeight: 3024, duration: nil, originalBytes: bytes, thumbnailSeed: 0,
+                  traits: live == nil ? [] : .livePhoto, livePhotoVideoBytes: live ?? 0)
     }
 
-    func testSwitchingToEmptyScenario() async {
-        let model = await makeModel()
-        await model.resetDemo(to: .empty)
-        XCTAssertEqual(model.scenario, .empty)
-        XCTAssertTrue(model.items.isEmpty)
-        XCTAssertEqual(model.summary.potentialSavings, 0)
-        model.reviewCleanup()
+    func testDeletingRemovesOnlyApprovedItemsAndOpensGuide() async {
+        let library = MockPhotoLibrary(items: [item("a"), item("b"), item("c")])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+        model.toggleSelection("a")
+        model.toggleSelection("b")
+
+        // Only "a" is still on the receipt when Delete is tapped.
+        let error = await model.delete(approved: ["a"])
+        XCTAssertNil(error)
+        let remaining = await library.items.map(\.id)
+        XCTAssertEqual(Set(remaining), ["b", "c"])
+        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["b", "c"])
+        XCTAssertFalse(model.selection.contains("a"))
+        guard case .deleted(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertTrue(receipt.onlyApprovedRemoved)
+        XCTAssertEqual(model.reclaim?.expectedBytes, 1_000_000)
+    }
+
+    func testNothingOutsideTheScanCanBeSelected() async {
+        let model = AppModel(library: MockPhotoLibrary(items: [item("a")]))
+        await model.scanTestAlbum()
+        model.toggleSelection("someone-elses-photo")
         XCTAssertTrue(model.selection.isEmpty)
+    }
+
+    func testUnsafeDeleteChangesNothing() async {
+        let library = MockPhotoLibrary(items: [item("a"), item("b")], inOtherAlbums: ["b"])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+
+        let error = await model.delete(approved: ["a", "b"])
+        guard case .unsafe? = error else { return XCTFail("Expected the safety check to block it") }
+        let count = await library.items.count
+        XCTAssertEqual(count, 2)
+        XCTAssertNil(model.guide)
+    }
+
+    func testGuideWaitsForReviewSheetToClose() async {
+        let model = AppModel(library: MockPhotoLibrary(items: [item("a")]))
+        await model.scanTestAlbum()
+        model.isReviewing = true
+        await model.delete(approved: ["a"])
+        XCTAssertFalse(model.isReviewing)
+        XCTAssertNil(model.guide)
+        model.presentPendingGuide()
+        XCTAssertNotNil(model.guide)
+    }
+
+    // MARK: Live Photos → stills (Build Plan step 4)
+
+    func testConvertingLivePhotosReplacesThemWithStills() async {
+        let library = MockPhotoLibrary(items: [item("live", bytes: 5_000_000, live: 3_000_000), item("still")])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+        XCTAssertEqual(model.convertibleLivePhotos.map(\.id), ["live"])
+
+        let error = await model.convertToStills(approved: ["live"])
+        XCTAssertNil(error)
+        XCTAssertTrue(model.convertibleLivePhotos.isEmpty)
+        XCTAssertEqual(model.albumScan?.total.count, 2)
+        guard case .convertedLivePhotos(let results)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertTrue(results.allSatisfy(\.keptEverything))
+        XCTAssertEqual(model.guide?.expectedBytes, 3_000_000)
     }
 }

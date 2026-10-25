@@ -51,7 +51,10 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
-        # Deliberately no NSPhotoLibraryUsageDescription: Phase 1 never requests Photos access.
+        # Test Mode reads one album only (Build Plan step 2). Keep in sync with xtool-Info.plist.
+        NSPhotoLibraryUsageDescription: Storage App reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.
+        # The app offers its own "Change Selection" button instead of iOS asking on every launch.
+        PHPhotoLibraryPreventAutomaticLimitedAccessAlert: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.storageapp

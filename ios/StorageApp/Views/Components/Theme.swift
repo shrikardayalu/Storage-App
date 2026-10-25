@@ -176,17 +176,18 @@ struct SizeText: View {
     let bytes: Int64
     var style: Font.TextStyle = .largeTitle
     var unitStyle: Font.TextStyle = .title3
+    var precision: ByteFormatter.Precision = .compact
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(ByteFormatter.value(bytes))
+            Text(ByteFormatter.value(bytes, precision: precision))
                 .font(.metric(style))
                 .monospacedDigit()
-            Text(ByteFormatter.unitLabel(bytes))
+            Text(ByteFormatter.unitLabel(bytes, precision: precision))
                 .font(.system(unitStyle, design: .rounded).weight(.semibold))
                 .foregroundStyle(.secondary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(ByteFormatter.accessibilityString(bytes))
+        .accessibilityLabel(ByteFormatter.accessibilityString(bytes, precision: precision))
     }
 }

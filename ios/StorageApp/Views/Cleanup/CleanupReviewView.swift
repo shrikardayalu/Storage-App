@@ -1,310 +1,334 @@
 import StorageCore
 import SwiftUI
 
-/// Review the current selection and choose to simulate compression or deletion.
+/// Step 3's review: every picked item on a receipt, a fresh safety check
+/// stamped on top, and a confirm before anything is deleted. Items can be taken
+/// off the receipt; only what's left on it when Delete is tapped is approved.
 struct CleanupReviewView: View {
     @Environment(AppModel.self) private var model
-    @Environment(PurchaseStore.self) private var purchases
     @Environment(\.dismiss) private var dismiss
 
-    @State private var level: CompressionLevel = .balanced
-    @State private var confirmingDelete = false
-    @State private var confirmingCompress = false
-    @State private var showingPaywall = false
-    @State private var result: CleanupResult?
+    /// What's on the receipt. Starts as the Library selection.
+    @State private var approved: [MediaItem] = []
+    @State private var check: SafetyCheck?
+    @State private var checkError: PhotoChangeError?
+    @State private var changeError: PhotoChangeError?
+    @State private var isChecking = false
+    @State private var confirming = false
+    @State private var progress: CGFloat = 0
+
+    private var approvedIDs: Set<MediaItem.ID> { Set(approved.map(\.id)) }
+    private var totalBytes: Int64 { approved.reduce(0) { $0 + $1.currentBytes } }
+    private var isSafe: Bool { check?.isSafe == true && check?.approved == approvedIDs }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if let result {
-                    CleanupResultView(result: result, onDone: { dismiss() })
-                } else if model.selection.isEmpty {
-                    EmptyStateView(
-                        illustration: .photo,
-                        title: "Nothing selected",
-                        message: "Select photos, videos, or screenshots in the Library to review them here.",
-                        actionTitle: "Go to Library",
-                        action: {
-                            model.selectedTab = .library
-                            model.isSelecting = true
-                            dismiss()
-                        }
-                    )
-                    .frame(maxHeight: .infinity)
-                } else {
-                    review
-                }
-            }
-            .background(Theme.background)
-            .navigationTitle(result == nil ? "Review Cleanup" : "")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if result == nil {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close") { dismiss() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    header
+                    receipt
+                    safetyList
+                    if let error = changeError ?? checkError {
+                        Text(error.localizedDescription)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(Theme.tomato)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 120)
+            }
+            .background(PaperBackground())
+            .safeAreaInset(edge: .bottom) { deleteBar }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(model.isChanging)
                 }
             }
             .overlay {
-                if model.isWorking {
-                    WorkingOverlay(message: "Simulating…")
+                if model.isChanging { WorkingOverlay(message: "Deleting from the test album…") }
+            }
+            .confirmationDialog(
+                "Delete \(countText) from \u{201C}\(TestMode.albumName)\u{201D}?",
+                isPresented: $confirming,
+                titleVisibility: .visible
+            ) {
+                Button("Delete \(countText)", role: .destructive) {
+                    Task { await deleteApproved() }
                 }
+            } message: {
+                Text("\(ByteFormatter.string(totalBytes, precision: .twoDecimals)). They go to Recently Deleted, where you can still get them back for 30 days. Nothing else is touched.")
             }
         }
-        .interactiveDismissDisabled(model.isWorking)
-        .fullScreenCover(isPresented: $showingPaywall) {
-            PaywallFlow()
+        .interactiveDismissDisabled(model.isChanging)
+        .drawing($progress, duration: 2.2)
+        .task {
+            approved = model.selectedItems
+            await runCheck()
         }
     }
 
-    private var review: some View {
-        let items = model.selectedItems
-        let plan = CompressionPlan(items: items, level: level)
-        let totalBytes = model.selectedBytes
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                SelectionSummaryCard(items: items, totalBytes: totalBytes)
-
-                CompressionCard(plan: plan, level: $level) {
-                    // Shrinking is Pro; deleting stays free. No-op while the paywall is off.
-                    if purchases.requiresPro {
-                        showingPaywall = true
-                    } else {
-                        confirmingCompress = true
-                    }
-                }
-
-                DeletionCard(count: items.count, bytes: totalBytes) {
-                    confirmingDelete = true
-                }
-
-                SafetyNote()
-            }
-            .padding(20)
-        }
-        .confirmationDialog(
-            "Compress \(plan.eligibleCount.formatted()) demo items?",
-            isPresented: $confirmingCompress,
-            titleVisibility: .visible
-        ) {
-            Button("Simulate \(level.title) Compression") {
-                Task {
-                    result = await model.compressSelected(level: level)
-                }
-            }
-        } message: {
-            Text("Sizes in the demo library will drop by about \(ByteFormatter.string(plan.savedBytes)). No real photos or videos are compressed.")
-        }
-        .confirmationDialog(
-            "Delete \(items.count.formatted()) demo items?",
-            isPresented: $confirmingDelete,
-            titleVisibility: .visible
-        ) {
-            Button("Delete from Demo Library", role: .destructive) {
-                Task {
-                    result = await model.deleteSelected()
-                }
-            }
-        } message: {
-            Text("They'll be removed from the sample library only. Nothing on your iPhone is deleted, and you can undo this.")
-        }
+    private var countText: String {
+        approved.count == 1 ? "1 Item" : "\(approved.count) Items"
     }
-}
 
-/// Count, size, and per-category breakdown of the selection.
-private struct SelectionSummaryCard: View {
-    let items: [MediaItem]
-    let totalBytes: Int64
+    // MARK: Header
 
-    var body: some View {
-        let byCategory = LibrarySummary(items: items)
-        VStack(alignment: .leading, spacing: 12) {
-            Text("\(items.count.formatted()) items selected")
-                .font(.subheadline.weight(.medium))
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("look before it goes")
+                .font(.hand(20))
+                .foregroundStyle(Theme.accent)
+                .handwritten(progress, start: 0, length: 0.18)
+            Text("Review what you picked")
+                .font(.display(32))
+                .tracking(-1)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.top, 8)
+    }
+
+    // MARK: Receipt
+
+    private var receipt: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Cleanup receipt")
+                    .font(.display(21))
+                    .tracking(-0.5)
+                Spacer()
+                Text("test album")
+                    .font(.hand(16))
+                    .foregroundStyle(.secondary)
+            }
+            Text("\(TestMode.albumName.uppercased()) · TODAY")
+                .font(.caption2.weight(.semibold))
+                .tracking(2)
                 .foregroundStyle(.secondary)
-            SizeText(bytes: totalBytes, style: .largeTitle, unitStyle: .title2)
-            HStack(spacing: 8) {
-                ForEach(MediaCategory.allCases) { category in
-                    let total = byCategory[category]
-                    if total.count > 0 {
-                        CategoryChip(category: category, count: total.count)
-                    }
+                .padding(.top, 3)
+            DashedRule().padding(.vertical, 12)
+
+            if approved.isEmpty {
+                Text("Nothing left on the receipt. Cancel and pick again.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 12)
+            }
+            ForEach(approved) { item in
+                ReceiptRow(item: item, flag: flag(for: item)) {
+                    withAnimation(.snappy) { approved.removeAll { $0.id == item.id } }
+                    Task { await runCheck() }
+                }
+            }
+
+            DashedRule().padding(.vertical, 12)
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("TO DELETE")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.8)
+                        .foregroundStyle(.secondary)
+                    SizeText(bytes: totalBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("ITEMS")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.8)
+                        .foregroundStyle(.secondary)
+                    Text("\(approved.count)")
+                        .font(.metric(.largeTitle))
+                        .foregroundStyle(Theme.accent)
                 }
             }
         }
-        .card(padding: 18)
+        .onReceipt()
+        .overlay(alignment: .bottomTrailing) { stamp.offset(x: 6, y: 18) }
+        .padding(.top, 6)
     }
-}
 
-private struct CategoryChip: View {
-    let category: MediaCategory
-    let count: Int
-
-    var body: some View {
-        HStack(spacing: 4) {
-            IllustrationView(Illustration.forCategory(category), size: 20)
-            Text("\(count.formatted()) \(category.title.lowercased())")
+    @ViewBuilder
+    private var stamp: some View {
+        if isChecking {
+            RubberStamp(top: "safety check", main: "checking…", color: .secondary, angle: -6)
+                .opacity(0.8)
+        } else if isSafe {
+            RubberStamp(top: "only from", main: TestMode.albumName, color: Theme.accent)
+                .transition(.scale(scale: 1.8).combined(with: .opacity))
+        } else if check != nil || checkError != nil {
+            RubberStamp(top: "safety check", main: "stopped", color: Theme.tomato, angle: 7)
+                .transition(.scale(scale: 1.8).combined(with: .opacity))
         }
-        .font(.caption.weight(.medium))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Theme.well, in: Capsule())
-    }
-}
-
-/// Level picker, before/after sizes, and anything that can't be compressed.
-private struct CompressionCard: View {
-    let plan: CompressionPlan
-    @Binding var level: CompressionLevel
-    let onCompress: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            CardHeading(illustration: .compress, title: "Compress", subtitle: "Keep everything, just smaller.")
-
-            Picker("Compression level", selection: $level) {
-                ForEach(CompressionLevel.allCases) { level in
-                    Text(level.title).tag(level)
-                }
-            }
-            .pickerStyle(.segmented)
-            Text(level.detail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if plan.hasWork {
-                HStack(alignment: .center, spacing: 10) {
-                    sizeColumn("Before", bytes: plan.bytesBefore)
-                    Image(systemName: "arrow.right")
-                        .foregroundStyle(.tertiary)
-                        .accessibilityHidden(true)
-                    sizeColumn("After (est.)", bytes: plan.bytesAfter)
-                    Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Saves")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(ByteFormatter.string(plan.savedBytes))
-                            .font(.metric(.title3))
-                            .foregroundStyle(Theme.accent)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-                .monospacedDigit()
-            }
-
-            if !plan.skipped.isEmpty {
-                SkippedList(plan: plan)
-            }
-
-            Button(action: onCompress) {
-                Text(plan.hasWork ? "Simulate Compression (\(plan.eligibleCount.formatted()))" : "Nothing to Compress")
-            }
-            .buttonStyle(.sticker)
-            .disabled(!plan.hasWork)
-
-            Text("Simulation only. Estimates come from a simple size model; no real files are compressed.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .card(padding: 18)
     }
 
-    private func sizeColumn(_ title: String, bytes: Int64) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(ByteFormatter.string(bytes))
+    private func flag(for item: MediaItem) -> String? {
+        guard let check else { return nil }
+        if check.outsideTestAlbum.contains(item.id) { return "not in the test album any more" }
+        if check.inOtherAlbums.contains(item.id) { return "also in another album, tap × to take it off" }
+        return nil
+    }
+
+    // MARK: Safety list
+
+    private var safetyList: some View {
+        let inAlbum = check.map { $0.outsideTestAlbum.isEmpty } ?? false
+        let noOther = check.map { $0.inOtherAlbums.isEmpty } ?? false
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Before anything is deleted")
                 .font(.headline)
+            SafetyLine(done: inAlbum && !isChecking, text: "Every item is in \u{201C}\(TestMode.albumName)\u{201D}, checked just now", progress: progress, start: 0.35)
+            SafetyLine(done: noOther && !isChecking, text: "None of them are in any other album", progress: progress, start: 0.5)
+            SafetyLine(done: true, text: "iOS asks you to confirm once more", progress: progress, start: 0.65)
+            SafetyLine(done: true, text: "They wait 30 days in Recently Deleted, so you can undo", progress: progress, start: 0.8)
         }
+        .padding(.top, 18)
+    }
+
+    // MARK: Delete
+
+    private var deleteBar: some View {
+        VStack(spacing: 6) {
+            Button {
+                confirming = true
+            } label: {
+                Label("Delete \(countText)", systemImage: "trash")
+            }
+            .buttonStyle(.stickerDestructive)
+            .disabled(!isSafe || model.isChanging)
+            Text(isSafe ? "Only the items on this receipt." : "Delete unlocks when the safety check passes.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
+        .background(.bar)
+    }
+
+    private func runCheck() async {
+        changeError = nil
+        guard !approved.isEmpty else {
+            check = nil
+            return
+        }
+        isChecking = true
+        let ids = approvedIDs
+        let result = await model.safetyCheck(ids)
+        // A newer check (after removing a row) wins.
+        guard ids == approvedIDs else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+            isChecking = false
+            switch result {
+            case .success(let value):
+                check = value
+                checkError = nil
+            case .failure(let error):
+                check = nil
+                checkError = error
+            }
+        }
+    }
+
+    private func deleteApproved() async {
+        // Exactly what's on the receipt now, and only if this exact set passed the check.
+        let ids = approvedIDs
+        guard isSafe, check?.approved == ids else { return }
+        if let error = await model.delete(approved: ids) {
+            changeError = error
+            if case .unsafe = error { await runCheck() }
+        }
+    }
+}
+
+/// One line on the receipt, with a × to take it off.
+private struct ReceiptRow: View {
+    let item: MediaItem
+    let flag: String?
+    let remove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ItemThumbnail(id: item.id, side: 46)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.filename)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let flag {
+                    Text(flag)
+                        .font(.hand(14))
+                        .foregroundStyle(Theme.tomato)
+                } else {
+                    Text("\(ScanGroup.kind(of: item).title) · \(item.creationDate.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 6)
+            Text(ByteFormatter.string(item.currentBytes, precision: .twoDecimals))
+                .font(.subheadline.weight(.bold).monospacedDigit())
+            Button(action: remove) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .frame(width: 30, height: 30)
+                    .background(Theme.well, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Take \(item.filename) off the receipt")
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(flag == nil ? Color.clear : Theme.tomato.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, -8)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// Explains which selected items compression skips and why.
-private struct SkippedList: View {
-    let plan: CompressionPlan
+/// A line with a hand-drawn tick that inks in when its check passes.
+struct SafetyLine: View {
+    let done: Bool
+    let text: String
+    let progress: CGFloat
+    let start: CGFloat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                IllustrationView(.lock, size: 26)
-                Text(plan.hasWork
-                     ? "\(plan.skippedCount.formatted()) items will be skipped"
-                     : "None of the selected items can be compressed at this level")
-                    .font(.subheadline.weight(.semibold))
-            }
-            ForEach(plan.skipped, id: \.reason) { group in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(group.count.formatted()) · \(group.reason.shortLabel)")
-                        .font(.caption.weight(.semibold))
-                    Text(group.reason.explanation)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .combine)
-            }
+        HStack(alignment: .top, spacing: 10) {
+            InkCheck(isOn: done && progress >= start, size: 24)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(done ? .primary : .secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 2)
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.well.opacity(0.6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .opacity(progress >= start - 0.1 ? 1 : 0)
+        .animation(.easeOut(duration: 0.3), value: progress >= start - 0.1)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(done ? "Passed" : "Not yet")
     }
 }
 
-private struct DeletionCard: View {
-    let count: Int
-    let bytes: Int64
-    let onDelete: () -> Void
+/// A small square thumbnail. After a delete it shows the cached copy, since
+/// the item is no longer in Photos.
+struct ItemThumbnail: View {
+    let id: MediaItem.ID
+    var side: CGFloat = 52
+    @State private var image: UIImage?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            CardHeading(illustration: .trash, title: "Delete", subtitle: "Remove them from the demo library.")
-            HStack {
-                Text("Recovers")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(ByteFormatter.string(bytes))
-                    .font(.metric(.title3))
-                    .monospacedDigit()
-            }
-            .accessibilityElement(children: .combine)
-            Button(action: onDelete) {
-                Text("Simulate Deletion (\(count.formatted()))")
-            }
-            .buttonStyle(.stickerDestructive)
-            Text("You'll be asked to confirm. Deletion can be undone.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .card(padding: 18)
-    }
-}
-
-private struct CardHeading: View {
-    let illustration: Illustration
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: 12) {
-            IllustrationView(illustration, size: 46)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.title3.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        ZStack {
+            Theme.well
+            if let image {
+                Image(uiImage: image).resizable().scaledToFill()
             }
         }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous).strokeBorder(Theme.ink.opacity(0.8), lineWidth: 1.25))
+        .task(id: id) {
+            image = PhotoThumbnailLoader.cached(id)
+            if image == nil { image = await PhotoThumbnailLoader.image(for: id, side: side) }
+        }
+        .accessibilityHidden(true)
     }
-}
-
-#Preview {
-    let model = AppModel.preview(.typical)
-    model.reviewCleanup()
-    return CleanupReviewView()
-        .environment(model)
-        .environment(PurchaseStore())
 }

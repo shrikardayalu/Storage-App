@@ -2,6 +2,9 @@ import Foundation
 
 /// Which items the Library tab shows.
 public enum MediaFilter: String, CaseIterable, Hashable, Sendable, Identifiable {
+    /// Videos at or above this size count as "large videos".
+    public static let largeVideoThreshold: Int64 = 100 * 1_000_000
+
     case all
     case photos
     case videos
@@ -26,7 +29,7 @@ public enum MediaFilter: String, CaseIterable, Hashable, Sendable, Identifiable 
         case .photos: item.category == .photo
         case .videos: item.category == .video
         case .screenshots: item.category == .screenshot
-        case .largeVideos: item.category == .video && item.currentBytes >= LibrarySummary.largeVideoThreshold
+        case .largeVideos: item.category == .video && item.currentBytes >= Self.largeVideoThreshold
         }
     }
 }
