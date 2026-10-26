@@ -63,7 +63,7 @@ struct LivePhotoStillsView: View {
                 Task { await convert() }
             }
         } message: {
-            Text("Each photo stays the same, with its date, location, favorite and album. The Live versions go to Recently Deleted for 30 days, so you can undo.")
+            Text("Each photo becomes a still that stays in your library, with its date, location, favorite and album. Only the old Live versions (photo plus video) go to Recently Deleted. You can recover them there for 30 days.")
         }
         .task {
             guard !didLoad else { return }
@@ -111,7 +111,7 @@ struct LivePhotoStillsView: View {
                 SafetyLine(done: true, text: "Favorite", progress: progress, start: 0.69)
                 SafetyLine(done: true, text: "The album", progress: progress, start: 0.76)
             }
-            Text("Storage App checks each one afterwards and shows you the result.")
+            Text("Your stills stay in your library. Only the old Live versions go to Recently Deleted, so you'll see them there. Storage App checks each still afterwards and shows you the result.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -168,7 +168,7 @@ struct LivePhotoStillsView: View {
             }
             .buttonStyle(.sticker)
             .disabled(approved.isEmpty || check == nil || model.isChanging)
-            Text(check == nil ? (error == nil ? "Checking the test album…" : "Fix the problem above to continue.") : "Only the photos ticked above. Nothing else changes.")
+            Text(check == nil ? (error == nil ? "Checking the test album…" : "Fix the problem above to continue.") : "Stills stay in your library. Old Live versions go to Recently Deleted.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

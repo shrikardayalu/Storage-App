@@ -108,6 +108,45 @@ enum GuideScenes {
         ]
     }()
 
+    // MARK: Why, after a Live Photo conversion
+
+    /// The still stays in the album; only the old Live version is in the bin.
+    static let stillsKept: [SceneMark] = {
+        let still = CGRect(x: 22, y: 70, width: 100, height: 128)
+        let live = CGRect(x: 192, y: 64, width: 70, height: 88)
+        let bin = CGRect(x: 172, y: 124, width: 110, height: 116)
+        return [
+            // Left: the still, kept.
+            .fill(Sketch.box(still, radius: 10, seed: 500), 0.02, color: Theme.mintSoft),
+            .stroke(Sketch.box(still, radius: 10, seed: 501), 0.02, 0.14, width: 2.8),
+            .stroke(Sketch.curve([CGPoint(x: 34, y: 172), CGPoint(x: 56, y: 146), CGPoint(x: 76, y: 162), CGPoint(x: 110, y: 130)], seed: 502), 0.14, 0.06, width: 2),
+            .stroke(Sketch.loop(around: CGRect(x: 92, y: 84, width: 16, height: 16), turns: 1.02, seed: 503), 0.18, 0.04, width: 1.8),
+            .fill(Path(ellipseIn: CGRect(x: 92, y: 42, width: 44, height: 44)), 0.24, color: Theme.mint),
+            .stroke(Sketch.loop(around: CGRect(x: 94, y: 44, width: 40, height: 40), turns: 1.05, seed: 504), 0.24, 0.06, width: 2.4),
+            .stroke(Sketch.check(in: CGRect(x: 104, y: 56, width: 20, height: 15), seed: 505), 0.3, 0.05, width: 3.2),
+            .label("your still", at: CGPoint(x: 72, y: 218), 0.36, size: 17),
+            .label("stays in your album", at: CGPoint(x: 72, y: 240), 0.42, size: 14, color: Theme.accent),
+            .stroke(Sketch.scribble(width: 110, at: CGPoint(x: 18, y: 254), seed: 506), 0.48, 0.06, color: Theme.mint, width: 3.2),
+
+            // Divider.
+            .stroke(Sketch.line(CGPoint(x: 150, y: 50), CGPoint(x: 152, y: 270), wobble: 1.5, seed: 507), 0.52, 0.06, color: Theme.ink.opacity(0.3), width: 1.6),
+
+            // Right: the Live version, with its video, in the bin.
+            .fill(Sketch.box(live, radius: 8, seed: 510), 0.58, color: Theme.surface),
+            .stroke(Sketch.box(live, radius: 8, seed: 511), 0.58, 0.1, width: 2.2),
+            .stroke(Sketch.loop(around: CGRect(x: 202, y: 74, width: 12, height: 12), turns: 1.02, seed: 512), 0.66, 0.03, width: 1.6),
+            .stroke(Sketch.loop(around: CGRect(x: 197, y: 69, width: 22, height: 22), turns: 1.02, seed: 513), 0.68, 0.03, width: 1.4),
+            .label("LIVE", at: CGPoint(x: 236, y: 80), 0.7, size: 10),
+            .stroke(Sketch.box(bin, radius: 8, seed: 514), 0.72, 0.1, width: 2.8),
+            .stroke(Sketch.line(CGPoint(x: 164, y: 120), CGPoint(x: 290, y: 120), seed: 515), 0.8, 0.04, width: 3),
+            .stroke(Sketch.line(CGPoint(x: 202, y: 150), CGPoint(x: 204, y: 226), seed: 516), 0.83, 0.03, width: 1.8),
+            .stroke(Sketch.line(CGPoint(x: 227, y: 150), CGPoint(x: 227, y: 226), seed: 517), 0.85, 0.03, width: 1.8),
+            .stroke(Sketch.line(CGPoint(x: 252, y: 150), CGPoint(x: 250, y: 226), seed: 518), 0.87, 0.03, width: 1.8),
+            .label("old Live version", at: CGPoint(x: 227, y: 262), 0.9, size: 15, color: Theme.tomato),
+            .label("(photo + 3 sec video)", at: CGPoint(x: 227, y: 282), 0.94, size: 12, color: Theme.tomato),
+        ]
+    }()
+
     // MARK: Open Photos
 
     /// A home screen with the Photos icon circled.

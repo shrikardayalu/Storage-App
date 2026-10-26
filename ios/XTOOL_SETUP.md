@@ -121,7 +121,7 @@ Add new Swift files under `StorageApp/`; SwiftPM picks them up automatically. On
 
 ## Known differences from the Xcode build
 
-- **No asset catalog.** xtool can't compile `Assets.xcassets` off macOS ([xtool#123](https://github.com/xtool-org/xtool/issues/123)), so `Package.swift` excludes `StorageApp/Resources`. As a result, the hand-inked illustrations (`IllustrationView`) are blank in xtool builds, and the launch screen uses the default background instead of `LaunchBackground`. Colors are unaffected because they're defined in `Theme.swift`. The app icon comes from `AppIcon-1024.png` through `iconPath` in `xtool.yml`. Mac and CI builds include everything.
+- **No asset catalog.** xtool can't compile `Assets.xcassets` off macOS ([xtool#123](https://github.com/xtool-org/xtool/issues/123)), so `Package.swift` excludes `StorageApp/Resources`. The hand-inked illustrations still show, because the app draws them from generated code (`IllustrationArt.swift`) instead of the catalog. Only the launch screen differs: it uses the default background instead of `LaunchBackground`. Colors are unaffected because they're defined in `Theme.swift`. The app icon comes from `AppIcon-1024.png` through `iconPath` in `xtool.yml`. Mac and CI builds include everything.
 - The app target's unit tests (`StorageAppTests`) still need Xcode; `StorageCore` tests run anywhere.
 - SwiftPM prints `Invalid Exclude ... StorageApp/Info.plist: File not found`. This is expected: that file exists only after `xcodegen generate` on a Mac.
 

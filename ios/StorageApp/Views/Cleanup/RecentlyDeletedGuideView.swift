@@ -19,39 +19,55 @@ struct RecentlyDeletedGuideView: View {
     enum Step: Int, CaseIterable {
         case done, why, openPhotos, findAlbum, select, confirm, measure
 
-        var title: String {
+        /// `stills` is true after a Live Photo conversion, where what's in
+        /// Recently Deleted is the old Live version and the still stays put.
+        func title(stills: Bool) -> String {
             switch self {
             case .done: ""
-            case .why: "The space isn't back yet"
+            case .why: stills ? "Your stills are safe" : "The space isn't back yet"
             case .openPhotos: "Open Photos"
             case .findAlbum: "Find Recently Deleted"
-            case .select: "Tap Select, pick, Delete"
+            case .select: stills ? "Delete only the Live versions" : "Tap Select, pick, Delete"
             case .confirm: "Confirm on iOS"
             case .measure: "Your space, measured"
             }
         }
 
-        var note: String {
+        func note(stills: Bool) -> String {
             switch self {
             case .done, .measure: ""
-            case .why: "iOS keeps deleted photos for 30 days in case you change your mind. Until you empty them, they still fill your iPhone."
+            case .why:
+                stills
+                    ? "Each still is already in your library and the test album, right where the Live Photo was. What went to Recently Deleted is only the old Live version: the same photo plus its 3-second video. iOS keeps it for 30 days, so it still takes space until you empty it."
+                    : "iOS keeps deleted photos for 30 days in case you change your mind. Until you empty them, they still fill your iPhone."
             case .openPhotos: "Storage App can't empty Recently Deleted for you. Only you can, and it takes about ten seconds."
             case .findAlbum: "Scroll to the bottom, to Utilities. On iOS 17, it's in the Albums tab. Unlock it with Face ID or your passcode."
-            case .select: "Pick only what Storage App just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
-            case .confirm: "Tap Delete From This iPhone. This is the step that gives the space back."
+            case .select:
+                stills
+                    ? "The photos from Storage App in here are the old Live versions (shown below). They look like your stills because they're the same photo, but your stills never go in Recently Deleted. Deleting these only removes the extra video."
+                    : "Pick only what Storage App just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
+            case .confirm:
+                stills
+                    ? "Tap Delete From This iPhone. This erases only the old Live versions. Your stills stay in your library."
+                    : "Tap Delete From This iPhone. This is the step that gives the space back."
             }
         }
 
-        var scene: [SceneMark] {
+        func scene(stills: Bool) -> [SceneMark] {
             switch self {
             case .done, .measure: []
-            case .why: GuideScenes.waiting
+            case .why: stills ? GuideScenes.stillsKept : GuideScenes.waiting
             case .openPhotos: GuideScenes.openPhotos
             case .findAlbum: GuideScenes.findAlbum
             case .select: GuideScenes.select
             case .confirm: GuideScenes.confirm
             }
         }
+    }
+
+    private var isStills: Bool {
+        if case .convertedLivePhotos = guide.kind { return true }
+        return false
     }
 
     var body: some View {
@@ -126,25 +142,28 @@ struct RecentlyDeletedGuideView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center, spacing: 12) {
                     StepNumber(number: step.rawValue, progress: progress)
-                    Text(step.title)
+                    Text(step.title(stills: isStills))
                         .font(.display(28))
                         .tracking(-0.9)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                 }
-                SketchCanvas(marks: step.scene, progress: progress)
+                if isStills {
+                    StillsSafeNote()
+                }
+                SketchCanvas(marks: step.scene(stills: isStills), progress: progress)
                     .padding(.vertical, 18)
                     .padding(.horizontal, 8)
                     .frame(maxWidth: .infinity)
                     .sticker(fill: Theme.surface, radius: 26, padding: 6)
                     .rotationEffect(.degrees(step.rawValue.isMultiple(of: 2) ? -0.6 : 0.7))
-                Text(step.note)
+                Text(step.note(stills: isStills))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
                 if step == .select {
-                    LookForThese(ids: guide.removedIDs)
+                    LookForThese(ids: guide.removedIDs, stills: isStills)
                 }
             }
             .padding(.horizontal, 20)
@@ -153,7 +172,7 @@ struct RecentlyDeletedGuideView: View {
         }
         .scrollIndicators(.hidden)
         .accessibilityElement(children: .contain)
-        .accessibilityHint(step.note)
+        .accessibilityHint(step.note(stills: isStills))
     }
 
     // MARK: Controls
@@ -245,7 +264,7 @@ private struct DonePage: View {
     private var eyebrow: String {
         switch guide.kind {
         case .deleted: "done, and double-checked"
-        case .convertedLivePhotos: "same photos, lighter"
+        case .convertedLivePhotos: "same photos, minus the video"
         }
     }
 
@@ -286,6 +305,10 @@ private struct DonePage: View {
     @ViewBuilder
     private func stillsProof(_ results: [StillConversion]) -> some View {
         let all = results.allSatisfy(\.keptEverything)
+        if let first = results.first {
+            KeptVersusGoing(conversion: first, more: results.count - 1)
+            DashedRule()
+        }
         SafetyLine(done: results.allSatisfy(\.isSameStill), text: "Same photo, same size, no video", progress: progress, start: 0.26)
         SafetyLine(done: results.allSatisfy(\.keptDate), text: "Date kept", progress: progress, start: 0.34)
         SafetyLine(done: results.allSatisfy(\.keptLocation), text: "Location kept", progress: progress, start: 0.42)
@@ -299,7 +322,7 @@ private struct DonePage: View {
         }
         DashedRule()
         VStack(alignment: .leading, spacing: 2) {
-            Text("VIDEO WAITING IN RECENTLY DELETED")
+            Text("OLD LIVE VERSIONS IN RECENTLY DELETED")
                 .font(.caption2.weight(.bold))
                 .tracking(1.4)
                 .foregroundStyle(.secondary)
@@ -481,17 +504,19 @@ private struct StepDots: View {
 /// Thumbnails of what was removed, from the cache, so the person knows what to pick.
 private struct LookForThese: View {
     let ids: [MediaItem.ID]
+    var stills = false
 
     var body: some View {
         if !ids.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("look for these")
+                Text(stills ? "look for these, with the LIVE badge" : "look for these")
                     .font(.hand(18))
                     .foregroundStyle(Theme.accent)
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
                         ForEach(ids.prefix(30), id: \.self) { id in
                             ItemThumbnail(id: id, side: 54)
+                                .overlay(alignment: .topLeading) { if stills { LiveBadge().padding(3) } }
                                 .rotationEffect(.degrees(Double(abs(id.hashValue % 5)) - 2))
                         }
                     }
@@ -501,5 +526,80 @@ private struct LookForThese: View {
             }
             .padding(.top, 4)
         }
+    }
+}
+
+/// A reminder on every step after a conversion: the stills are not in Recently Deleted.
+private struct StillsSafeNote: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            InkCheck(isOn: true, size: 24)
+            Text("Your stills stay in your library. Only the old Live versions are in Recently Deleted.")
+                .font(.subheadline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .sticker(fill: Theme.mintSoft, radius: 16, padding: 12)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// A small "LIVE" tag like the one Photos shows on Live Photos.
+struct LiveBadge: View {
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "livephoto")
+            Text("LIVE")
+        }
+        .font(.system(size: 8, weight: .heavy))
+        .foregroundStyle(Color(hex: 0x1A1A17))
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
+        .background(.white.opacity(0.85), in: Capsule())
+        .accessibilityHidden(true)
+    }
+}
+
+/// Side by side: the still that stays, and the Live version that went to Recently Deleted.
+private struct KeptVersusGoing: View {
+    let conversion: StillConversion
+    let more: Int
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            column(
+                id: conversion.stillID, live: false, color: Theme.accent,
+                heading: "KEPT", detail: "Your still, in your library and the test album"
+            )
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 40)
+            column(
+                id: conversion.originalID, live: true, color: Theme.tomato,
+                heading: "IN RECENTLY DELETED", detail: "The old Live version: same photo plus its video"
+            )
+        }
+        if more > 0 {
+            Text("Same for the other \(more == 1 ? "1 photo" : "\(more) photos").")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private func column(id: MediaItem.ID, live: Bool, color: Color, heading: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ItemThumbnail(id: id, side: 96)
+                .overlay(alignment: .topLeading) { if live { LiveBadge().padding(4) } }
+            Text(heading)
+                .font(.caption2.weight(.heavy))
+                .tracking(1.2)
+                .foregroundStyle(color)
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }

@@ -4,8 +4,8 @@
 // and ignores this file.
 //
 // xtool can't compile asset catalogs off macOS, so Resources/ (Assets.xcassets) is
-// excluded here. xtool builds therefore show no illustrations; the app icon is
-// supplied separately through xtool.yml.
+// excluded here. Illustrations still show, since the app draws them from generated
+// code; the app icon is supplied separately through xtool.yml.
 
 import PackageDescription
 

@@ -24,6 +24,10 @@ enum Theme {
     /// Destructive actions.
     static let tomato = dynamic(light: 0xEF6A4C, dark: 0xF07B5E)
     static let hairline = dynamic(light: 0x1A1A17, dark: 0xEFEADF, alpha: 0.09)
+    /// Light fills inside illustrations; matches the illustration generator's "paper".
+    static let illustrationPaper = dynamic(light: 0xFBF8F1, dark: 0x23231F)
+    /// Darker mint for illustration shading; the generator's "shade".
+    static let illustrationShade = dynamic(light: 0x3DAE77, dark: 0x2F9563)
 
     static func color(for category: MediaCategory) -> Color {
         switch category {
