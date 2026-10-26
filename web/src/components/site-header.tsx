@@ -1,13 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { pricingLive } from "@/lib/pricing";
 import { siteConfig } from "@/lib/site";
 
 const nav = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/#compare", label: "Compare" },
   { href: "/guides", label: "Guides" },
-  ...(pricingLive ? [{ href: "/pricing", label: "Pricing" }] : []),
+  { href: "/pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];
 

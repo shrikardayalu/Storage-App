@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { AppCta } from "@/components/app-cta";
 import { FaqList } from "@/components/faq-list";
 import { Illustration, type IllustrationName } from "@/components/ink";
@@ -14,8 +13,6 @@ import {
   formatPrice,
   freeFeatures,
   plans,
-  pricingLive,
-  pricingPreviewable,
   proFeatures,
 } from "@/lib/pricing";
 import { faqSchema, graph } from "@/lib/schema";
@@ -27,7 +24,6 @@ export const metadata: Metadata = {
   title: "Pricing",
   description: `${name} is free to scan your iPhone and delete what you choose. ${name} Pro shrinks videos, Live Photos, and screenshots, from ${formatPrice(plans.weekly.price)} a week.`,
   alternates: { canonical: "/pricing" },
-  robots: pricingLive ? undefined : { index: false, follow: false },
 };
 
 const faq = [
@@ -54,20 +50,12 @@ const faq = [
 ];
 
 export default function PricingPage() {
-  if (!pricingPreviewable) notFound();
-
   const faqHtml = faq.map((item) => ({ q: item.q, a: markdownToHtml(item.a) }));
 
   return (
     <>
       <SiteHeader />
       <main id="main" className="flex-1 overflow-x-clip">
-        {!pricingLive && (
-          <p className="bg-tomato px-5 py-2 text-center text-sm font-semibold text-ink">
-            Preview only. This page 404s in production until NEXT_PUBLIC_SHOW_PRICING=&quot;true&quot;.
-          </p>
-        )}
-
         {/* ── Header ───────────────────────────────────────────── */}
         <section className="relative mx-auto max-w-6xl px-5 pt-16 pb-14 text-center sm:px-8 sm:pt-24">
           <div
@@ -149,7 +137,7 @@ export default function PricingPage() {
         </section>
       </main>
       <SiteFooter />
-      {pricingLive && <JsonLd data={graph(faqSchema(faq))} />}
+      <JsonLd data={graph(faqSchema(faq))} />
     </>
   );
 }

@@ -13,6 +13,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SpaceReceipt } from "@/components/space-receipt";
 import { competitors } from "@/lib/comparisons";
 import { getAllGuides, guideHref, markdownToHtml } from "@/lib/guides";
+import { formatPrice, plans } from "@/lib/pricing";
 import { appSchema, faqSchema, graph } from "@/lib/schema";
 import { siteConfig } from "@/lib/site";
 
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 const faq = [
   {
     q: `Is ${name} free?`,
-    a: `Yes, it's free to download and start freeing space. If we ever charge for extras, you'll see the price before you pay anything.`,
+    a: `Scanning, browsing, and deleting are free. Pro adds the tools that shrink videos, Live Photos, and screenshots instead of deleting them, from ${formatPrice(plans.weekly.price)} a week. [See the plans](/pricing).`,
   },
   {
     q: "Will compressed videos and photos look worse?",

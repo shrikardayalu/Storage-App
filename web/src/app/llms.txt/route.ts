@@ -2,6 +2,7 @@
 // (https://llmstxt.org). Lists every guide with its one-line summary.
 
 import { getAllGuides } from "@/lib/guides";
+import { formatPrice, plans } from "@/lib/pricing";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 import { topics } from "@/lib/topics";
 
@@ -29,6 +30,7 @@ export function GET() {
   lines.push(
     "## About",
     "",
+    `- [Pricing](${absoluteUrl("/pricing")}): Free to scan and delete. Pro starts at ${formatPrice(plans.weekly.price)} a week.`,
     `- [About ${siteConfig.name}](${absoluteUrl("/about")})`,
     `- [Privacy](${absoluteUrl("/privacy")})`,
     "",

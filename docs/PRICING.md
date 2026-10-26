@@ -1,15 +1,15 @@
-# Pricing (built, hidden until launch)
+# Pricing
 
-Pricing is built on the site and in the app but switched off until the app has
-been tested. Purchases in the app are simulated: tapping buy grants the plan
-locally, with no StoreKit and no charge.
+The pricing page is live at `/pricing`. Purchases in the app are still
+simulated: tapping buy grants the plan locally, with no StoreKit and no charge.
+The in-app paywall stays off until `PaywallConfig.isLaunched` is turned on.
 
 ## The model
 
 | Plan     | Price         | Where it appears                                   |
 | -------- | ------------- | -------------------------------------------------- |
 | Weekly   | $6.99/week    | Main paywall, site                                 |
-| Annual   | $39.99/year   | Main paywall (selected by default), site ("save 89%") |
+| Annual   | $39.99/year   | Main paywall (selected by default), site ("save 88%") |
 | Lifetime | $49.99 once   | App only: one-time offer after the paywall is closed without buying, shown once ever |
 
 Free: scan, browse, and delete. Pro: the shrink tools (compress, trim, Live
@@ -26,9 +26,7 @@ Prices are placeholders, kept in two places: `web/src/lib/pricing.ts` and
 
 ## Where it lives
 
-- Site: `web/src/app/pricing/page.tsx`. 404s in production until
-  `NEXT_PUBLIC_SHOW_PRICING="true"`, which also adds it to the nav and sitemap.
-  `npm run dev` always renders it at `/pricing` with a "preview only" banner.
+- Site: `web/src/app/pricing/page.tsx`, linked from the header, footer, and sitemap.
 - App: `ios/StorageApp/Purchases/` (`PaywallConfig`, `PurchaseStore`,
   `PaywallFlow`). Off while `PaywallConfig.isLaunched` is `false`. To try it on
   a test build, launch with `-paywallEnabled YES`; Settings then shows a Pro
@@ -44,5 +42,4 @@ Prices are placeholders, kept in two places: `web/src/lib/pricing.ts` and
 4. Add Terms of Use and Privacy links to the paywall (App Review requires them
    for subscriptions).
 5. Remove **Reset Simulated Purchase** from Settings.
-6. Set `PaywallConfig.isLaunched = true` and `NEXT_PUBLIC_SHOW_PRICING="true"`.
-7. Update the home page FAQ "Is it free?" answer to mention Pro.
+6. Set `PaywallConfig.isLaunched = true`.
