@@ -14,6 +14,8 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
     public var declinesChanges = false
     /// How many times something in the library was changed.
     public private(set) var changeCount = 0
+    /// Copies made by `prepareVideo` and not yet used or discarded.
+    public private(set) var preparedVideos: Set<UUID> = []
 
     public init(
         items: [MediaItem],
@@ -102,5 +104,75 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
         }
         changeCount += 1
         return results
+    }
+
+    public func keepBurstPicks(keep: Set<MediaItem.ID>, remove: Set<MediaItem.ID>) async throws -> BurstReceipt {
+        let before = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.burstID) })
+        let plan = try BurstPlan.make(keep: keep, expectedRemove: remove, members: before)
+        let check = try await check(plan.remove)
+        guard check.isSafe else { throw PhotoChangeError.unsafe(check) }
+        guard !declinesChanges else { throw PhotoChangeError.cancelled }
+
+        let bytes = items.filter { plan.remove.contains($0.id) }.reduce(0) { $0 + $1.currentBytes }
+        items.removeAll { plan.remove.contains($0.id) }
+        changeCount += 1
+        let after = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.burstID) })
+        return BurstReceipt.audit(plan: plan, before: before, after: after, removedBytes: bytes)
+    }
+
+    public func prepareVideo(_ id: MediaItem.ID, edit: VideoEdit) async throws -> PreparedVideo {
+        let check = try await check([id])
+        guard check.isSafe else { throw PhotoChangeError.unsafe(check) }
+        guard let item = items.first(where: { $0.id == id }) else { throw PhotoChangeError.unsafe(check) }
+        if let reason = VideoShrink.unsupportedReason(for: item) { throw PhotoChangeError.videoUnsupported(reason) }
+        let duration = item.duration ?? 0
+        let newBytes = VideoShrink.estimatedBytes(for: item, edit: edit)
+        guard VideoShrink.isWorthReplacing(originalBytes: item.currentBytes, newBytes: newBytes) else {
+            throw PhotoChangeError.videoNotSmaller
+        }
+        let prepared = PreparedVideo(
+            originalID: id, edit: edit, fileURL: URL(fileURLWithPath: "/mock/\(id).mov"),
+            originalBytes: item.currentBytes, newBytes: newBytes,
+            newDuration: edit.trim.clamped(to: duration).length, sourceVersion: "\(item.currentBytes)"
+        )
+        preparedVideos.insert(prepared.id)
+        return prepared
+    }
+
+    public func replaceVideo(with prepared: PreparedVideo) async throws -> VideoReplacement {
+        guard preparedVideos.contains(prepared.id) else {
+            throw PhotoChangeError.videoUnsupported("That smaller copy is gone. Make it again.")
+        }
+        let check = try await check([prepared.originalID])
+        guard check.isSafe else { throw PhotoChangeError.unsafe(check) }
+        guard let original = items.first(where: { $0.id == prepared.originalID }),
+              "\(original.currentBytes)" == prepared.sourceVersion else {
+            throw PhotoChangeError.videoUnsupported("The video changed since the copy was made.")
+        }
+        guard !declinesChanges else { throw PhotoChangeError.cancelled }
+
+        let out = VideoShrink.outputSize(width: original.pixelWidth, height: original.pixelHeight, quality: prepared.edit.quality)
+        let copy = MediaItem(
+            id: "\(original.id)-small", category: .video, format: .hevc, filename: original.filename,
+            creationDate: original.creationDate, pixelWidth: out.width, pixelHeight: out.height,
+            duration: prepared.newDuration, originalBytes: prepared.newBytes, thumbnailSeed: original.thumbnailSeed
+        )
+        items.removeAll { $0.id == original.id }
+        items.append(copy)
+        preparedVideos.remove(prepared.id)
+        changeCount += 1
+
+        func details(_ item: MediaItem) -> VideoDetails {
+            VideoDetails(creationDate: item.creationDate, latitude: nil, longitude: nil, isFavorite: false,
+                         duration: item.duration ?? 0, bytes: item.currentBytes, isVideo: true, inTestAlbum: true)
+        }
+        return VideoReplacement(
+            originalID: original.id, newID: copy.id, edit: prepared.edit,
+            original: details(original), new: details(copy), originalGone: true
+        )
+    }
+
+    public func discard(_ prepared: PreparedVideo) async {
+        preparedVideos.remove(prepared.id)
     }
 }

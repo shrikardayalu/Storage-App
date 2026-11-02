@@ -34,7 +34,7 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 **Goal:** a safe sandbox so nothing real gets touched.
 
 - [x] **Photos:** a **"Storage App Test"** album on the phone, filled with normal photos, blurry and pocket shots, duplicates, 2 bursts, Live Photos, screenshots, photos of receipts, and long, 4K and short videos.
-- [ ] **Files:** skipped for now. Testing uses the photo album only. Make a test folder before Step 8.
+- [ ] **Files:** make a **"Storage App Test"** folder in Files → On My iPhone before testing Step 8 (see Step 8).
 - [ ] **Test Mode:** the app only sees the test album. Built together with Step 2, the first step that reads photos.
 
 **Test:** the app sees nothing outside the test album.
@@ -91,6 +91,10 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 
 **Test:** exactly one photo per burst is left, the one the user picked.
 
+**Built (2026-10-29).** Each burst with two or more shots in the test album gets a card with its shots side by side. The camera's pick (or the person's earlier pick in Photos) starts as the keeper, otherwise the middle shot, and tapping another shot picks it instead. A burst can be skipped. Right before the change, the app re-reads the album and rebuilds the plan: one keeper per burst, and the shots to remove must be exactly the other shots the review showed, or nothing changes. Shots to remove go through the same album safety gate as Step 3, so a shot that's also in another album blocks that burst. Afterwards the app re-reads the album and checks that each burst has only its pick left and nothing else changed.
+
+**On the phone:** Home → Best shot of each burst → pick a keeper in each burst → Remove. In Photos, each test burst should show "1 photo" and be the shot you picked. Worth checking: picking a shot that isn't the burst's cover photo. The app's after-check catches it if iOS handles that differently.
+
 ## Step 6: Videos (compress + trim)
 
 **Goal:** smaller videos, same memories.
@@ -99,6 +103,10 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 
 **Test:** the video plays, is smaller and keeps its date. Trimming keeps the right part.
 
+**Built (2026-10-30).** Home → Shrink videos lists the test album's videos, biggest first. Each video has a player, a trim bar for the start and end, and the two qualities (both HEVC; 1080p caps the long side at 1920), with an estimated size for each. "Make Smaller Copy" exports to the app's own temporary folder and shows the measured size; nothing in Photos changes until "Replace Video". The copy is refused if it isn't at least 5% smaller. Replacing runs the same album safety gate as Step 3 and refuses if the video was edited since the copy was made. The copy goes into the album with the original's date, location, favorite and hidden flag, and the original goes to Recently Deleted in the same change. Afterwards the app checks the copy's length, size, date, location, favorite and album. Slo-mo, Cinematic and ProRes videos are left alone so they stay editable. Re-encoding and removing files happen only in `StorageApp/Video/VideoExporter.swift`, which `Tools/check-no-device-access.sh` enforces.
+
+**On the phone:** Home → Shrink videos → pick a video → drag the trim handles in a little → 1080p → Make Smaller Copy → Replace Video. In Photos, the video should play, start and end where you trimmed, be smaller (swipe up for the size) and have the same date.
+
 ## Step 7: Duplicates + junk
 
 **Goal:** find the stuff people forgot about. Always reviewed, never automatic.
@@ -106,6 +114,15 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 - Duplicates and near-duplicates (best one kept), blurry or black shots, receipts and documents, old screenshots.
 
 **Test:** most planted junk is found, and very few good photos are flagged.
+
+**Built (2026-10-30).** Home → Duplicates and junk measures each photo in the test album on the phone (Vision's feature print and text reading on a 512-pixel copy, plus a brightness and sharpness pass), then lists:
+
+- **Duplicates:** the same photo (any time apart) or near-identical shots taken within an hour, with the same shape. Each copy must be close to every other copy in its group, so a run of similar shots doesn't chain together. The copy with clearly more pixels is kept, then the sharper one, then the bigger file, then the older one. Tapping another copy keeps it instead.
+- **Black and pocket shots, blurry shots, receipts, documents:** a photo with lots of text is a document, or a receipt if it also has prices and a word like "total". Screenshots are only ever flagged for being over a month old.
+
+Videos and burst shots are left to Steps 5 and 6. Receipts and documents start unticked. Removing refuses if it would take every copy of a duplicate, or if a kept copy has left the album, then goes through Step 3's delete: the same album safety gate, iOS's confirmation, the after-check and the Recently Deleted guide. All logic and thresholds are in `StorageCore/Logic/JunkFinder.swift` (`JunkRules`), with a planted-album test.
+
+**On the phone:** Home → Duplicates and junk. Check every planted duplicate, blurry, pocket and receipt shot is listed, and count how many good photos are. If too many or too few, the thresholds in `JunkRules` are the starting values to tune.
 
 ## Step 8: Files cleanup
 
@@ -116,7 +133,15 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 
 **Test:** the app only sees the picked folder, and deleted files are actually gone.
 
-## Step 9: Storage health + restart coach
+**Built (2026-10-30).** Home → Clean up a folder → Pick a Folder opens iOS's folder picker; iOS lets the app into that folder (and its subfolders) only. The app lists:
+
+- **Duplicate copies:** same size and same SHA-256. The copy whose name doesn't look like a copy ("copy", "(1)", "-1") is kept, then the older one.
+- **Large files:** 10 MB or more.
+- **Old downloads:** not opened or changed for 6 months.
+
+Hidden files, links and package contents are skipped. Only the extra copies of duplicates start ticked. Deleting is for good (files don't go to Recently Deleted), and the confirmation says so. Right before deleting, the app re-reads the folder and refuses unless every approved file is still there, unchanged (size and date) and strictly inside the picked folder, and every kept copy is too. Afterwards it re-reads the folder, checks exactly those files are gone, and measures free space. Only `StorageApp/Files/PickedFolderFiles.swift` may remove files there, which `Tools/check-no-device-access.sh` enforces.
+
+**On the phone:** make the test folder (a couple of videos, a zip, a PDF, and a PDF duplicated with Files' Duplicate), then Home → Clean up a folder → pick it → delete a duplicate copy and a large file. In Files, those should be gone and nothing else. Note: a copy made with Files' Duplicate shares storage with the original until one is edited, so deleting it may free almost nothing. Copies saved separately (downloaded twice, or AirDropped) free their full size.: Storage health + restart coach
 
 **Goal:** catch the "my phone keeps filling up" problem.
 

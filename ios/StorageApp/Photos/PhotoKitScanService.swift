@@ -84,6 +84,10 @@ struct PhotoKitScanService: PhotoScanService {
         var traits: MediaTraits = []
         if asset.mediaSubtypes.contains(.photoLive) { traits.insert(.livePhoto) }
         if asset.mediaSubtypes.contains(.videoHighFrameRate) { traits.insert(.slowMotion) }
+        if asset.mediaSubtypes.contains(.videoCinematic) { traits.insert(.cinematic) }
+        if asset.burstIdentifier != nil, !asset.burstSelectionTypes.isDisjoint(with: [.userPick, .autoPick]) {
+            traits.insert(.burstPick)
+        }
 
         return MediaItem(
             id: asset.localIdentifier,

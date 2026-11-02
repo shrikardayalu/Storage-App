@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreLocation
 import Foundation
 import Photos
@@ -99,6 +100,111 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             throw PhotoChangeError.verificationFailed("Some photos didn't convert. Scan again to see what's there.")
         }
         return results
+    }
+
+    func keepBurstPicks(keep: Set<MediaItem.ID>, remove: Set<MediaItem.ID>) async throws -> BurstReceipt {
+        let (gate, plan, before) = try await Task.detached(priority: .userInitiated) {
+            guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized else {
+                throw PhotoChangeError.needsFullAccess
+            }
+            let album = try TestAlbum.resolve()
+            let before = TestAlbum.burstMembers(of: album)
+            // Worked out from the album as it is now, and refused unless it matches the review.
+            let plan = try BurstPlan.make(keep: keep, expectedRemove: remove, members: before)
+            return (try Gate.open(plan.remove), plan, before)
+        }.value
+        let toDelete = gate.approvedAssets
+        let bytes = toDelete.reduce(Int64(0)) { $0 + Self.bytes(of: $1) }
+
+        try await Self.perform {
+            PHAssetChangeRequest.deleteAssets(toDelete as NSArray)
+        }
+
+        let after = TestAlbum.burstMembers(of: gate.album)
+        let receipt = BurstReceipt.audit(plan: plan, before: before, after: after, removedBytes: bytes)
+        guard receipt.isExact else {
+            throw PhotoChangeError.verificationFailed(
+                "The bursts didn't end up as picked: \(receipt.keptPick.count) of \(plan.keepers.count) have only your pick left. Scan again to see what's there."
+            )
+        }
+        return receipt
+    }
+
+    func prepareVideo(_ id: MediaItem.ID, edit: VideoEdit) async throws -> PreparedVideo {
+        let gate = try await Task.detached(priority: .userInitiated) { try Gate.open([id]) }.value
+        guard let original = gate.approvedAssets.first, original.mediaType == .video else {
+            throw PhotoChangeError.videoUnsupported("That item isn't a video any more.")
+        }
+        if original.mediaSubtypes.contains(.videoHighFrameRate) || original.mediaSubtypes.contains(.videoCinematic) {
+            throw PhotoChangeError.videoUnsupported("Slo-mo and Cinematic videos are left alone.")
+        }
+        let originalBytes = Self.bytes(of: original)
+        let copy = try await VideoExporter.export(try await Self.videoAsset(of: original), edit: edit)
+        guard VideoShrink.isWorthReplacing(originalBytes: originalBytes, newBytes: copy.bytes) else {
+            VideoExporter.remove(copy.url)
+            throw PhotoChangeError.videoNotSmaller
+        }
+        return PreparedVideo(
+            originalID: id, edit: edit, fileURL: copy.url, originalBytes: originalBytes,
+            newBytes: copy.bytes, newDuration: copy.duration, sourceVersion: Self.version(of: original)
+        )
+    }
+
+    func replaceVideo(with prepared: PreparedVideo) async throws -> VideoReplacement {
+        let gate = try await Task.detached(priority: .userInitiated) { try Gate.open([prepared.originalID]) }.value
+        guard let original = gate.approvedAssets.first, original.mediaType == .video,
+              Self.version(of: original) == prepared.sourceVersion else {
+            throw PhotoChangeError.videoUnsupported("The video changed since the smaller copy was made. Make it again.")
+        }
+        guard FileManager.default.fileExists(atPath: prepared.fileURL.path) else {
+            throw PhotoChangeError.videoUnsupported("The smaller copy is gone. Make it again.")
+        }
+        let before = Self.videoDetails(of: original, bytes: prepared.originalBytes)
+        let name = PHAssetResource.assetResources(for: original).first { $0.type == .video }?.originalFilename ?? "Video.MOV"
+
+        let album = gate.album
+        let created = Box<String?>(nil)
+        try await Self.perform {
+            let request = PHAssetCreationRequest.forAsset()
+            let options = PHAssetResourceCreationOptions()
+            options.originalFilename = (name as NSString).deletingPathExtension + ".MOV"
+            // Photos takes the copy over, so it isn't left in the temporary folder.
+            options.shouldMoveFile = true
+            request.addResource(with: .video, fileURL: prepared.fileURL, options: options)
+            request.creationDate = original.creationDate
+            request.location = original.location
+            request.isFavorite = original.isFavorite
+            request.isHidden = original.isHidden
+            if let placeholder = request.placeholderForCreatedAsset {
+                created.value = placeholder.localIdentifier
+                PHAssetCollectionChangeRequest(for: album)?.addAssets([placeholder] as NSArray)
+            }
+            // In the same change, so declining iOS's prompt leaves no copy behind.
+            PHAssetChangeRequest.deleteAssets([original] as NSArray)
+        }
+
+        // Re-read the album and compare the copy with the original.
+        var byID: [String: PHAsset] = [:]
+        TestAlbum.assets(in: album).enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
+        guard let newID = created.value, let copy = byID[newID] else {
+            throw PhotoChangeError.verificationFailed(
+                "The smaller copy didn't show up in the album. If the original is in Recently Deleted, recover it there."
+            )
+        }
+        // Photos can take a moment to report a new file's size; the measured copy stands in until then.
+        let copyBytes = Self.bytes(of: copy)
+        return VideoReplacement(
+            originalID: original.localIdentifier,
+            newID: newID,
+            edit: prepared.edit,
+            original: before,
+            new: Self.videoDetails(of: copy, bytes: copyBytes > 0 ? copyBytes : prepared.newBytes),
+            originalGone: byID[original.localIdentifier] == nil
+        )
+    }
+
+    func discard(_ prepared: PreparedVideo) async {
+        VideoExporter.remove(prepared.fileURL)
     }
 
     // MARK: - The gate
@@ -204,6 +310,42 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         pixelWidth: 0, pixelHeight: 0, isLivePhoto: true, inTestAlbum: false
     )
 
+    /// The video as Photos plays it, including any edits. Downloads it from iCloud if needed.
+    private static func videoAsset(of asset: PHAsset) async throws -> AVAsset {
+        let options = PHVideoRequestOptions()
+        options.version = .current
+        options.deliveryMode = .highQualityFormat
+        options.isNetworkAccessAllowed = true
+        return try await withCheckedThrowingContinuation { continuation in
+            PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { video, _, info in
+                if let video {
+                    continuation.resume(returning: video)
+                } else {
+                    let detail = (info?[PHImageErrorKey] as? Error)?.localizedDescription ?? "Photos couldn't open the video."
+                    continuation.resume(throwing: PhotoChangeError.exportFailed(detail))
+                }
+            }
+        }
+    }
+
+    /// Changes whenever the video itself is edited, so a copy made before an edit is refused.
+    private static func version(of asset: PHAsset) -> String {
+        "\(asset.duration)-\(bytes(of: asset))"
+    }
+
+    private static func videoDetails(of asset: PHAsset, bytes: Int64) -> VideoDetails {
+        VideoDetails(
+            creationDate: asset.creationDate,
+            latitude: asset.location?.coordinate.latitude,
+            longitude: asset.location?.coordinate.longitude,
+            isFavorite: asset.isFavorite,
+            duration: asset.duration,
+            bytes: bytes,
+            isVideo: asset.mediaType == .video,
+            inTestAlbum: true
+        )
+    }
+
     private static func bytes(of asset: PHAsset) -> Int64 {
         PHAssetResource.assetResources(for: asset).reduce(Int64(0)) { $0 + TestAlbum.fileSize(of: $1) }
     }
@@ -233,6 +375,13 @@ enum TestAlbum {
         let options = PHFetchOptions()
         options.includeAllBurstAssets = true
         return PHAsset.fetchAssets(in: album, options: options)
+    }
+
+    /// Every item in `album` with its burst ID, nil for items not in a burst.
+    static func burstMembers(of album: PHAssetCollection) -> [String: String?] {
+        var members: [String: String?] = [:]
+        assets(in: album).enumerateObjects { asset, _, _ in members[asset.localIdentifier] = .some(asset.burstIdentifier) }
+        return members
     }
 
     static func memberIDs(of album: PHAssetCollection) throws -> Set<String> {

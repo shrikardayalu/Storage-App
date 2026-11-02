@@ -9,6 +9,16 @@ public enum PhotoChangeError: LocalizedError, Equatable {
     /// The fresh check right before the change failed; nothing was changed.
     case unsafe(SafetyCheck)
     case notLivePhoto(count: Int)
+    /// The bursts in the album aren't what the person reviewed.
+    case burstsChanged(String)
+    /// The duplicates and junk in the album aren't what the person reviewed.
+    case junkChanged(String)
+    /// The video can't be shrunk, or changed since the copy was made.
+    case videoUnsupported(String)
+    /// The smaller copy couldn't be made. Nothing in Photos was changed.
+    case exportFailed(String)
+    /// The copy came out about as big as the original, so it isn't worth swapping.
+    case videoNotSmaller
     /// The person tapped Don't Allow on iOS's own confirmation, or iOS refused.
     case cancelled
     /// The change ran, but the album afterwards wasn't what was expected.
@@ -26,6 +36,14 @@ public enum PhotoChangeError: LocalizedError, Equatable {
             "\(check.problem ?? "The safety check failed.") Nothing was changed."
         case .notLivePhoto(let count):
             "\(count == 1 ? "1 item isn't" : "\(count) items aren't") a Live Photo any more. Scan again. Nothing was changed."
+        case .burstsChanged(let detail), .junkChanged(let detail):
+            "\(detail) Scan again. Nothing was changed."
+        case .videoUnsupported(let detail):
+            "\(detail) Nothing was changed."
+        case .exportFailed(let detail):
+            "The smaller copy couldn't be made: \(detail) Nothing was changed."
+        case .videoNotSmaller:
+            "This video is already about as small as it gets at this quality. Try 1080p or trimming it. Nothing was changed."
         case .cancelled:
             "Nothing was changed."
         case .verificationFailed(let detail):
@@ -47,4 +65,18 @@ public protocol TestAlbumChangeService: Sendable {
     /// Replaces each approved Live Photo with a still of the same photo, keeping
     /// its date, location, favorite and album. The originals go to Recently Deleted.
     func convertLivePhotosToStills(_ approved: Set<MediaItem.ID>) async throws -> [StillConversion]
+    /// Keeps one picked shot per burst and moves the burst's other shots to
+    /// Recently Deleted, then confirms each burst has only its pick left.
+    /// `remove` must be exactly the other shots of those bursts, as reviewed.
+    func keepBurstPicks(keep: Set<MediaItem.ID>, remove: Set<MediaItem.ID>) async throws -> BurstReceipt
+    /// Makes a smaller (and optionally trimmed) copy of one video in the app's
+    /// own temporary folder and measures it. Changes nothing in Photos. Throws
+    /// `.videoNotSmaller` (and keeps no copy) when it wouldn't save space.
+    func prepareVideo(_ id: MediaItem.ID, edit: VideoEdit) async throws -> PreparedVideo
+    /// Replaces the original video with its prepared copy, keeping its date,
+    /// location, favorite and album. The original goes to Recently Deleted in
+    /// the same change. Afterwards the album is re-read and the copy checked.
+    func replaceVideo(with prepared: PreparedVideo) async throws -> VideoReplacement
+    /// Throws away a prepared copy that won't be used.
+    func discard(_ prepared: PreparedVideo) async
 }

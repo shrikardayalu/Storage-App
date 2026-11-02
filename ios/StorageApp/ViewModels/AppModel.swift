@@ -13,6 +13,8 @@ struct CleanupGuide: Identifiable, Equatable {
     enum Kind: Equatable {
         case deleted(DeletionReceipt)
         case convertedLivePhotos([StillConversion])
+        case keptBurstPicks(BurstReceipt)
+        case shrunkVideo(VideoReplacement)
     }
 
     let id = UUID()
@@ -23,6 +25,13 @@ struct CleanupGuide: Identifiable, Equatable {
     let expectedBytes: Int64
 
     var count: Int { removedIDs.count }
+}
+
+/// One tap of the guide's Measure Again: when it finished, and how much more
+/// free space came back during it.
+struct ReclaimCheck: Equatable {
+    let date: Date
+    let gainedBytes: Int64
 }
 
 /// Shared app state: real device storage readings, the Test Mode album scan,
@@ -68,6 +77,32 @@ final class AppModel {
     private var pendingGuide: CleanupGuide?
     /// Free space before the last cleanup, and since.
     private(set) var reclaim: ReclaimMeasurement?
+    /// True while the guide is re-reading free space.
+    private(set) var isCheckingReclaim = false
+    /// The guide's latest check, so it can say whether anything changed.
+    private(set) var lastReclaimCheck: ReclaimCheck?
+
+    // MARK: Duplicates + junk (Build Plan step 7)
+
+    /// Measurements per photo, kept across scans so only new photos are measured again.
+    private var photoSignals: [MediaItem.ID: PhotoSignals] = [:]
+    /// What the junk finder suggests; nil until the photos have been measured once.
+    private(set) var junkReport: JunkReport?
+    private(set) var isAnalyzing = false
+    /// Share of photos measured so far, 0 to 1.
+    private(set) var analysisProgress: Double = 0
+
+    // MARK: Files cleanup (Build Plan step 8)
+
+    /// The one folder the person picked in Files. The app reads and deletes nothing outside it.
+    private(set) var pickedFolder: URL?
+    private(set) var folderScan: FolderScan?
+    private(set) var fileReport: FileReport?
+    private(set) var isScanningFolder = false
+    private(set) var folderError: FileChangeError?
+    /// The latest file deletion, with free space measured before and after.
+    private(set) var lastFileDeletion: FileDeletionReceipt?
+    private(set) var fileReclaim: ReclaimMeasurement?
 
     // MARK: Navigation
 
@@ -81,34 +116,49 @@ final class AppModel {
     private let historyStore: StorageHistoryStore
     private let photoScanner: any PhotoScanService
     private let photoChanges: any TestAlbumChangeService
+    private let photoAnalyzer: any PhotoAnalysisService
+    private let folderFiles: any FolderFilesService
 
     init(
         storage: any DeviceStorageService = MockDeviceStorageService(),
         historyStore: StorageHistoryStore = .inMemory,
         photoScanner: any PhotoScanService = MockPhotoScanService(items: []),
-        photoChanges: any TestAlbumChangeService = MockPhotoLibrary(items: [])
+        photoChanges: any TestAlbumChangeService = MockPhotoLibrary(items: []),
+        photoAnalyzer: any PhotoAnalysisService = MockPhotoAnalysis(),
+        folderFiles: any FolderFilesService = MockFolderFiles(files: [])
     ) {
         self.storageService = storage
         self.historyStore = historyStore
         self.photoScanner = photoScanner
         self.photoChanges = photoChanges
+        self.photoAnalyzer = photoAnalyzer
+        self.folderFiles = folderFiles
         self.storageHistory = historyStore.load()
         self.deviceStorage = storageHistory.latest
     }
 
     /// One mock library that both scans and changes, for tests and previews.
-    convenience init(storage: any DeviceStorageService = MockDeviceStorageService(), library: MockPhotoLibrary) {
-        self.init(storage: storage, photoScanner: library, photoChanges: library)
+    convenience init(
+        storage: any DeviceStorageService = MockDeviceStorageService(),
+        library: MockPhotoLibrary,
+        analysis: MockPhotoAnalysis = MockPhotoAnalysis(),
+        folder: MockFolderFiles = MockFolderFiles(files: [])
+    ) {
+        self.init(storage: storage, photoScanner: library, photoChanges: library, photoAnalyzer: analysis, folderFiles: folder)
     }
 
     /// The real configuration: volume readings saved in Application Support,
     /// a PhotoKit scanner, and PhotoKit changes, both limited to the Test Mode album.
     static func live() -> AppModel {
-        AppModel(
+        // Smaller video copies from an earlier run that were never used.
+        VideoExporter.removeLeftovers()
+        return AppModel(
             storage: VolumeStorageService(),
             historyStore: .applicationSupport,
             photoScanner: PhotoKitScanService(),
-            photoChanges: PhotoKitTestAlbumChanges()
+            photoChanges: PhotoKitTestAlbumChanges(),
+            photoAnalyzer: PhotoKitAnalyzer(),
+            folderFiles: PickedFolderFiles()
         )
     }
 
@@ -162,6 +212,7 @@ final class AppModel {
             albumScan = scan
             selection.prune(keeping: Set(scan.items.map(\.id)))
             scanError = nil
+            if junkReport != nil { updateJunkReport() }
         } catch let error as PhotoScanError {
             scanError = error
         } catch {
@@ -190,7 +241,79 @@ final class AppModel {
         albumScan?.items.filter(\.isConvertibleLivePhoto) ?? []
     }
 
+    /// Bursts in the test album that still have more than one shot.
+    var bursts: [Burst] {
+        Burst.all(in: albumScan?.items ?? [])
+    }
+
+    /// Videos in the test album that can be compressed or trimmed, biggest first.
+    var shrinkableVideos: [MediaItem] {
+        (albumScan?.items.filter(\.isShrinkableVideo) ?? []).sorted { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
+    }
+
+    // MARK: Duplicates + junk
+
+    /// Measures any photos not measured yet, then updates the junk report. Read-only.
+    func findJunk() async {
+        guard !isAnalyzing, let scan = albumScan else { return }
+        isAnalyzing = true
+        defer { isAnalyzing = false }
+        let ids = Set(scan.items.map(\.id))
+        photoSignals = photoSignals.filter { ids.contains($0.key) }
+        let unmeasured = scan.items.filter { photoSignals[$0.id] == nil }
+        analysisProgress = 0
+        if !unmeasured.isEmpty {
+            let found = await photoAnalyzer.analyze(unmeasured) { [weak self] value in
+                Task { @MainActor in self?.analysisProgress = value }
+            }
+            photoSignals.merge(found) { _, new in new }
+        }
+        analysisProgress = 1
+        updateJunkReport()
+    }
+
+    private func updateJunkReport() {
+        junkReport = JunkFinder.find(in: albumScan?.items ?? [], signals: photoSignals, now: Date())
+    }
+
+    /// Removes the approved duplicates and junk, keeping the picked copy of each
+    /// duplicate, then opens the Recently Deleted guide. Refuses if a removal
+    /// would take every copy, or if a kept copy has left the album. Returns nil
+    /// on success, or why nothing changed.
+    @discardableResult
+    func removeJunk(_ remove: Set<MediaItem.ID>, keeping keepers: Set<MediaItem.ID>) async -> PhotoChangeError? {
+        guard let junkReport else { return .junkChanged("Nothing has been found yet.") }
+        do {
+            try junkReport.validate(remove: remove, keepers: keepers)
+        } catch let error as PhotoChangeError {
+            return error
+        } catch {
+            return .verificationFailed(error.localizedDescription)
+        }
+        // A kept copy that left the album means removing the others could lose the photo.
+        if !keepers.isEmpty {
+            switch await albumCheck(keepers) {
+            case .success(let check) where !check.outsideTestAlbum.isEmpty:
+                return .junkChanged("A copy you chose to keep is no longer in \u{201C}\(TestMode.albumName)\u{201D}.")
+            case .failure(let error):
+                return error
+            case .success:
+                break
+            }
+        }
+        return await delete(approved: remove)
+    }
+
     // MARK: Changes (test album only)
+
+    /// Like `safetyCheck`, but a failed check comes back as its result, so a
+    /// screen can mark the items it can't touch instead of only showing an error.
+    func albumCheck(_ ids: Set<MediaItem.ID>) async -> Result<SafetyCheck, PhotoChangeError> {
+        switch await safetyCheck(ids) {
+        case .failure(.unsafe(let check)): .success(check)
+        case let other: other
+        }
+    }
 
     /// Checks the approved items against the album without changing anything.
     func safetyCheck(_ approved: Set<MediaItem.ID>) async -> Result<SafetyCheck, PhotoChangeError> {
@@ -224,6 +347,48 @@ final class AppModel {
         }
     }
 
+    /// Keeps the picked shot of each burst and moves the burst's other shots to
+    /// Recently Deleted, then opens the guide. `keepers` maps burst ID to the
+    /// picked shot. Returns nil on success, or why nothing changed.
+    @discardableResult
+    func keepBurstPicks(_ keepers: [String: MediaItem.ID]) async -> PhotoChangeError? {
+        let keep = Set(keepers.values)
+        let remove = Set(bursts.filter { keepers[$0.id] != nil }.flatMap(\.shots).map(\.id)).subtracting(keep)
+        return await change(remove) { changes in
+            let receipt = try await changes.keepBurstPicks(keep: keep, remove: remove)
+            return CleanupGuide(kind: .keptBurstPicks(receipt), removedIDs: Array(receipt.removed), expectedBytes: receipt.removedBytes)
+        }
+    }
+
+    /// Makes a smaller copy of one video and measures it. Nothing in Photos changes.
+    func prepareVideo(_ id: MediaItem.ID, edit: VideoEdit) async -> Result<PreparedVideo, PhotoChangeError> {
+        guard !isChanging else { return .failure(.cancelled) }
+        isChanging = true
+        defer { isChanging = false }
+        do {
+            return .success(try await photoChanges.prepareVideo(id, edit: edit))
+        } catch let error as PhotoChangeError {
+            return .failure(error)
+        } catch {
+            return .failure(.exportFailed(error.localizedDescription))
+        }
+    }
+
+    /// Swaps the original video for its prepared copy, then opens the guide,
+    /// since the original waits in Recently Deleted. Returns nil on success, or why nothing changed.
+    @discardableResult
+    func replaceVideo(with prepared: PreparedVideo) async -> PhotoChangeError? {
+        await change([prepared.originalID]) { changes in
+            let result = try await changes.replaceVideo(with: prepared)
+            // The copy already takes its space, so emptying Recently Deleted gives back the whole original.
+            return CleanupGuide(kind: .shrunkVideo(result), removedIDs: [result.originalID], expectedBytes: result.originalBytes)
+        }
+    }
+
+    func discard(_ prepared: PreparedVideo) async {
+        await photoChanges.discard(prepared)
+    }
+
     private func change(
         _ approved: Set<MediaItem.ID>,
         _ work: (any TestAlbumChangeService) async throws -> CleanupGuide
@@ -241,6 +406,7 @@ final class AppModel {
             if let baseline {
                 reclaim = ReclaimMeasurement(baseline: baseline, expectedBytes: guide.expectedBytes)
             }
+            lastReclaimCheck = nil
             selection.deselect(approved)
             isSelecting = false
             lastGuide = guide
@@ -260,9 +426,22 @@ final class AppModel {
         }
     }
 
-    /// Reads free space again for the guide's "space back" figure.
-    func measureReclaim() async {
-        await refreshDeviceStorage()
+    /// Reads free space a few times over several seconds for the guide's
+    /// "space back" figure, because iOS can take a moment to count the space
+    /// from an emptied Recently Deleted. Stops early once the space is back.
+    /// Apps can't look inside Recently Deleted, so free space is the proof.
+    func checkReclaim(readings: Int = 6, every interval: Duration = .seconds(2)) async {
+        guard !isCheckingReclaim else { return }
+        isCheckingReclaim = true
+        defer { isCheckingReclaim = false }
+        let before = reclaim?.reclaimedBytes ?? 0
+        for index in 0..<max(1, readings) {
+            if index > 0 { try? await Task.sleep(for: interval) }
+            if Task.isCancelled { break }
+            await refreshDeviceStorage()
+            if reclaim?.isDone != false { break }
+        }
+        lastReclaimCheck = ReclaimCheck(date: Date(), gainedBytes: (reclaim?.reclaimedBytes ?? 0) - before)
     }
 
     /// Called once the review sheet has finished closing.
@@ -285,6 +464,73 @@ final class AppModel {
 
     func closeGuide() {
         guide = nil
+    }
+
+    // MARK: Files cleanup
+
+    /// Starts working with the folder the person just picked, and scans it. Read-only.
+    func pick(folder: URL) async {
+        pickedFolder = folder
+        folderScan = nil
+        fileReport = nil
+        lastFileDeletion = nil
+        fileReclaim = nil
+        await scanFolder()
+    }
+
+    /// Reads the picked folder again. Read-only.
+    func scanFolder() async {
+        guard let pickedFolder, !isScanningFolder else { return }
+        isScanningFolder = true
+        defer { isScanningFolder = false }
+        do {
+            let scan = try await folderFiles.scan(pickedFolder)
+            folderScan = scan
+            fileReport = FileCleanup.report(for: scan, now: Date())
+            folderError = nil
+        } catch let error as FileChangeError {
+            folderError = error
+        } catch {
+            folderError = .verificationFailed(error.localizedDescription)
+        }
+    }
+
+    /// Deletes exactly the approved files from the picked folder for good, then
+    /// scans it again and measures free space. Refuses if a deletion would take
+    /// every copy of a duplicate. Returns nil on success, or why nothing was deleted.
+    @discardableResult
+    func deleteFiles(_ approved: [FileItem], keeping keepers: [FileItem]) async -> FileChangeError? {
+        guard let pickedFolder, let fileReport, !approved.isEmpty else { return .changed("Nothing was approved.") }
+        guard !isChanging else { return .changed("Something else is still running.") }
+        do {
+            try fileReport.validate(remove: Set(approved.map(\.id)), keepers: Set(keepers.map(\.id)))
+        } catch let error as FileChangeError {
+            return error
+        } catch {
+            return .verificationFailed(error.localizedDescription)
+        }
+        isChanging = true
+        defer { isChanging = false }
+
+        await refreshDeviceStorage()
+        let baseline = deviceStorage
+        do {
+            let receipt = try await folderFiles.delete(approved, keeping: keepers, in: pickedFolder)
+            lastFileDeletion = receipt
+            if let baseline {
+                fileReclaim = ReclaimMeasurement(baseline: baseline, expectedBytes: receipt.deletedBytes)
+            }
+            // Files skip Recently Deleted, so the space should be back already.
+            await refreshDeviceStorage()
+            if let deviceStorage { fileReclaim?.record(deviceStorage) }
+            await scanFolder()
+            return nil
+        } catch let error as FileChangeError {
+            await scanFolder()
+            return error
+        } catch {
+            return .verificationFailed(error.localizedDescription)
+        }
     }
 
     // MARK: Navigation

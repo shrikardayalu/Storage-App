@@ -2,12 +2,13 @@ import StorageCore
 import SwiftUI
 import UIKit
 
-/// Test Mode status, Photos access, debug readings, and version.
+/// Test Mode status, Photos access, the cleanup guide, debug readings, and version.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
     @Environment(\.openURL) private var openURL
     @State private var showingPaywall = false
+    @AppStorage(RecentlyDeletedGuideView.showStepsKey) private var showGuideSteps = true
 
     var body: some View {
         Form {
@@ -45,6 +46,16 @@ struct SettingsView: View {
                 Text("Photos")
             } footer: {
                 Text(photoFooter)
+            }
+
+            Section {
+                Toggle("Step-by-Step Guide", isOn: $showGuideSteps)
+            } header: {
+                Text("After a Cleanup")
+            } footer: {
+                Text(showGuideSteps
+                     ? "Walks you through emptying Recently Deleted one step at a time."
+                     : "Shows a one-page summary instead. The full steps are still one tap away.")
             }
 
             if PaywallConfig.isEnabled {

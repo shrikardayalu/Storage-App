@@ -18,6 +18,7 @@ struct HomeView: View {
                     CleanupSection()
                     groupSection(scan)
                 }
+                FilesSection()
                 SafetyNote()
                     .padding(.top, 4)
             }
@@ -239,6 +240,12 @@ private struct CleanupSection: View {
     var body: some View {
         let live = model.convertibleLivePhotos
         let liveSaving = live.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
+        let bursts = model.bursts
+        let burstSaving = bursts.reduce(Int64(0)) { $0 + $1.savedBytes(keeping: $1.suggestedKeeper) }
+        let videos = model.shrinkableVideos
+        let videoSaving = videos.reduce(Int64(0)) {
+            $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .hd1080, trim: .full($1.duration ?? 0)))
+        }
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Clean up")
@@ -261,6 +268,43 @@ private struct CleanupSection: View {
                 }
                 .buttonStyle(.plain)
             }
+            if !videos.isEmpty {
+                NavigationLink {
+                    VideosView()
+                } label: {
+                    ActionCard(
+                        illustration: .compress,
+                        title: "Shrink videos",
+                        subtitle: "\(videos.count) \(videos.count == 1 ? "video" : "videos"), compress or trim, same memories",
+                        figure: "\u{2212}" + ByteFormatter.string(videoSaving, precision: .twoDecimals)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            NavigationLink {
+                JunkReviewView()
+            } label: {
+                ActionCard(
+                    illustration: .beaker,
+                    title: "Duplicates and junk",
+                    subtitle: junkSubtitle,
+                    figure: model.junkReport.flatMap { $0.isEmpty ? nil : "\u{2212}" + ByteFormatter.string($0.suggestedBytes, precision: .twoDecimals) }
+                )
+            }
+            .buttonStyle(.plain)
+            if !bursts.isEmpty {
+                NavigationLink {
+                    BurstPicksView()
+                } label: {
+                    ActionCard(
+                        illustration: .stackSmall,
+                        title: "Best shot of each burst",
+                        subtitle: "\(bursts.count) \(bursts.count == 1 ? "burst" : "bursts"), keep one shot, remove the rest",
+                        figure: "\u{2212}" + ByteFormatter.string(burstSaving, precision: .twoDecimals)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
             Button {
                 model.isSelecting = true
                 model.showLibrary(group: nil)
@@ -274,6 +318,48 @@ private struct CleanupSection: View {
             }
             .buttonStyle(.plain)
         }
+    }
+}
+
+extension CleanupSection {
+    fileprivate var junkSubtitle: String {
+        guard let report = model.junkReport else { return "Copies, blurry and black shots, receipts, old screenshots" }
+        if report.isEmpty { return "Nothing found. Look again after adding photos" }
+        return "\(report.suggestedCount) \(report.suggestedCount == 1 ? "photo" : "photos") to review, best copies kept"
+    }
+}
+
+/// Files the person keeps outside Photos, in one folder they pick.
+private struct FilesSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Files")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text("only a folder you pick")
+                    .font(.hand(16))
+                    .foregroundStyle(Theme.accent)
+            }
+            NavigationLink {
+                FilesCleanupView()
+            } label: {
+                ActionCard(
+                    illustration: .stackLarge,
+                    title: "Clean up a folder",
+                    subtitle: subtitle,
+                    figure: nil
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var subtitle: String {
+        guard let scan = model.folderScan else { return "Big files, duplicate copies and old downloads in Files" }
+        return "\(scan.folderName): \(scan.files.count == 1 ? "1 file" : "\(scan.files.count) files"), \(ByteFormatter.string(scan.totalBytes, precision: .twoDecimals))"
     }
 }
 

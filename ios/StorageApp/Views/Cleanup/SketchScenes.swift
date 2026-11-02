@@ -303,4 +303,32 @@ enum GuideScenes {
         ]
         return marks
     }()
+
+    // MARK: Burst → best shot
+
+    /// A fanned burst with one shot circled to keep and the rest crossed out.
+    static let burstPick: [SceneMark] = {
+        var marks: [SceneMark] = []
+        let keep = 2
+        for i in 0..<5 {
+            let rect = CGRect(x: 16 + CGFloat(i) * 54, y: 96 + CGFloat(i % 2) * 8, width: 50, height: 66)
+            let t = CGFloat(i) * 0.07
+            marks.append(.fill(Sketch.box(rect, radius: 6, seed: UInt64(600 + i)), t, color: i == keep ? Theme.mintSoft : Theme.surface))
+            marks.append(.stroke(Sketch.box(rect, radius: 6, seed: UInt64(610 + i)), t, 0.1, width: i == keep ? 2.6 : 2))
+            marks.append(.stroke(Sketch.curve([CGPoint(x: rect.minX + 8, y: rect.maxY - 12), CGPoint(x: rect.midX, y: rect.midY), CGPoint(x: rect.maxX - 8, y: rect.minY + 18)], seed: UInt64(620 + i)), t + 0.06, 0.04, width: 1.4))
+            if i != keep {
+                marks.append(.stroke(Sketch.line(CGPoint(x: rect.minX + 4, y: rect.minY + 4), CGPoint(x: rect.maxX - 4, y: rect.maxY - 4), seed: UInt64(630 + i)), 0.56 + CGFloat(i) * 0.04, 0.04, color: Theme.tomato, width: 2.2))
+                marks.append(.stroke(Sketch.line(CGPoint(x: rect.maxX - 4, y: rect.minY + 4), CGPoint(x: rect.minX + 4, y: rect.maxY - 4), seed: UInt64(640 + i)), 0.58 + CGFloat(i) * 0.04, 0.04, color: Theme.tomato, width: 2.2))
+            }
+        }
+        let kept = CGRect(x: 16 + CGFloat(keep) * 54, y: 96, width: 50, height: 66)
+        marks += [
+            .label("5 shots, 1 second", at: CGPoint(x: 150, y: 62), 0.36, size: 15, angle: -2),
+            .stroke(Sketch.loop(around: kept.insetBy(dx: -10, dy: -10), turns: 1.12, seed: 650), 0.44, 0.1, color: Theme.accent, width: 2.8),
+            .label("keep", at: CGPoint(x: kept.midX, y: 206), 0.78, size: 19, angle: 3, color: Theme.accent),
+            .label("the rest go to Recently Deleted", at: CGPoint(x: 150, y: 252), 0.86, size: 14, color: Theme.tomato),
+            .stroke(Sketch.scribble(width: 120, at: CGPoint(x: 90, y: 222), seed: 651), 0.92, 0.07, color: Theme.mint, width: 3.2),
+        ]
+        return marks
+    }()
 }

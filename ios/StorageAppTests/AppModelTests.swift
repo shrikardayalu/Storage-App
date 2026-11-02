@@ -105,6 +105,52 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.reclaim?.expectedBytes, 1_000_000)
     }
 
+    /// Returns the next free-space reading on each call, then repeats the last one.
+    private final class SteppingStorage: DeviceStorageService, @unchecked Sendable {
+        private let lock = NSLock()
+        private var readings: [Int64]
+        private(set) var reads = 0
+
+        init(_ readings: [Int64]) { self.readings = readings }
+
+        func currentSnapshot() async throws -> StorageSnapshot {
+            lock.withLock {
+                reads += 1
+                let free = readings.count > 1 ? readings.removeFirst() : readings[0]
+                return StorageSnapshot(date: Date(), totalBytes: 128_000_000_000, availableBytes: free, availableForImportantUsageBytes: free)
+            }
+        }
+    }
+
+    func testMeasureAgainKeepsReadingUntilTheSpaceIsBack() async {
+        // Baseline, then two readings before iOS counts the emptied space.
+        let storage = SteppingStorage([5_000_000_000, 5_000_000_000, 5_000_000_000, 5_001_000_000])
+        let library = MockPhotoLibrary(items: [item("a"), item("b")])
+        let model = AppModel(storage: storage, photoScanner: library, photoChanges: library)
+        await model.scanTestAlbum()
+        await model.delete(approved: ["a"])
+
+        await model.checkReclaim(readings: 6, every: .zero)
+        XCTAssertEqual(model.reclaim?.isDone, true)
+        XCTAssertEqual(model.lastReclaimCheck?.gainedBytes, 1_000_000)
+        XCTAssertEqual(storage.reads, 4, "Stops reading once the space is back")
+        XCTAssertFalse(model.isCheckingReclaim)
+    }
+
+    func testMeasureAgainReportsNoChange() async {
+        let storage = SteppingStorage([5_000_000_000])
+        let library = MockPhotoLibrary(items: [item("a"), item("b")])
+        let model = AppModel(storage: storage, photoScanner: library, photoChanges: library)
+        await model.scanTestAlbum()
+        await model.delete(approved: ["a"])
+
+        await model.checkReclaim(readings: 3, every: .zero)
+        XCTAssertEqual(model.reclaim?.isDone, false)
+        XCTAssertEqual(model.lastReclaimCheck?.gainedBytes, 0)
+        XCTAssertEqual(storage.reads, 4)
+        XCTAssertEqual(model.spaceWaiting, 1_000_000)
+    }
+
     func testNothingOutsideTheScanCanBeSelected() async {
         let model = AppModel(library: MockPhotoLibrary(items: [item("a")]))
         await model.scanTestAlbum()
@@ -150,5 +196,137 @@ final class AppModelTests: XCTestCase {
         guard case .convertedLivePhotos(let results)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(results.allSatisfy(\.keptEverything))
         XCTAssertEqual(model.guide?.expectedBytes, 3_000_000)
+    }
+
+    // MARK: Bursts (Build Plan step 5)
+
+    func testKeepingBurstPicksLeavesOneShotPerBurst() async {
+        func shot(_ id: String, _ burst: String) -> MediaItem {
+            MediaItem(id: id, category: .photo, format: .heic, filename: "\(id).HEIC", creationDate: Date(),
+                      pixelWidth: 4032, pixelHeight: 3024, duration: nil, originalBytes: 1_000_000, thumbnailSeed: 0,
+                      burstID: burst)
+        }
+        let library = MockPhotoLibrary(items: [shot("a1", "A"), shot("a2", "A"), shot("a3", "A"), shot("b1", "B"), shot("b2", "B"), item("plain")])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+        XCTAssertEqual(model.bursts.count, 2)
+
+        let error = await model.keepBurstPicks(["A": "a1", "B": "b2"])
+        XCTAssertNil(error)
+        XCTAssertTrue(model.bursts.isEmpty)
+        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["a1", "b2", "plain"])
+        guard case .keptBurstPicks(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertTrue(receipt.isExact)
+        XCTAssertEqual(model.guide?.expectedBytes, 3_000_000)
+    }
+
+    // MARK: Videos (Build Plan step 6)
+
+    func testShrinkingAVideoSwapsInTheCopyAndOpensTheGuide() async {
+        let video = MediaItem(id: "v", category: .video, format: .h264, filename: "IMG_9.MOV", creationDate: Date(),
+                              pixelWidth: 3840, pixelHeight: 2160, duration: 60, originalBytes: 340_000_000, thumbnailSeed: 0)
+        let library = MockPhotoLibrary(items: [video, item("plain")])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+        XCTAssertEqual(model.shrinkableVideos.map(\.id), ["v"])
+
+        let edit = VideoEdit(quality: .hd1080, trim: VideoTrim(start: 5, end: 35))
+        guard case .success(let prepared) = await model.prepareVideo("v", edit: edit) else { return XCTFail("No copy") }
+        XCTAssertNil(model.guide, "Making a copy changes nothing")
+
+        let error = await model.replaceVideo(with: prepared)
+        XCTAssertNil(error)
+        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["v-small", "plain"])
+        guard case .shrunkVideo(let result)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertTrue(result.keptEverything)
+        XCTAssertTrue(result.wasTrimmed)
+        XCTAssertEqual(model.guide?.expectedBytes, 340_000_000)
+    }
+
+    // MARK: Duplicates + junk (Build Plan step 7)
+
+    private func junkLibrary() -> (MockPhotoLibrary, MockPhotoAnalysis) {
+        let items = [item("dog", bytes: 3_000_000), item("dog-copy", bytes: 900_000), item("blur"), item("good")]
+        func signals(_ axis: Int, sharpness: Double = 400) -> PhotoSignals {
+            var print = [Float](repeating: 0, count: 4)
+            print[axis] = 1
+            return PhotoSignals(featurePrint: print, sharpness: sharpness, brightness: 0.5, darkFraction: 0)
+        }
+        let analysis = MockPhotoAnalysis(signals: [
+            "dog": signals(0), "dog-copy": signals(0), "blur": signals(1, sharpness: 5), "good": signals(2),
+        ])
+        return (MockPhotoLibrary(items: items), analysis)
+    }
+
+    func testFindingJunkFlagsCopiesAndBlurButNotGoodPhotos() async {
+        let (library, analysis) = junkLibrary()
+        let model = AppModel(library: library, analysis: analysis)
+        await model.scanTestAlbum()
+        await model.findJunk()
+        let report = model.junkReport
+        XCTAssertEqual(report?.duplicates.count, 1)
+        XCTAssertEqual(report?.findings.map(\.id), ["blur"])
+        XCTAssertEqual(report?.suggestedCount, 2)
+        let count = await library.changeCount
+        XCTAssertEqual(count, 0, "finding never changes anything")
+    }
+
+    func testRemovingJunkKeepsThePickedCopy() async {
+        let (library, analysis) = junkLibrary()
+        let model = AppModel(library: library, analysis: analysis)
+        await model.scanTestAlbum()
+        await model.findJunk()
+        let keeper = model.junkReport!.duplicates[0].suggestedKeeper
+
+        // Removing every copy is refused before anything changes.
+        let refused = await model.removeJunk(["dog", "dog-copy"], keeping: [])
+        guard case .junkChanged? = refused else { return XCTFail("Expected a refusal") }
+        let unchanged = await library.changeCount
+        XCTAssertEqual(unchanged, 0)
+
+        let error = await model.removeJunk(["dog-copy", "blur"], keeping: [keeper])
+        XCTAssertNil(error)
+        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["dog", "good"])
+        XCTAssertEqual(model.junkReport?.isEmpty, true)
+        guard case .deleted(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertTrue(receipt.onlyApprovedRemoved)
+    }
+
+    // MARK: Files cleanup (Build Plan step 8)
+
+    func testFilesCleanupDeletesOnlyApprovedFilesInThePickedFolder() async {
+        let now = Date()
+        let folder = MockFolderFiles(files: [
+            FileItem(path: "Holiday.mov", bytes: 400_000_000, modified: now),
+            FileItem(path: "Report.pdf", bytes: 4_000_000, modified: now.addingTimeInterval(-86_400), contentHash: "a"),
+            FileItem(path: "Report copy.pdf", bytes: 4_000_000, modified: now, contentHash: "a"),
+            FileItem(path: "Notes.txt", bytes: 1_000, modified: now),
+        ], outsideFiles: [FileItem(path: "Elsewhere.mov", bytes: 900_000_000, modified: now)])
+        let model = AppModel(library: MockPhotoLibrary(items: []), folder: folder)
+        await model.pick(folder: URL(fileURLWithPath: "/mock/Storage App Test"))
+        XCTAssertEqual(model.fileReport?.large.map(\.id), ["Holiday.mov"])
+        XCTAssertEqual(model.fileReport?.duplicates.first?.suggestedKeeper, "Report.pdf")
+
+        let scan = model.folderScan!
+        let error = await model.deleteFiles([scan["Holiday.mov"]!, scan["Report copy.pdf"]!], keeping: [scan["Report.pdf"]!])
+        XCTAssertNil(error)
+        XCTAssertEqual(model.lastFileDeletion?.isExact, true)
+        XCTAssertEqual(Set(model.folderScan?.files.map(\.id) ?? []), ["Report.pdf", "Notes.txt"])
+        let outside = await folder.outsideFiles.count
+        XCTAssertEqual(outside, 1)
+    }
+
+    func testFilesCleanupRefusesDeletingEveryCopy() async {
+        let now = Date()
+        let folder = MockFolderFiles(files: [
+            FileItem(path: "a.pdf", bytes: 1_000, modified: now, contentHash: "x"),
+            FileItem(path: "b.pdf", bytes: 1_000, modified: now, contentHash: "x"),
+        ])
+        let model = AppModel(library: MockPhotoLibrary(items: []), folder: folder)
+        await model.pick(folder: URL(fileURLWithPath: "/mock/F"))
+        let error = await model.deleteFiles(model.folderScan!.files, keeping: [])
+        guard case .changed? = error else { return XCTFail("Expected a refusal") }
+        let count = await folder.deleteCount
+        XCTAssertEqual(count, 0)
     }
 }

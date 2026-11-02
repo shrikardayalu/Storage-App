@@ -2,7 +2,8 @@ import StorageCore
 import SwiftUI
 import UIKit
 
-/// Shown right after a delete or a Live Photo conversion. iOS keeps removed
+/// Shown right after a delete, a Live Photo conversion, a burst cleanup or a
+/// smaller video. iOS keeps removed
 /// photos in Recently Deleted for 30 days, so the space only comes back once
 /// the person empties it. Only they can do that, so this walks them through it
 /// with drawings that ink themselves in, then measures the space that came back.
@@ -15,48 +16,90 @@ struct RecentlyDeletedGuideView: View {
     @State private var step: Step = .done
     @State private var forward = true
     @State private var progress: CGFloat = 0
+    /// Off once the person knows the flow: a one-page summary replaces the steps.
+    @AppStorage(Self.showStepsKey) private var showSteps = true
+    /// Shows the full steps this time only, while they stay off.
+    @State private var seeFullSteps = false
 
-    enum Step: Int, CaseIterable {
+    /// Also toggled in Settings.
+    static let showStepsKey = "guide.showSteps"
+
+    /// After a swap, a new version stays in the library and what's in Recently
+    /// Deleted is the old one, so the guide says which is which.
+    enum Swap {
+        /// Nothing was swapped: what's in Recently Deleted is simply gone.
+        case none
+        /// Live Photos became stills; the old Live versions are in Recently Deleted.
+        case stills
+        /// A video was replaced by a smaller copy; the original is in Recently Deleted.
+        case video
+    }
+
+    enum Step: Int {
         case done, why, openPhotos, findAlbum, select, confirm, measure
+        /// All the steps on one page, for people who turned the steps off.
+        case summary
 
-        /// `stills` is true after a Live Photo conversion, where what's in
-        /// Recently Deleted is the old Live version and the still stays put.
-        func title(stills: Bool) -> String {
+        /// Steps where the person is about to go to Photos, or already there.
+        var isInPhotos: Bool {
             switch self {
-            case .done: ""
-            case .why: stills ? "Your stills are safe" : "The space isn't back yet"
+            case .openPhotos, .findAlbum, .select, .confirm, .summary: true
+            case .done, .why, .measure: false
+            }
+        }
+
+        func title(swap: Swap) -> String {
+            switch self {
+            case .done, .summary: ""
+            case .why:
+                switch swap {
+                case .none: "The space isn't back yet"
+                case .stills: "Your stills are safe"
+                case .video: "Your smaller video is safe"
+                }
             case .openPhotos: "Open Photos"
             case .findAlbum: "Find Recently Deleted"
-            case .select: stills ? "Delete only the Live versions" : "Tap Select, pick, Delete"
+            case .select:
+                switch swap {
+                case .none: "Tap Select, pick, Delete"
+                case .stills: "Delete only the Live versions"
+                case .video: "Delete only the original"
+                }
             case .confirm: "Confirm on iOS"
             case .measure: "Your space, measured"
             }
         }
 
-        func note(stills: Bool) -> String {
+        func note(swap: Swap) -> String {
             switch self {
-            case .done, .measure: ""
+            case .done, .measure, .summary: ""
             case .why:
-                stills
-                    ? "Each still is already in your library and the test album, right where the Live Photo was. What went to Recently Deleted is only the old Live version: the same photo plus its 3-second video. iOS keeps it for 30 days, so it still takes space until you empty it."
-                    : "iOS keeps deleted photos for 30 days in case you change your mind. Until you empty them, they still fill your iPhone."
+                switch swap {
+                case .none: "iOS keeps deleted photos for 30 days in case you change your mind. Until you empty them, they still fill your iPhone."
+                case .stills: "Each still is already in your library and the test album, right where the Live Photo was. What went to Recently Deleted is only the old Live version: the same photo plus its 3-second video. iOS keeps it for 30 days, so it still takes space until you empty it."
+                case .video: "The smaller copy is already in your library and the test album, with the same date and place. What went to Recently Deleted is the original, full-size video. iOS keeps it for 30 days, so it still takes space until you empty it."
+                }
             case .openPhotos: "Storage App can't empty Recently Deleted for you. Only you can, and it takes about ten seconds."
             case .findAlbum: "Scroll to the bottom, to Utilities. On iOS 17, it's in the Albums tab. Unlock it with Face ID or your passcode."
             case .select:
-                stills
-                    ? "The photos from Storage App in here are the old Live versions (shown below). They look like your stills because they're the same photo, but your stills never go in Recently Deleted. Deleting these only removes the extra video."
-                    : "Pick only what Storage App just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
+                switch swap {
+                case .none: "Pick only what Storage App just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
+                case .stills: "The photos from Storage App in here are the old Live versions (shown below). They look like your stills because they're the same photo, but your stills never go in Recently Deleted. Deleting these only removes the extra video."
+                case .video: "The video from Storage App in here is the original, full-size one (shown below). It looks like your smaller copy because it's the same video, but your copy never goes in Recently Deleted."
+                }
             case .confirm:
-                stills
-                    ? "Tap Delete From This iPhone. This erases only the old Live versions. Your stills stay in your library."
-                    : "Tap Delete From This iPhone. This is the step that gives the space back."
+                switch swap {
+                case .none: "Tap Delete From This iPhone. This is the step that gives the space back."
+                case .stills: "Tap Delete From This iPhone. This erases only the old Live versions. Your stills stay in your library."
+                case .video: "Tap Delete From This iPhone. This erases only the original. Your smaller video stays in your library."
+                }
             }
         }
 
-        func scene(stills: Bool) -> [SceneMark] {
+        func scene(swap: Swap) -> [SceneMark] {
             switch self {
-            case .done, .measure: []
-            case .why: stills ? GuideScenes.stillsKept : GuideScenes.waiting
+            case .done, .measure, .summary: []
+            case .why: swap == .stills ? GuideScenes.stillsKept : GuideScenes.waiting
             case .openPhotos: GuideScenes.openPhotos
             case .findAlbum: GuideScenes.findAlbum
             case .select: GuideScenes.select
@@ -65,9 +108,19 @@ struct RecentlyDeletedGuideView: View {
         }
     }
 
-    private var isStills: Bool {
-        if case .convertedLivePhotos = guide.kind { return true }
-        return false
+    private var swap: Swap {
+        switch guide.kind {
+        case .convertedLivePhotos: .stills
+        case .shrunkVideo: .video
+        case .deleted, .keptBurstPicks: .none
+        }
+    }
+
+    /// The pages in order: every step, or the summary once steps are off.
+    private var steps: [Step] {
+        showSteps || seeFullSteps
+            ? [.done, .why, .openPhotos, .findAlbum, .select, .confirm, .measure]
+            : [.done, .summary, .measure]
     }
 
     var body: some View {
@@ -91,14 +144,17 @@ struct RecentlyDeletedGuideView: View {
         .background(PaperBackground())
         .drawing($progress, duration: step == .done ? 2.2 : 3.4, key: step)
         .onChange(of: scenePhase) { _, phase in
-            // Coming back from Photos: jump to the measurement.
-            if phase == .active, step.rawValue >= Step.openPhotos.rawValue, step != .measure {
+            guard phase == .active else { return }
+            // Coming back from Photos: jump to the measurement, or measure again.
+            if step == .measure {
+                Task { await model.checkReclaim() }
+            } else if step.isInPhotos {
                 forward = true
                 withAnimation(.snappy) { step = .measure }
             }
         }
         .task(id: step) {
-            if step == .measure { await model.measureReclaim() }
+            if step == .measure { await model.checkReclaim() }
         }
     }
 
@@ -118,7 +174,7 @@ struct RecentlyDeletedGuideView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Close guide")
             Spacer()
-            StepDots(count: Step.allCases.count, current: step.rawValue)
+            StepDots(count: steps.count, current: steps.firstIndex(of: step) ?? 0)
             Spacer()
             Color.clear.frame(width: 40, height: 40)
         }
@@ -133,6 +189,12 @@ struct RecentlyDeletedGuideView: View {
         switch step {
         case .done: DonePage(guide: guide, progress: progress)
         case .measure: MeasurePage(guide: guide, progress: progress)
+        case .summary:
+            SummaryPage(
+                guide: guide, swap: swap, progress: progress,
+                seeFullSteps: { showFullSteps(keepOn: false) },
+                turnStepsOn: { showFullSteps(keepOn: true) }
+            )
         default: drawnPage
         }
     }
@@ -142,28 +204,31 @@ struct RecentlyDeletedGuideView: View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .center, spacing: 12) {
                     StepNumber(number: step.rawValue, progress: progress)
-                    Text(step.title(stills: isStills))
+                    Text(step.title(swap: swap))
                         .font(.display(28))
                         .tracking(-0.9)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                 }
-                if isStills {
-                    StillsSafeNote()
+                if swap != .none {
+                    SwapSafeNote(swap: swap)
                 }
-                SketchCanvas(marks: step.scene(stills: isStills), progress: progress)
+                SketchCanvas(marks: step.scene(swap: swap), progress: progress)
                     .padding(.vertical, 18)
                     .padding(.horizontal, 8)
                     .frame(maxWidth: .infinity)
                     .sticker(fill: Theme.surface, radius: 26, padding: 6)
                     .rotationEffect(.degrees(step.rawValue.isMultiple(of: 2) ? -0.6 : 0.7))
-                Text(step.note(stills: isStills))
+                Text(step.note(swap: swap))
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
                 if step == .select {
-                    LookForThese(ids: guide.removedIDs, stills: isStills)
+                    LookForThese(ids: guide.removedIDs, stills: swap == .stills)
+                }
+                if showSteps {
+                    skipStepsButton
                 }
             }
             .padding(.horizontal, 20)
@@ -172,7 +237,41 @@ struct RecentlyDeletedGuideView: View {
         }
         .scrollIndicators(.hidden)
         .accessibilityElement(children: .contain)
-        .accessibilityHint(step.note(stills: isStills))
+        .accessibilityHint(step.note(swap: swap))
+    }
+
+    /// Turns the steps off for good and switches to the one-page summary.
+    private var skipStepsButton: some View {
+        Button {
+            showSteps = false
+            seeFullSteps = false
+            forward = true
+            withAnimation(.snappy) { step = .summary }
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("I know these steps. Show a quick summary from now on.")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                Text("You can turn the steps back on in Settings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 10)
+    }
+
+    /// From the summary: the full steps, this time only or from now on.
+    private func showFullSteps(keepOn: Bool) {
+        if keepOn { showSteps = true } else { seeFullSteps = true }
+        forward = true
+        withAnimation(.snappy) { step = .why }
+    }
+
+    private func openPhotos() {
+        if let url = URL(string: "photos-redirect://") { openURL(url) }
     }
 
     // MARK: Controls
@@ -181,21 +280,26 @@ struct RecentlyDeletedGuideView: View {
         VStack(spacing: 10) {
             switch step {
             case .openPhotos:
-                Button {
-                    if let url = URL(string: "photos-redirect://") { openURL(url) }
-                } label: {
+                Button(action: openPhotos) {
                     Label("Open Photos", systemImage: "arrow.up.forward.app")
                 }
                 .buttonStyle(.sticker)
                 Button("I'm in Photos, next") { go(+1) }
                     .buttonStyle(.soft)
+            case .summary:
+                Button(action: openPhotos) {
+                    Label("Open Photos", systemImage: "arrow.up.forward.app")
+                }
+                .buttonStyle(.sticker)
+                Button("I Emptied It, Measure") { go(+1) }
+                    .buttonStyle(.soft)
             case .measure:
                 Button(model.reclaim?.isDone == true ? "Done" : "Close for Now") { model.closeGuide() }
                     .buttonStyle(.sticker)
                 if model.reclaim?.isDone != true {
-                    Button("Show the Steps Again") {
+                    Button(steps.contains(.summary) ? "Show the Summary Again" : "Show the Steps Again") {
                         forward = false
-                        withAnimation(.snappy) { step = .openPhotos }
+                        withAnimation(.snappy) { step = steps.contains(.summary) ? .summary : .openPhotos }
                     }
                     .buttonStyle(.soft)
                 }
@@ -213,9 +317,9 @@ struct RecentlyDeletedGuideView: View {
     }
 
     private func go(_ delta: Int) {
-        guard let next = Step(rawValue: step.rawValue + delta) else { return }
+        guard let index = steps.firstIndex(of: step), steps.indices.contains(index + delta) else { return }
         forward = delta > 0
-        withAnimation(.snappy(duration: 0.35)) { step = next }
+        withAnimation(.snappy(duration: 0.35)) { step = steps[index + delta] }
     }
 }
 
@@ -245,6 +349,10 @@ private struct DonePage: View {
                         deletedProof(receipt)
                     case .convertedLivePhotos(let results):
                         stillsProof(results)
+                    case .keptBurstPicks(let receipt):
+                        burstProof(receipt)
+                    case .shrunkVideo(let result):
+                        videoProof(result)
                     }
                 }
                 .onReceipt()
@@ -265,6 +373,8 @@ private struct DonePage: View {
         switch guide.kind {
         case .deleted: "done, and double-checked"
         case .convertedLivePhotos: "same photos, minus the video"
+        case .keptBurstPicks: "best shots kept"
+        case .shrunkVideo: "same memory, smaller file"
         }
     }
 
@@ -272,6 +382,9 @@ private struct DonePage: View {
         switch guide.kind {
         case .deleted: "Moved \(guide.count == 1 ? "1 item" : "\(guide.count) items") to Recently Deleted"
         case .convertedLivePhotos: "Made \(guide.count == 1 ? "1 still" : "\(guide.count) stills")"
+        case .keptBurstPicks(let receipt):
+            "Kept \(receipt.keepers.count == 1 ? "1 shot" : "\(receipt.keepers.count) shots"), moved \(guide.count) to Recently Deleted"
+        case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank your video" : "Shrank your video"
         }
     }
 
@@ -299,6 +412,73 @@ private struct DonePage: View {
                 SizeText(bytes: receipt.deletedBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
             }
             Spacer()
+        }
+    }
+
+    @ViewBuilder
+    private func burstProof(_ receipt: BurstReceipt) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Test album")
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Text("\(receipt.albumCountBefore) → \(receipt.albumCountAfter) items")
+                .font(.metric(.title3))
+                .monospacedDigit()
+        }
+        DashedRule()
+        SafetyLine(
+            done: receipt.keptPick.count == receipt.keepers.count,
+            text: receipt.keepers.count == 1 ? "The burst has only your pick left" : "Each of the \(receipt.keepers.count) bursts has only your pick left",
+            progress: progress, start: 0.3
+        )
+        SafetyLine(done: receipt.onlyApprovedRemoved, text: "Exactly the other \(receipt.removed.count) shots left the album", progress: progress, start: 0.42)
+        SafetyLine(done: true, text: "Nothing outside \u{201C}\(TestMode.albumName)\u{201D} was touched", progress: progress, start: 0.54)
+        DashedRule()
+        VStack(alignment: .leading, spacing: 2) {
+            Text("WAITING IN RECENTLY DELETED")
+                .font(.caption2.weight(.bold))
+                .tracking(1.4)
+                .foregroundStyle(.secondary)
+            SizeText(bytes: receipt.removedBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
+        }
+    }
+
+    @ViewBuilder
+    private func videoProof(_ result: VideoReplacement) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Video")
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Text("\(ByteFormatter.string(result.originalBytes, precision: .twoDecimals)) → \(ByteFormatter.string(result.newBytes, precision: .twoDecimals))")
+                .font(.metric(.title3))
+                .monospacedDigit()
+        }
+        DashedRule()
+        SafetyLine(done: result.isSmaller, text: "Smaller, by \(ByteFormatter.string(max(result.savedBytes, 0), precision: .twoDecimals))", progress: progress, start: 0.26)
+        SafetyLine(
+            done: result.rightLength,
+            text: result.wasTrimmed
+                ? "Trimmed to \(VideoTime.string(result.newDuration)) of \(VideoTime.string(result.originalDuration))"
+                : "Full length, \(VideoTime.string(result.newDuration))",
+            progress: progress, start: 0.34
+        )
+        SafetyLine(done: result.keptDate, text: "Date kept", progress: progress, start: 0.42)
+        SafetyLine(done: result.keptLocation, text: "Location kept", progress: progress, start: 0.5)
+        SafetyLine(done: result.keptFavorite, text: "Favorite kept", progress: progress, start: 0.58)
+        SafetyLine(done: result.keptAlbum && result.originalGone, text: "Swapped in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.66)
+        if !result.keptEverything {
+            Text("Something didn't match. The original is in Recently Deleted, so you can recover it there instead of emptying it.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.tomato)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        DashedRule()
+        VStack(alignment: .leading, spacing: 2) {
+            Text("ORIGINAL IN RECENTLY DELETED")
+                .font(.caption2.weight(.bold))
+                .tracking(1.4)
+                .foregroundStyle(.secondary)
+            SizeText(bytes: result.originalBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
         }
     }
 
@@ -339,7 +519,6 @@ private struct MeasurePage: View {
     let guide: CleanupGuide
     let progress: CGFloat
     @Environment(AppModel.self) private var model
-    @State private var isMeasuring = false
 
     private static let design = CGSize(width: 300, height: 90)
 
@@ -388,7 +567,7 @@ private struct MeasurePage: View {
                         Text("of \(ByteFormatter.string(guide.expectedBytes, precision: .twoDecimals)) waiting")
                         Spacer()
                         if let latest = reclaim?.latest {
-                            Text("checked \(latest.date.formatted(date: .omitted, time: .shortened))")
+                            Text("checked \(latest.date.formatted(date: .omitted, time: .standard))")
                         }
                     }
                     .font(.footnote)
@@ -406,23 +585,24 @@ private struct MeasurePage: View {
                 }
 
                 if !done {
-                    Text("Empty Recently Deleted, then come back here. Storage App measures again each time you return. iOS can take a minute to update free space.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    checkStatus
+                        .animation(.snappy, value: model.isCheckingReclaim)
                 }
 
                 Button {
-                    Task {
-                        isMeasuring = true
-                        await model.measureReclaim()
-                        isMeasuring = false
-                    }
+                    Task { await model.checkReclaim() }
                 } label: {
-                    Label(isMeasuring ? "Measuring…" : "Measure Again", systemImage: "arrow.clockwise")
+                    HStack(spacing: 8) {
+                        if model.isCheckingReclaim {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        Text(model.isCheckingReclaim ? "Checking Free Space…" : "Measure Again")
+                    }
                 }
                 .buttonStyle(.soft)
-                .disabled(isMeasuring)
+                .disabled(model.isCheckingReclaim)
             }
             .padding(.horizontal, 20)
             .padding(.top, 18)
@@ -430,6 +610,119 @@ private struct MeasurePage: View {
         }
         .scrollIndicators(.hidden)
         .sensoryFeedback(.success, trigger: done)
+    }
+
+    /// What the last check found, so a tap never looks like nothing happened.
+    @ViewBuilder
+    private var checkStatus: some View {
+        let check = model.lastReclaimCheck
+        VStack(alignment: .leading, spacing: 6) {
+            if model.isCheckingReclaim {
+                Text("Reading free space for a few seconds, since iOS can be slow to count space from Recently Deleted.")
+            } else if let check {
+                Text(check.gainedBytes > 0
+                     ? "Checked at \(check.date.formatted(date: .omitted, time: .standard)): \(ByteFormatter.string(check.gainedBytes, precision: .twoDecimals)) more came back. Still counting."
+                     : "Checked at \(check.date.formatted(date: .omitted, time: .standard)): no change yet.")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(check.gainedBytes > 0 ? Theme.ink : Theme.tomato)
+                Text("Open Recently Deleted in Photos. If the items are still there, they aren't erased yet: tap Select, pick them, then Delete From This iPhone. If it's empty, give iOS a minute and measure again.")
+            } else {
+                Text("Empty Recently Deleted, then come back here. Storage App measures again each time you return. iOS can take a minute to update free space.")
+            }
+        }
+        .font(.subheadline)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Summary page
+
+/// All the steps on one page, for people who turned the steps off, with a way
+/// back to the full steps.
+private struct SummaryPage: View {
+    let guide: CleanupGuide
+    let swap: RecentlyDeletedGuideView.Swap
+    let progress: CGFloat
+    let seeFullSteps: () -> Void
+    let turnStepsOn: () -> Void
+
+    private var lines: [String] {
+        [
+            "Open Photos.",
+            "Scroll down to Utilities (the Albums tab on iOS 17), tap Recently Deleted and unlock it.",
+            selectLine,
+            "Tap Delete From This iPhone.",
+        ]
+    }
+
+    private var selectLine: String {
+        switch swap {
+        case .none: "Tap Select, pick what Storage App just removed, then Delete."
+        case .stills: "Tap Select, pick only the old Live versions, then Delete."
+        case .video: "Tap Select, pick only the original video, then Delete."
+        }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("the quick version")
+                    .font(.hand(21))
+                    .foregroundStyle(Theme.accent)
+                    .handwritten(progress, start: 0, length: 0.2)
+                Text("Empty Recently Deleted")
+                    .font(.display(34))
+                    .tracking(-1.1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+                if swap != .none {
+                    SwapSafeNote(swap: swap)
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                        HStack(alignment: .center, spacing: 12) {
+                            StepNumber(number: index + 1, progress: progress)
+                            Text(line)
+                                .font(.body.weight(.medium))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("Step \(index + 1): \(line)")
+                    }
+                    DashedRule()
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Waiting in Recently Deleted")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text(ByteFormatter.string(guide.expectedBytes, precision: .twoDecimals))
+                            .font(.metric(.title3))
+                            .monospacedDigit()
+                    }
+                }
+                .padding(18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .sticker(radius: 24, padding: 0)
+
+                LookForThese(ids: guide.removedIDs, stills: swap == .stills)
+
+                HStack(spacing: 18) {
+                    Button("See the Full Steps", action: seeFullSteps)
+                    Button("Turn Steps Back On", action: turnStepsOn)
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 20)
+        }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -529,12 +822,16 @@ private struct LookForThese: View {
     }
 }
 
-/// A reminder on every step after a conversion: the stills are not in Recently Deleted.
-private struct StillsSafeNote: View {
+/// A reminder on every step after a swap: the new version is not in Recently Deleted.
+private struct SwapSafeNote: View {
+    let swap: RecentlyDeletedGuideView.Swap
+
     var body: some View {
         HStack(spacing: 10) {
             InkCheck(isOn: true, size: 24)
-            Text("Your stills stay in your library. Only the old Live versions are in Recently Deleted.")
+            Text(swap == .video
+                 ? "Your smaller video stays in your library. Only the original is in Recently Deleted."
+                 : "Your stills stay in your library. Only the old Live versions are in Recently Deleted.")
                 .font(.subheadline.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
         }

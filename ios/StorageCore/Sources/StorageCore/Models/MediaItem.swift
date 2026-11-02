@@ -76,6 +76,11 @@ public struct MediaItem: Identifiable, Hashable, Codable, Sendable {
         category == .photo && traits.contains(.livePhoto) && burstID == nil
     }
 
+    /// A video Step 6 can compress or trim.
+    public var isShrinkableVideo: Bool {
+        VideoShrink.unsupportedReason(for: self) == nil
+    }
+
     public var megapixels: Double {
         Double(pixelWidth * pixelHeight) / 1_000_000
     }
@@ -93,4 +98,8 @@ public struct MediaTraits: OptionSet, Hashable, Codable, Sendable {
     public static let livePhoto = MediaTraits(rawValue: 1 << 0)
     /// A high-frame-rate (slo-mo) video.
     public static let slowMotion = MediaTraits(rawValue: 1 << 1)
+    /// The shot of a burst that the person or the camera picked as the best.
+    public static let burstPick = MediaTraits(rawValue: 1 << 2)
+    /// A Cinematic mode video, whose focus can be changed after recording.
+    public static let cinematic = MediaTraits(rawValue: 1 << 3)
 }

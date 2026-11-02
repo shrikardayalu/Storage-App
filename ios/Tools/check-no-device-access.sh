@@ -2,10 +2,14 @@
 # Guards what the app may touch on the device. CI runs this on every change.
 #
 # 1. Changing Photos is allowed in exactly one file, StorageApp/Photos/TestAlbumChanges.swift,
-#    which can only reach the "Storage App Test" album (Build Plan steps 3 and 4).
+#    which can only reach the "Storage App Test" album (Build Plan steps 3 to 5).
 #    That file may not fetch assets library-wide or by ID: everything it changes
 #    must come out of the album's own fetch result.
-# 2. Nothing may delete files, compress real media, or use the network.
+# 2. Re-encoding video is allowed in exactly one file, StorageApp/Video/VideoExporter.swift,
+#    which writes and removes only its own copies in the app's temporary folder
+#    (Build Plan step 6). Removing files is allowed there and in
+#    StorageApp/Files/PickedFolderFiles.swift, which removes only files inside the
+#    folder the person picked in Files (Build Plan step 8). Nothing may use the network.
 # 3. Reading Photos is allowed only in StorageApp/Photos/. Everywhere else,
 #    Photos APIs are off limits.
 #
@@ -41,11 +45,37 @@ if ! grep -q 'TestMode.albumName' "$changes_file"; then
   status=1
 fi
 
-other='removeItem\(at|FileManager\.default\.removeItem|AVAssetExportSession|URLSession'
-matches=$(grep -rEn "$other" StorageApp StorageCore/Sources | strip_comments || true)
+exporter='StorageApp/Video/VideoExporter.swift'
+folder_files='StorageApp/Files/PickedFolderFiles.swift'
+media='AVAssetExportSession|AVAssetWriter|AVAssetReader'
+matches=$(grep -rEn "$media" StorageApp StorageCore/Sources | grep -v "^$exporter:" | strip_comments || true)
 if [ -n "$matches" ]; then
   echo "$matches"
-  echo "error: the app must not delete files, compress real media, or use the network yet." >&2
+  echo "error: only $exporter may re-encode media." >&2
+  status=1
+fi
+removal='removeItem\(at|FileManager\.default\.removeItem|trashItem|replaceItem|moveItem'
+matches=$(grep -rEn "$removal" StorageApp StorageCore/Sources | grep -v "^$exporter:" | grep -v "^$folder_files:" | strip_comments || true)
+if [ -n "$matches" ]; then
+  echo "$matches"
+  echo "error: only $exporter and $folder_files may remove files." >&2
+  status=1
+fi
+# The folder cleanup removes only files strictly inside the picked folder.
+if [ "$(grep -c 'PickedFolder.contains(root: root' "$folder_files" || true)" -lt 2 ]; then
+  echo "error: $folder_files must check PickedFolder.contains before removing." >&2
+  status=1
+fi
+# The exporter removes only files directly inside its own folder.
+if ! grep -q 'deletingLastPathComponent() == folder.standardizedFileURL' "$exporter"; then
+  echo "error: $exporter must only remove files in its own folder." >&2
+  status=1
+fi
+
+matches=$(grep -rEn 'URLSession' StorageApp StorageCore/Sources | strip_comments || true)
+if [ -n "$matches" ]; then
+  echo "$matches"
+  echo "error: the app must not use the network yet." >&2
   status=1
 fi
 
@@ -57,5 +87,5 @@ if [ -n "$matches" ]; then
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: Photos changes only in $changes_file, scoped to the test album; nothing deletes files or uses the network."
+[ "$status" -eq 0 ] && echo "OK: Photos changes only in $changes_file, scoped to the test album; re-encoding only in $exporter; file removal only there and in $folder_files; no network."
 exit "$status"
