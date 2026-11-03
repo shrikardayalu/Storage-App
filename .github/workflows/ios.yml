@@ -77,7 +77,7 @@ jobs:
           xcrun simctl install "$UDID" "$APP"
           for appearance in light dark; do
             xcrun simctl ui "$UDID" appearance "$appearance"
-            for screen in home library settings guide; do
+            for screen in home library settings guide whatsapp results; do
               xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
               sleep 4
               xcrun simctl io "$UDID" screenshot "screenshots/$screen-$appearance.png"

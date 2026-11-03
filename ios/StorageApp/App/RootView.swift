@@ -33,6 +33,12 @@ struct RootView: View {
                 .environment(model)
                 .tint(Theme.accent)
         }
+        // WhatsApp, Messages, Settings: steps only the person can do, then a free-space check.
+        .fullScreenCover(item: $model.otherAppGuide) { guide in
+            OtherAppGuideView(guide: guide)
+                .environment(model)
+                .tint(Theme.accent)
+        }
         .task {
             ScreenshotRoute.current?.apply(to: model)
             await model.scanIfAllowed()

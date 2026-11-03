@@ -25,6 +25,21 @@ struct CleanupGuide: Identifiable, Equatable {
     let expectedBytes: Int64
 
     var count: Int { removedIDs.count }
+
+    /// What the results screen calls this cleanup.
+    var resultTitle: String {
+        switch kind {
+        case .deleted: count == 1 ? "Deleted 1 item" : "Deleted \(count) items"
+        case .convertedLivePhotos: count == 1 ? "1 Live Photo \u{2192} still" : "\(count) Live Photos \u{2192} stills"
+        case .keptBurstPicks(let receipt): receipt.keepers.count == 1 ? "Best shot of 1 burst" : "Best shot of \(receipt.keepers.count) bursts"
+        case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank a video" : "Shrank a video"
+        }
+    }
+
+    var resultSource: FreedSource {
+        if case .shrunkVideo = kind { return .videos }
+        return .photos
+    }
 }
 
 /// One tap of the guide's Measure Again: when it finished, and how much more
@@ -104,6 +119,23 @@ final class AppModel {
     private(set) var lastFileDeletion: FileDeletionReceipt?
     private(set) var fileReclaim: ReclaimMeasurement?
 
+    // MARK: Guides for other apps (Build Plan step 10)
+
+    /// The other-app guide on screen, if any.
+    var otherAppGuide: OtherAppGuide?
+    /// The open guide's entry in `freed`, once its starting reading is taken.
+    private(set) var guideEntry: FreedEntry.ID?
+    /// True while a guide is re-reading free space.
+    private(set) var isCheckingGuide = false
+
+    // MARK: Results (Build Plan step 11)
+
+    /// What every action gave back, measured against free space.
+    private(set) var freed = FreedLedger()
+    var isShowingResults = false
+    /// Sample numbers for screenshots are never saved over the real results.
+    private var showingSampleResults = false
+
     // MARK: Navigation
 
     var selectedTab: AppTab = .home
@@ -114,6 +146,7 @@ final class AppModel {
 
     private let storageService: any DeviceStorageService
     private let historyStore: StorageHistoryStore
+    private let freedStore: FreedLedgerStore
     private let photoScanner: any PhotoScanService
     private let photoChanges: any TestAlbumChangeService
     private let photoAnalyzer: any PhotoAnalysisService
@@ -122,6 +155,7 @@ final class AppModel {
     init(
         storage: any DeviceStorageService = MockDeviceStorageService(),
         historyStore: StorageHistoryStore = .inMemory,
+        freedStore: FreedLedgerStore = .inMemory,
         photoScanner: any PhotoScanService = MockPhotoScanService(items: []),
         photoChanges: any TestAlbumChangeService = MockPhotoLibrary(items: []),
         photoAnalyzer: any PhotoAnalysisService = MockPhotoAnalysis(),
@@ -129,12 +163,14 @@ final class AppModel {
     ) {
         self.storageService = storage
         self.historyStore = historyStore
+        self.freedStore = freedStore
         self.photoScanner = photoScanner
         self.photoChanges = photoChanges
         self.photoAnalyzer = photoAnalyzer
         self.folderFiles = folderFiles
         self.storageHistory = historyStore.load()
         self.deviceStorage = storageHistory.latest
+        self.freed = freedStore.load()
     }
 
     /// One mock library that both scans and changes, for tests and previews.
@@ -155,6 +191,7 @@ final class AppModel {
         return AppModel(
             storage: VolumeStorageService(),
             historyStore: .applicationSupport,
+            freedStore: .applicationSupport,
             photoScanner: PhotoKitScanService(),
             photoChanges: PhotoKitTestAlbumChanges(),
             photoAnalyzer: PhotoKitAnalyzer(),
@@ -173,6 +210,8 @@ final class AppModel {
             deviceStorage = snapshot
             storageReadFailed = false
             reclaim?.record(snapshot)
+            freed.record(snapshot)
+            saveFreed()
             if storageHistory.append(snapshot) {
                 try? historyStore.save(storageHistory)
             }
@@ -405,6 +444,8 @@ final class AppModel {
             let guide = try await work(photoChanges)
             if let baseline {
                 reclaim = ReclaimMeasurement(baseline: baseline, expectedBytes: guide.expectedBytes)
+                freed.open(guide.resultSource, title: guide.resultTitle, baseline: baseline, expectedBytes: guide.expectedBytes)
+                saveFreed()
             }
             lastReclaimCheck = nil
             selection.deselect(approved)
@@ -519,6 +560,9 @@ final class AppModel {
             lastFileDeletion = receipt
             if let baseline {
                 fileReclaim = ReclaimMeasurement(baseline: baseline, expectedBytes: receipt.deletedBytes)
+                let count = receipt.deleted.count
+                freed.open(.files, title: count == 1 ? "Deleted 1 file" : "Deleted \(count) files", baseline: baseline, expectedBytes: receipt.deletedBytes)
+                saveFreed()
             }
             // Files skip Recently Deleted, so the space should be back already.
             await refreshDeviceStorage()
@@ -531,6 +575,65 @@ final class AppModel {
         } catch {
             return .verificationFailed(error.localizedDescription)
         }
+    }
+
+    // MARK: Guides for other apps
+
+    func open(_ guide: OtherAppGuide) {
+        closeOtherAppGuide()
+        otherAppGuide = guide
+    }
+
+    /// Takes the guide's starting reading, so its free-space check measures
+    /// only what changed while it was open.
+    func startMeasuring(_ guide: OtherAppGuide) async {
+        guard guideEntry == nil else { return }
+        await refreshDeviceStorage()
+        guard otherAppGuide == guide, guideEntry == nil, let baseline = deviceStorage else { return }
+        guideEntry = freed.open(.guides, title: guide.title, baseline: baseline)
+        saveFreed()
+    }
+
+    /// Free space the open guide has given back so far.
+    var guideFreedBytes: Int64 {
+        guideEntry.flatMap { freed[$0]?.measuredBytes } ?? 0
+    }
+
+    /// Reads free space a few times, since iOS can take a moment to count
+    /// space another app just gave back.
+    func checkGuide(readings: Int = 3, every interval: Duration = .seconds(2)) async {
+        guard !isCheckingGuide else { return }
+        isCheckingGuide = true
+        defer { isCheckingGuide = false }
+        for index in 0..<max(1, readings) {
+            if index > 0 { try? await Task.sleep(for: interval) }
+            if Task.isCancelled { break }
+            await refreshDeviceStorage()
+        }
+    }
+
+    /// Ends the guide's measurement. A guide that gave nothing back leaves no entry.
+    func closeOtherAppGuide() {
+        if let guideEntry {
+            freed.close(guideEntry)
+            saveFreed()
+        }
+        guideEntry = nil
+        otherAppGuide = nil
+    }
+
+    // MARK: Results
+
+    /// Clears the results to start counting again. Changes nothing on the phone.
+    func resetResults() {
+        freed = FreedLedger()
+        guideEntry = nil
+        saveFreed()
+    }
+
+    private func saveFreed() {
+        guard !showingSampleResults else { return }
+        try? freedStore.save(freed)
     }
 
     // MARK: Navigation
@@ -556,5 +659,33 @@ extension AppModel {
         model.albumScan = LibraryScan(items: items)
         model.photoAccess = .granted
         return model
+    }
+
+    /// Sample results for previews and screenshots. Kept in memory only.
+    func showSampleResults() {
+        let start = Date().addingTimeInterval(-3_600)
+        var free: Int64 = 2_290_000_000
+        func reading(_ minutes: Double) -> StorageSnapshot {
+            StorageSnapshot(date: start.addingTimeInterval(minutes * 60), totalBytes: 127_400_000_000,
+                            availableBytes: free, availableForImportantUsageBytes: free)
+        }
+        var ledger = FreedLedger()
+        let actions: [(source: FreedSource, title: String, bytes: Int64)] = [
+            (.photos, "Deleted 14 items", 1_840_000_000),
+            (.videos, "Trimmed and shrank a video", 610_000_000),
+            (.files, "Deleted 3 files", 420_000_000),
+            (.guides, "WhatsApp", 2_130_000_000),
+        ]
+        for (index, action) in actions.enumerated() {
+            let minutes = Double(index) * 10
+            let id = ledger.open(action.source, title: action.title, baseline: reading(minutes),
+                                 expectedBytes: action.source == .guides ? 0 : action.bytes)
+            free += action.bytes
+            ledger.record(reading(minutes + 5))
+            ledger.close(id)
+        }
+        showingSampleResults = true
+        freed = ledger
+        deviceStorage = reading(50)
     }
 }

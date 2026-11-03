@@ -141,7 +141,9 @@ Videos and burst shots are left to Steps 5 and 6. Receipts and documents start u
 
 Hidden files, links and package contents are skipped. Only the extra copies of duplicates start ticked. Deleting is for good (files don't go to Recently Deleted), and the confirmation says so. Right before deleting, the app re-reads the folder and refuses unless every approved file is still there, unchanged (size and date) and strictly inside the picked folder, and every kept copy is too. Afterwards it re-reads the folder, checks exactly those files are gone, and measures free space. Only `StorageApp/Files/PickedFolderFiles.swift` may remove files there, which `Tools/check-no-device-access.sh` enforces.
 
-**On the phone:** make the test folder (a couple of videos, a zip, a PDF, and a PDF duplicated with Files' Duplicate), then Home → Clean up a folder → pick it → delete a duplicate copy and a large file. In Files, those should be gone and nothing else. Note: a copy made with Files' Duplicate shares storage with the original until one is edited, so deleting it may free almost nothing. Copies saved separately (downloaded twice, or AirDropped) free their full size.: Storage health + restart coach
+**On the phone:** make the test folder (a couple of videos, a zip, a PDF, and a PDF duplicated with Files' Duplicate), then Home → Clean up a folder → pick it → delete a duplicate copy and a large file. In Files, those should be gone and nothing else. Note: a copy made with Files' Duplicate shares storage with the original until one is edited, so deleting it may free almost nothing. Copies saved separately (downloaded twice, or AirDropped) free their full size.
+
+## Step 9: Storage health + restart coach
 
 **Goal:** catch the "my phone keeps filling up" problem.
 
@@ -165,6 +167,20 @@ Hidden files, links and package contents are skipped. Only the extra copies of d
 
 **Test:** the steps match the current iOS and app versions, and the measurement works.
 
+**Built (2026-11-02).** Home → Other apps lists five guides. Each opens full screen: a page on what it frees and why only the person can do it, then one drawn step per screen (ink-in sketches of the screens to look for, built from one phone-and-list drawing in `OtherAppScenes.swift`), then a free-space check.
+
+- **WhatsApp:** Open WhatsApp button (`whatsapp://`; says so if WhatsApp isn't installed) → Settings → Storage and Data → Manage Storage → biggest first → Select, Delete. Last step: Media Auto-Download and Save to Photos so it doesn't fill up again.
+- **Messages:** iPhone Storage → Messages → Review Large Attachments → swipe to delete, then Keep Messages → 1 Year (with a red warning that older texts are erased for good, and on other devices with Messages in iCloud), then Messages' own Recently Deleted.
+- **Offload unused apps:** iPhone Storage → Enable, the App Store toggle, or Offload App on one app (not Delete App).
+- **Safari:** Clear History and Website Data (warns it signs you out), or Advanced → Website Data to keep history.
+- **Downloaded shows and music:** iPhone Storage → TV and Music swipe-to-delete, Music's Optimize Storage, and streaming apps' own Downloads pages.
+
+The other guides have an Open Settings button. Apps can only open their own page in Settings, so the button says to tap Back from there. Paths to an app's settings follow the running iOS: Settings → Apps → Safari on iOS 18 and later, Settings → Safari on iOS 17. All the wording is in `StorageApp/Views/Guides/OtherAppGuide.swift`.
+
+The check: opening a guide reads free space. Every return to the app reads it again without moving the person off their step, and a "+X GB" tag shows in the top bar once something came back. The last page reads it a few times and shows the space back. Gains under 20 MB (`FreedLedger.noiseFloor`) count as free space moving on its own, and a guide that freed nothing leaves no result.
+
+**On the phone:** follow each guide for real, and fix any step whose screen or button name doesn't match (WhatsApp's tabs and Messages' Recently Deleted move most between versions). Then delete something big in WhatsApp and check the guide's number roughly matches the size WhatsApp showed.
+
 ## Step 11: Results screen
 
 **Goal:** prove the value.
@@ -172,6 +188,17 @@ Hidden files, links and package contents are skipped. Only the extra copies of d
 - Total freed, broken down by action (photos, videos, files, guides, restart).
 
 **Test:** the total matches the real change in free space.
+
+**Built (2026-11-02).** Every action reads free space right before it starts and adds an entry to a saved ledger (`StorageCore/Logic/FreedLedger.swift`, saved as `freed-ledger.json` in Application Support). Each later reading is shared out among the actions still being measured, newest first, so two actions measured at the same time never count the same bytes twice. An action with a known size (photos, videos, files) never counts more than that size. A gain stays counted even if free space dips later.
+
+- **Photos** (delete, stills, bursts, duplicates and junk) and **videos** count as Recently Deleted is emptied, for up to 30 days.
+- **Files** count right after deleting, for 10 minutes.
+- **Guides** count while the guide is open.
+- **Restart** is in the breakdown, ready for Step 9 to fill.
+
+Home shows "You've freed X" once anything counted. Home → Results (or that card) shows the total, a bar per action type, every action with its figure, and a "Check it yourself" card: free space before the first action, free space now, the real change, and the counted total, with a tick when they're within 5% (or 20 MB). When they differ, it says whether something else used or freed space in between. "Start Counting Again" clears the totals and changes nothing on the phone. CI also screenshots the WhatsApp guide and the results screen (sample numbers, never saved).
+
+**On the phone:** Results → Start Counting Again. Delete a few photos and empty Recently Deleted, delete a file in the test folder, then do one guide. Without downloading anything in between, the counted total should match "Real change", and each action's figure should be close to what the app said it would free.
 
 ## Step 12: Paywall + launch prep
 

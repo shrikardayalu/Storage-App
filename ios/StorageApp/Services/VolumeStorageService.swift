@@ -32,37 +32,57 @@ struct VolumeStorageService: DeviceStorageService {
     }
 }
 
-/// Saves storage readings as JSON in Application Support. A missing or
-/// unreadable file starts a fresh history instead of failing.
-struct StorageHistoryStore: Sendable {
-    /// Nil keeps history in memory only (tests and previews).
+/// Saves one value as JSON in Application Support. A missing or unreadable
+/// file gives the fallback instead of failing.
+struct JSONFileStore<Value: Codable>: Sendable {
+    /// Nil keeps the value in memory only (tests and previews).
     let fileURL: URL?
 
-    static let inMemory = StorageHistoryStore(fileURL: nil)
+    static var inMemory: Self { Self(fileURL: nil) }
 
-    static var applicationSupport: StorageHistoryStore {
+    static func inApplicationSupport(_ filename: String) -> Self {
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-        return StorageHistoryStore(fileURL: directory?.appendingPathComponent("storage-history.json"))
+        return Self(fileURL: directory?.appendingPathComponent(filename))
     }
 
-    func load() -> StorageHistory {
-        guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return StorageHistory() }
-        return (try? Self.decoder.decode(StorageHistory.self, from: data)) ?? StorageHistory()
+    func load(or fallback: @autoclosure () -> Value) -> Value {
+        guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return fallback() }
+        return (try? JSONCoders.decoder.decode(Value.self, from: data)) ?? fallback()
     }
 
-    func save(_ history: StorageHistory) throws {
+    func save(_ value: Value) throws {
         guard let fileURL else { return }
         try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Self.encoder.encode(history).write(to: fileURL, options: .atomic)
+        try JSONCoders.encoder.encode(value).write(to: fileURL, options: .atomic)
     }
+}
 
-    private static let encoder: JSONEncoder = {
+/// Storage readings, oldest first.
+typealias StorageHistoryStore = JSONFileStore<StorageHistory>
+
+extension JSONFileStore where Value == StorageHistory {
+    static var applicationSupport: Self { .inApplicationSupport("storage-history.json") }
+
+    func load() -> StorageHistory { load(or: StorageHistory()) }
+}
+
+/// What each action gave back, for the results screen (Build Plan step 11).
+typealias FreedLedgerStore = JSONFileStore<FreedLedger>
+
+extension JSONFileStore where Value == FreedLedger {
+    static var applicationSupport: Self { .inApplicationSupport("freed-ledger.json") }
+
+    func load() -> FreedLedger { load(or: FreedLedger()) }
+}
+
+private enum JSONCoders {
+    static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }()
 
-    private static let decoder: JSONDecoder = {
+    static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder

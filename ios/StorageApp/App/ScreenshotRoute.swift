@@ -11,6 +11,10 @@ enum ScreenshotRoute: String {
     case settings
     /// The Recently Deleted guide after a sample delete. Sample numbers only; nothing is deleted.
     case guide
+    /// The WhatsApp guide (Build Plan step 10).
+    case whatsapp
+    /// The results screen with sample numbers (Build Plan step 11). Nothing is saved.
+    case results
 
     static var current: ScreenshotRoute? {
         UserDefaults.standard.string(forKey: "screenshotScreen").flatMap(ScreenshotRoute.init(rawValue:))
@@ -26,6 +30,11 @@ enum ScreenshotRoute: String {
             let receipt = DeletionReceipt(deleted: ["sample-1", "sample-2", "sample-3"], albumCountBefore: 48, albumCountAfter: 45,
                                           deletedBytes: 1_240_000_000, onlyApprovedRemoved: true)
             model.guide = CleanupGuide(kind: .deleted(receipt), removedIDs: Array(receipt.deleted), expectedBytes: receipt.deletedBytes)
+        case .whatsapp:
+            model.open(.whatsapp)
+        case .results:
+            model.showSampleResults()
+            model.isShowingResults = true
         }
     }
 }

@@ -6,10 +6,14 @@ struct HomeView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        @Bindable var model = model
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 DeviceStorageCard()
+                if model.freed.total > 0 {
+                    ResultsCard(bytes: model.freed.total)
+                }
                 TestAlbumCard()
                 if let waiting = model.spaceWaiting {
                     SpaceWaitingCard(bytes: waiting)
@@ -19,6 +23,7 @@ struct HomeView: View {
                     groupSection(scan)
                 }
                 FilesSection()
+                OtherAppsSection()
                 SafetyNote()
                     .padding(.top, 4)
             }
@@ -27,6 +32,7 @@ struct HomeView: View {
         }
         .background(PaperBackground())
         .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(isPresented: $model.isShowingResults) { ResultsView() }
     }
 
     private var header: some View {
@@ -360,6 +366,68 @@ private struct FilesSection: View {
     private var subtitle: String {
         guard let scan = model.folderScan else { return "Big files, duplicate copies and old downloads in Files" }
         return "\(scan.folderName): \(scan.files.count == 1 ? "1 file" : "\(scan.files.count) files"), \(ByteFormatter.string(scan.totalBytes, precision: .twoDecimals))"
+    }
+}
+
+/// Everything freed so far, measured. Opens the results.
+private struct ResultsCard: View {
+    let bytes: Int64
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Button {
+            model.isShowingResults = true
+        } label: {
+            HStack(spacing: 14) {
+                IllustrationView(.piggy, size: 50)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("You've freed \(ByteFormatter.string(bytes, precision: .twoDecimals))")
+                        .font(.headline)
+                    Text("see what each step gave back")
+                        .font(.hand(16))
+                        .foregroundStyle(Theme.accent)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .foregroundStyle(.primary)
+            .sticker(fill: Theme.mintSoft, padding: 16)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Guides for space Storage App isn't allowed to clear itself.
+private struct OtherAppsSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Other apps")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text("we'll show you how")
+                    .font(.hand(16))
+                    .foregroundStyle(Theme.accent)
+            }
+            ForEach(OtherAppGuide.allCases) { guide in
+                Button {
+                    model.open(guide)
+                } label: {
+                    ActionCard(illustration: guide.illustration, title: guide.title, subtitle: guide.subtitle, figure: nil)
+                }
+                .buttonStyle(.plain)
+            }
+            NavigationLink {
+                ResultsView()
+            } label: {
+                ActionCard(illustration: .piggy, title: "Results", subtitle: "What every cleanup and guide gave back, measured", figure: nil)
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 
