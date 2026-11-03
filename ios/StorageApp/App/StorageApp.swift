@@ -13,11 +13,14 @@ struct StorageAppEntry: App {
                 .environment(model)
                 .environment(purchases)
                 .tint(Theme.accent)
+                .task { await purchases.start() }
         }
         // Reads device storage on launch and each time the app returns to the foreground.
         .onChange(of: scenePhase, initial: true) { _, phase in
             if phase == .active {
                 Task { await model.refreshDeviceStorage() }
+                // Picks up a subscription cancelled, renewed or refunded while away.
+                Task { await purchases.refreshEntitlements() }
             }
         }
     }

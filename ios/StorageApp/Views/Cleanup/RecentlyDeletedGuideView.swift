@@ -190,11 +190,7 @@ struct RecentlyDeletedGuideView: View {
         case .done: DonePage(guide: guide, progress: progress)
         case .measure: MeasurePage(guide: guide, progress: progress)
         case .summary:
-            SummaryPage(
-                guide: guide, swap: swap, progress: progress,
-                seeFullSteps: { showFullSteps(keepOn: false) },
-                turnStepsOn: { showFullSteps(keepOn: true) }
-            )
+            SummaryPage(guide: guide, swap: swap, progress: progress)
         default: drawnPage
         }
     }
@@ -206,6 +202,7 @@ struct RecentlyDeletedGuideView: View {
                     StepNumber(number: step.rawValue, progress: progress)
                     Text(step.title(swap: swap))
                         .font(.display(28))
+                        .boiling()
                         .tracking(-0.9)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
@@ -227,9 +224,6 @@ struct RecentlyDeletedGuideView: View {
                 if step == .select {
                     LookForThese(ids: guide.removedIDs, stills: swap == .stills)
                 }
-                if showSteps {
-                    skipStepsButton
-                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 14)
@@ -240,27 +234,26 @@ struct RecentlyDeletedGuideView: View {
         .accessibilityHint(step.note(swap: swap))
     }
 
-    /// Turns the steps off for good and switches to the one-page summary.
-    private var skipStepsButton: some View {
-        Button {
-            showSteps = false
-            seeFullSteps = false
-            forward = true
-            withAnimation(.snappy) { step = .summary }
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("I know these steps. Show a quick summary from now on.")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Theme.accent)
-                Text("You can turn the steps back on in Settings.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    /// Small links under the buttons, pinned so they never scroll out of view.
+    @ViewBuilder
+    private var stepLinks: some View {
+        if step == .summary {
+            HStack(spacing: 20) {
+                Button("See the Full Steps") { showFullSteps(keepOn: false) }
+                Button("Turn Steps Back On") { showFullSteps(keepOn: true) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
+            .modifier(GuideLinkStyle())
+        } else if step.isInPhotos || step == .why, showSteps {
+            // Turns the steps off for good and switches to the one-page summary.
+            Button("Skip these steps from now on") {
+                showSteps = false
+                seeFullSteps = false
+                forward = true
+                withAnimation(.snappy) { step = .summary }
+            }
+            .modifier(GuideLinkStyle())
+            .accessibilityHint("Shows a one-page summary instead. You can turn the steps back on in Settings.")
         }
-        .buttonStyle(.plain)
-        .padding(.top, 10)
     }
 
     /// From the summary: the full steps, this time only or from now on.
@@ -311,6 +304,7 @@ struct RecentlyDeletedGuideView: View {
                         .buttonStyle(.soft)
                 }
             }
+            stepLinks
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
@@ -339,6 +333,7 @@ private struct DonePage: View {
                     .handwritten(progress, start: 0, length: 0.2)
                 Text(title)
                     .font(.display(34))
+                    .boiling()
                     .tracking(-1.1)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
@@ -534,6 +529,7 @@ private struct MeasurePage: View {
                     .handwritten(progress, start: 0, length: 0.2)
                 Text(done ? "You got your space back" : "Not back yet")
                     .font(.display(34))
+                    .boiling()
                     .tracking(-1.1)
                     .accessibilityAddTraits(.isHeader)
 
@@ -638,16 +634,26 @@ private struct MeasurePage: View {
     }
 }
 
+/// The guide's small text links: tinted, with a tap area big enough to hit.
+private struct GuideLinkStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.accent)
+            .buttonStyle(.plain)
+            .frame(minHeight: 32)
+            .contentShape(Rectangle())
+    }
+}
+
 // MARK: - Summary page
 
-/// All the steps on one page, for people who turned the steps off, with a way
-/// back to the full steps.
+/// All the steps on one page, for people who turned the steps off. The way
+/// back to the full steps is in the guide's controls.
 private struct SummaryPage: View {
     let guide: CleanupGuide
     let swap: RecentlyDeletedGuideView.Swap
     let progress: CGFloat
-    let seeFullSteps: () -> Void
-    let turnStepsOn: () -> Void
 
     private var lines: [String] {
         [
@@ -675,6 +681,7 @@ private struct SummaryPage: View {
                     .handwritten(progress, start: 0, length: 0.2)
                 Text("Empty Recently Deleted")
                     .font(.display(34))
+                    .boiling()
                     .tracking(-1.1)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
@@ -708,15 +715,6 @@ private struct SummaryPage: View {
                 .sticker(radius: 24, padding: 0)
 
                 LookForThese(ids: guide.removedIDs, stills: swap == .stills)
-
-                HStack(spacing: 18) {
-                    Button("See the Full Steps", action: seeFullSteps)
-                    Button("Turn Steps Back On", action: turnStepsOn)
-                }
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Theme.accent)
-                .buttonStyle(.plain)
-                .padding(.top, 4)
             }
             .padding(.horizontal, 20)
             .padding(.top, 18)

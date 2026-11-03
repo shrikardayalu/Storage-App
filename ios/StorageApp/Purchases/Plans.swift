@@ -1,25 +1,39 @@
 import Foundation
 
-/// Whether the paywall is live. Off until the app has been tested and pricing
-/// is ready to launch; while off, nothing is gated and no paywall UI appears.
+/// Whether the paywall is live. While on, the shrink tools need Pro and
+/// onboarding ends on the paywall.
 ///
-/// To try the flow without changing code, launch with `-paywallEnabled YES`
-/// (it lands in UserDefaults' argument domain, like `ScreenshotRoute`).
+/// Launch with `-paywallEnabled NO` to try the app with nothing gated (it
+/// lands in UserDefaults' argument domain, like `ScreenshotRoute`).
 enum PaywallConfig {
-    static let isLaunched = false
+    static let isLaunched = true
 
     static var isEnabled: Bool {
-        isLaunched || UserDefaults.standard.bool(forKey: "paywallEnabled")
+        UserDefaults.standard.object(forKey: "paywallEnabled") as? Bool ?? isLaunched
     }
+
+    /// Debug builds fake a purchase when the App Store has no products to sell,
+    /// e.g. an xtool install on a free Apple ID. Release builds never do.
+    static var allowsSimulatedPurchases: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
+    /// Links App Review requires on a subscription paywall. Terms are Apple's
+    /// standard EULA until the site has its own; update the privacy link when
+    /// the site's real domain is set.
+    static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    static let privacyURL = URL(string: "https://storageapp.example.com/privacy")!
 }
 
-/// What Pro can be bought as. Prices match web/src/lib/pricing.ts.
+/// What Pro can be bought as. Prices match web/src/lib/pricing.ts and
+/// `Products.storekit`; on a real store the paywall shows `Product.displayPrice`.
 ///
 /// The main paywall shows only `weekly` and `annual`. `lifetime` is offered
 /// once, after someone dismisses the paywall without buying.
-///
-/// Purchases are simulated (`PurchaseStore`); swap in StoreKit product IDs and
-/// `Product.displayPrice` before launch.
 enum Plan: String, CaseIterable, Identifiable {
     case weekly
     case annual
@@ -28,6 +42,17 @@ enum Plan: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     static let paywallPlans: [Plan] = [.weekly, .annual]
+
+    /// App Store Connect product IDs. Weekly and annual share one subscription
+    /// group, so switching between them replaces rather than stacks.
+    var productID: String {
+        "com.example.storageapp.pro.\(rawValue)"
+    }
+
+    init?(productID: String) {
+        guard let plan = Plan.allCases.first(where: { $0.productID == productID }) else { return nil }
+        self = plan
+    }
 
     var title: String {
         switch self {
@@ -73,10 +98,9 @@ enum Plan: String, CaseIterable, Identifiable {
     }
 
     static let proFeatures: [(symbol: String, text: String)] = [
-        ("film","Shrink 4K videos without deleting them"),
+        ("film", "Shrink 4K videos without deleting them"),
         ("scissors", "Trim long recordings to the good part"),
         ("livephoto", "Keep Live Photos as stills"),
-        ("photo.on.rectangle", "Re-save bloated screenshots"),
         ("square.stack.3d.up", "Pick the best shot from every burst"),
     ]
 }

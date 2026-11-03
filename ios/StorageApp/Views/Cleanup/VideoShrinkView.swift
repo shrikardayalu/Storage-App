@@ -29,6 +29,7 @@ struct VideosView: View {
                         .handwritten(progress, start: 0, length: 0.3)
                     Text("Shrink videos")
                         .font(.display(32))
+                        .boiling()
                         .tracking(-1)
                         .accessibilityAddTraits(.isHeader)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
@@ -195,6 +196,7 @@ struct VideoShrinkView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.filename)
                         .font(.display(26))
+                        .boiling()
                         .tracking(-0.8)
                         .lineLimit(1)
                         .truncationMode(.middle)

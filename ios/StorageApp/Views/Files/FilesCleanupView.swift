@@ -120,6 +120,7 @@ struct FilesCleanupView: View {
                 .foregroundStyle(Theme.accent)
             Text("Clean up files")
                 .font(.display(32))
+                .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
             if let scan = model.folderScan {

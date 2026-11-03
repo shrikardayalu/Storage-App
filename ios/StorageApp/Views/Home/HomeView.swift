@@ -39,7 +39,8 @@ struct HomeView: View {
         HStack(alignment: .center, spacing: 12) {
             IllustrationView(.phoneSparkle, size: 48)
             Text("Storage App")
-                .font(.largeTitle.bold())
+                .font(.display(34))
+                .boiling()
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
             TestModeBadge()
@@ -239,19 +240,20 @@ private struct SpaceWaitingCard: View {
     }
 }
 
-/// What the app can do to the test album so far.
+/// What the app can do to the test album so far. The shrink tools need Pro;
+/// without it their cards open the paywall instead.
 private struct CleanupSection: View {
     @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
+    @State private var showingPaywall = false
 
     var body: some View {
         let live = model.convertibleLivePhotos
-        let liveSaving = live.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
+        let liveSaving = model.livePhotoSaving
         let bursts = model.bursts
-        let burstSaving = bursts.reduce(Int64(0)) { $0 + $1.savedBytes(keeping: $1.suggestedKeeper) }
+        let burstSaving = model.burstSaving
         let videos = model.shrinkableVideos
-        let videoSaving = videos.reduce(Int64(0)) {
-            $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .hd1080, trim: .full($1.duration ?? 0)))
-        }
+        let videoSaving = model.videoSaving
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Clean up")
@@ -262,30 +264,30 @@ private struct CleanupSection: View {
                     .foregroundStyle(Theme.accent)
             }
             if !live.isEmpty {
-                NavigationLink {
+                proLink {
                     LivePhotoStillsView()
                 } label: {
                     ActionCard(
                         illustration: .photo,
                         title: "Live Photos \u{2192} stills",
                         subtitle: "\(live.count) Live \(live.count == 1 ? "Photo" : "Photos"), same photos without the video",
-                        figure: "\u{2212}" + ByteFormatter.string(liveSaving, precision: .twoDecimals)
+                        figure: "\u{2212}" + ByteFormatter.string(liveSaving, precision: .twoDecimals),
+                        isPro: purchases.requiresPro
                     )
                 }
-                .buttonStyle(.plain)
             }
             if !videos.isEmpty {
-                NavigationLink {
+                proLink {
                     VideosView()
                 } label: {
                     ActionCard(
                         illustration: .compress,
                         title: "Shrink videos",
                         subtitle: "\(videos.count) \(videos.count == 1 ? "video" : "videos"), compress or trim, same memories",
-                        figure: "\u{2212}" + ByteFormatter.string(videoSaving, precision: .twoDecimals)
+                        figure: "\u{2212}" + ByteFormatter.string(videoSaving, precision: .twoDecimals),
+                        isPro: purchases.requiresPro
                     )
                 }
-                .buttonStyle(.plain)
             }
             NavigationLink {
                 JunkReviewView()
@@ -299,17 +301,17 @@ private struct CleanupSection: View {
             }
             .buttonStyle(.plain)
             if !bursts.isEmpty {
-                NavigationLink {
+                proLink {
                     BurstPicksView()
                 } label: {
                     ActionCard(
                         illustration: .stackSmall,
                         title: "Best shot of each burst",
                         subtitle: "\(bursts.count) \(bursts.count == 1 ? "burst" : "bursts"), keep one shot, remove the rest",
-                        figure: "\u{2212}" + ByteFormatter.string(burstSaving, precision: .twoDecimals)
+                        figure: "\u{2212}" + ByteFormatter.string(burstSaving, precision: .twoDecimals),
+                        isPro: purchases.requiresPro
                     )
                 }
-                .buttonStyle(.plain)
             }
             Button {
                 model.isSelecting = true
@@ -324,10 +326,27 @@ private struct CleanupSection: View {
             }
             .buttonStyle(.plain)
         }
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallFlow(context: PaywallContext(proBytes: model.proSaving))
+                .environment(purchases)
+                .tint(Theme.accent)
+        }
     }
 }
 
 extension CleanupSection {
+    /// Opens `destination` for Pro, or the paywall for everyone else.
+    @ViewBuilder
+    fileprivate func proLink<Destination: View>(@ViewBuilder destination: @escaping () -> Destination, label: () -> ActionCard) -> some View {
+        if purchases.requiresPro {
+            Button { showingPaywall = true } label: { label() }
+                .buttonStyle(.plain)
+        } else {
+            NavigationLink(destination: destination, label: label)
+                .buttonStyle(.plain)
+        }
+    }
+
     fileprivate var junkSubtitle: String {
         guard let report = model.junkReport else { return "Copies, blurry and black shots, receipts, old screenshots" }
         if report.isEmpty { return "Nothing found. Look again after adding photos" }
@@ -436,12 +455,25 @@ private struct ActionCard: View {
     let title: String
     let subtitle: String
     let figure: String?
+    /// Shows a PRO tag: tapping opens the paywall.
+    var isPro = false
 
     var body: some View {
         HStack(spacing: 14) {
             IllustrationView(illustration, size: 52)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
+                HStack(spacing: 6) {
+                    Text(title).font(.headline)
+                    if isPro {
+                        Text("PRO")
+                            .font(.caption2.weight(.heavy))
+                            .tracking(0.8)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Theme.mint, in: Capsule())
+                            .foregroundStyle(Color(hex: 0x1A1A17))
+                    }
+                }
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)

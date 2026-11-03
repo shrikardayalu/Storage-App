@@ -69,6 +69,9 @@ targets:
     platform: iOS
     sources:
       - path: StorageAppTests
+      # StoreKit Testing (SKTestSession) reads the same products the app runs with.
+      - path: Products.storekit
+        buildPhase: resources
     dependencies:
       - target: StorageApp
       - package: StorageCore
@@ -85,6 +88,9 @@ schemes:
         StorageAppTests: [test]
     run:
       config: Debug
+      # Local App Store for Xcode runs: buy, restore, cancel and refund with no
+      # developer account (Debug > StoreKit > Manage Transactions).
+      storeKitConfiguration: Products.storekit
     test:
       config: Debug
       gatherCoverageData: true

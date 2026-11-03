@@ -1,12 +1,35 @@
 import SwiftUI
 
-/// Tab bar shell. Error alerts live here so any tab can raise them.
+/// Tab bar shell, with onboarding over it on first run. Error alerts live
+/// here so any tab can raise them.
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
+    @AppStorage(OnboardingAnswers.completedKey) private var onboardingDone = false
 
     var body: some View {
+        ZStack {
+            tabs
+            if showsOnboarding {
+                OnboardingFlow(startAt: ScreenshotRoute.current?.onboardingStart ?? .hook,
+                               sampleReveal: ScreenshotRoute.current?.onboardingStart == nil ? nil : .sample) {
+                    withAnimation(.easeInOut(duration: 0.45)) { onboardingDone = true }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 1.04)))
+                .zIndex(1)
+            }
+        }
+    }
+
+    /// Screenshot runs show onboarding only when asked for it.
+    private var showsOnboarding: Bool {
+        if let route = ScreenshotRoute.current { return route.onboardingStart != nil && !onboardingDone }
+        return !onboardingDone
+    }
+
+    private var tabs: some View {
         @Bindable var model = model
-        TabView(selection: $model.selectedTab) {
+        return TabView(selection: $model.selectedTab) {
             NavigationStack { HomeView() }
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(AppTab.home)

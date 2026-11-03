@@ -87,6 +87,7 @@ struct LivePhotoStillsView: View {
                 .handwritten(progress, start: 0, length: 0.2)
             Text("Live Photos → stills")
                 .font(.display(32))
+                .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .firstTextBaseline, spacing: 6) {

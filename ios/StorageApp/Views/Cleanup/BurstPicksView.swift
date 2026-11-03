@@ -111,6 +111,7 @@ struct BurstPicksView: View {
                 .handwritten(progress, start: 0, length: 0.2)
             Text("Best shot of each burst")
                 .font(.display(32))
+                .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
             HStack(alignment: .firstTextBaseline, spacing: 6) {

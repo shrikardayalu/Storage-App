@@ -83,6 +83,7 @@ struct CleanupReviewView: View {
                 .handwritten(progress, start: 0, length: 0.18)
             Text("Review what you picked")
                 .font(.display(32))
+                .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
         }

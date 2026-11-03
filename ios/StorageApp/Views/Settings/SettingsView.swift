@@ -1,4 +1,5 @@
 import StorageCore
+import StoreKit
 import SwiftUI
 import UIKit
 
@@ -64,6 +65,13 @@ struct SettingsView: View {
 
             #if DEBUG
             StorageHistoryDebugSection()
+            Section {
+                Button("Show Onboarding Again") {
+                    UserDefaults.standard.set(false, forKey: OnboardingAnswers.completedKey)
+                }
+            } footer: {
+                Text("Debug builds only. Onboarding opens over the app straight away.")
+            }
             #endif
 
             Section("About") {
@@ -99,25 +107,58 @@ struct SettingsView: View {
     }
 }
 
-/// Pro status, the way into the paywall, and a reset for testing the
-/// simulated purchases. Only shown while the paywall is enabled.
+/// Pro status, the way into the paywall, restore, and managing the
+/// subscription. Only shown while the paywall is enabled.
 private struct ProSection: View {
     @Environment(PurchaseStore.self) private var purchases
     @Binding var showingPaywall: Bool
+    @State private var showingManage = false
+    @State private var restoreMessage: String?
 
     var body: some View {
         Section {
             if let plan = purchases.activePlan {
                 LabeledContent("Plan", value: plan.title)
+                if plan.isSubscription && !purchases.isSimulated {
+                    Button("Manage Subscription") { showingManage = true }
+                }
             } else {
                 Button("Upgrade to Pro") { showingPaywall = true }
             }
-            Button("Reset Simulated Purchase", role: .destructive) { purchases.reset() }
+            Button("Restore Purchases") {
+                Task {
+                    restoreMessage = await purchases.restore()
+                        ? "Pro is active on this iPhone."
+                        : "No earlier purchase was found for this Apple ID."
+                }
+            }
+            .disabled(purchases.isPurchasing)
+            #if DEBUG
+            if purchases.isSimulated {
+                Button("Reset Simulated Purchase", role: .destructive) { purchases.resetSimulation() }
+            }
+            #endif
         } header: {
             Text("Pro")
         } footer: {
-            Text("Purchases are simulated. Nothing is charged, and resetting also brings back the one-time lifetime offer.")
+            Text(footer)
         }
+        .manageSubscriptionsSheet(isPresented: $showingManage)
+        .alert(
+            "Restore Purchases",
+            isPresented: Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(restoreMessage ?? "")
+        }
+    }
+
+    private var footer: String {
+        if purchases.isSimulated {
+            return "This build can't reach the App Store, so purchases are simulated. Nothing is charged; resetting also brings back the one-time lifetime offer."
+        }
+        return "Subscriptions renew automatically until cancelled. Cancel anytime in Manage Subscription; Pro stays on until the end of the period you paid for."
     }
 }
 

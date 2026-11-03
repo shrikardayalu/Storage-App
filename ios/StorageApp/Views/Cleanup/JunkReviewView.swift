@@ -126,6 +126,7 @@ struct JunkReviewView: View {
                 .foregroundStyle(Theme.accent)
             Text("Duplicates and junk")
                 .font(.display(32))
+                .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
             if report != nil, !model.isAnalyzing {

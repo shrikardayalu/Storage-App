@@ -290,6 +290,26 @@ final class AppModel {
         (albumScan?.items.filter(\.isShrinkableVideo) ?? []).sorted { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
     }
 
+    /// What Live Photos to stills could save, if all were converted.
+    var livePhotoSaving: Int64 {
+        convertibleLivePhotos.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
+    }
+
+    /// What keeping the suggested shot of each burst could save.
+    var burstSaving: Int64 {
+        bursts.reduce(Int64(0)) { $0 + $1.savedBytes(keeping: $1.suggestedKeeper) }
+    }
+
+    /// What shrinking every video to 1080p, untrimmed, could save.
+    var videoSaving: Int64 {
+        shrinkableVideos.reduce(Int64(0)) {
+            $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .hd1080, trim: .full($1.duration ?? 0)))
+        }
+    }
+
+    /// Everything the Pro tools could save in the scanned album, without deleting a memory.
+    var proSaving: Int64 { livePhotoSaving + burstSaving + videoSaving }
+
     // MARK: Duplicates + junk
 
     /// Measures any photos not measured yet, then updates the junk report. Read-only.

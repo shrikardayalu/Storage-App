@@ -15,6 +15,20 @@ enum ScreenshotRoute: String {
     case whatsapp
     /// The results screen with sample numbers (Build Plan step 11). Nothing is saved.
     case results
+    /// Onboarding's first screen, its reveal with sample numbers, and the paywall (step 12).
+    case onboarding
+    case reveal
+    case paywall
+
+    /// Where onboarding opens for this route; nil keeps it hidden.
+    var onboardingStart: OnboardingStep? {
+        switch self {
+        case .onboarding: .hook
+        case .reveal: .reveal
+        case .paywall: .paywall
+        default: nil
+        }
+    }
 
     static var current: ScreenshotRoute? {
         UserDefaults.standard.string(forKey: "screenshotScreen").flatMap(ScreenshotRoute.init(rawValue:))
@@ -35,6 +49,8 @@ enum ScreenshotRoute: String {
         case .results:
             model.showSampleResults()
             model.isShowingResults = true
+        case .onboarding, .reveal, .paywall:
+            break
         }
     }
 }
