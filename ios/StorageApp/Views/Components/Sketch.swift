@@ -127,13 +127,17 @@ enum Sketch {
         let dx = end.x - start.x, dy = end.y - start.y
         let length = max(1, hypot(dx, dy))
         let control = CGPoint(x: mid.x - dy / length * bend, y: mid.y + dx / length * bend)
-        let points = (0...8).map { i -> CGPoint in
-            let t = CGFloat(i) / 8
-            let u = 1 - t
-            return CGPoint(
-                x: u * u * start.x + 2 * u * t * control.x + t * t * end.x,
-                y: u * u * start.y + 2 * u * t * control.y + t * t * end.y
-            )
+        var points: [CGPoint] = []
+        for i in 0...8 {
+            let t: CGFloat = CGFloat(i) / 8
+            let u: CGFloat = 1 - t
+            // Quadratic Bézier weights, split up so the type checker stays fast.
+            let a: CGFloat = u * u
+            let b: CGFloat = 2 * u * t
+            let c: CGFloat = t * t
+            let x: CGFloat = a * start.x + b * control.x + c * end.x
+            let y: CGFloat = a * start.y + b * control.y + c * end.y
+            points.append(CGPoint(x: x, y: y))
         }
         var path = curve(points, wobble: 0.8, seed: seed)
         // Arrowhead along the curve's final direction.
