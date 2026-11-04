@@ -21,6 +21,9 @@ What's ready in the repo, and the steps only the account holder can do.
 - **Bundle ID** is still `com.example.storageapp` (also in `xtool.yml`,
   `Plan.productID`, `Products.storekit`, and the workflow's `BUNDLE_ID`).
 - **Photos permission text** in `project.yml` and `xtool-Info.plist` mentions the test album.
+- **The legal pages need the real domain and a support email**: `NEXT_PUBLIC_SITE_URL` and
+  `NEXT_PUBLIC_SUPPORT_EMAIL` for the site, and `PaywallConfig.siteURL` in the app.
+  What to paste into App Store Connect is in `docs/APP_STORE.md`.
 
 ## Steps that need the paid Apple Developer account ($99/year)
 

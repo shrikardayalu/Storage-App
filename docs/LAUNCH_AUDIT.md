@@ -76,25 +76,13 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
 
 ## Needs my decision
 
-1. **Test Mode is on in every build (Guidelines 2.1 and 4.2).** The app reads and changes only an album named "Storage App Test". A reviewer without that album sees an empty app, plus a "Test Mode" badge, "Test album" cards and a Photos permission string that mentions the test album. Apple would very likely reject this as incomplete.
-   - Options:
-     - (a) Before submitting, widen the Photos code to the whole library behind the same review-and-confirm screens, then rewrite `check-no-device-access.sh` and the usage string.
-     - (b) Keep Test Mode, and ship only to TestFlight for now.
-     - (c) Submit with Test Mode and explain in the review notes how to create the album.
-   - **Recommendation: (b) now, then (a) before App Store submission.** (c) will very likely be rejected.
-2. **The privacy policy link is a placeholder, and the site's policy covers only the website.** `PaywallConfig.privacyURL` is `https://storageapp.example.com/privacy`. `web/src/app/privacy` covers only the waitlist and cookies. App Review (5.1.1) needs a policy that covers the app.
-   - Options:
-     - (a) Add an app section to the site's policy, then point `privacyURL` at the real domain.
-     - (b) Use a separate hosted policy.
-   - **Recommendation: (a).** The section can say:
-     - The app collects no data.
-     - Photos and files are analysed on the device and never uploaded.
-     - Purchases are handled by Apple.
-     - The app has no analytics.
-
-   This is true today, because the safety script fails CI on any network code.
-3. **Terms of Use point at Apple's standard EULA.** That's allowed. Your own terms are optional.
-   - **Recommendation:** keep Apple's EULA, and in App Store Connect leave the License Agreement as the standard one, so the two match.
+1. **Test Mode: decided, it stays on for now.** The app reads and changes only the "Storage App Test" album. App Review may still reject a Test Mode build under 2.1. `docs/APP_STORE.md` has review notes that tell the reviewer how to create the album, which gives it the best chance. If it is rejected, the fix is to widen the Photos code to the whole library behind the same review screens.
+2. **Privacy policy: done.** It needs your domain and an email address. `/privacy` now covers the app, and new `/terms` and `/support` pages exist on the site (see Added after the audit, below). Still needed from you:
+   - the real domain, in `NEXT_PUBLIC_SITE_URL` and `PaywallConfig.siteURL`;
+   - a support inbox, in `NEXT_PUBLIC_SUPPORT_EMAIL`;
+   - your legal name, for the copyright line;
+   - a reading of both pages by someone qualified.
+3. **Terms: done.** The site's `/terms` applies Apple's Standard EULA and adds the app's own terms. Leave the License Agreement in App Store Connect as Apple's standard one. The terms don't name a governing law, because that depends on where you or your business are. A lawyer can add it.
 4. **The paywall's ✕ appears after 1.6 seconds.** It's tappable while invisible, so nobody is trapped, but reviewers sometimes flag a delayed close.
    - Options: keep it; shorten it to about 0.5 seconds; or show it immediately.
    - **Recommendation: shorten it to about 0.5 seconds.**
@@ -110,11 +98,21 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
    - **Recommendation: keep it.** If review objects, drop the button and keep the written steps.
 9. **The display name is "Storage App", and the bundle ID is `com.example.storageapp`.** Both are placeholders, already listed in `docs/RELEASE.md`. Decide them before the App Store Connect record is created, because product IDs derive from the bundle ID.
 
+## Added after the audit
+
+| What | Where |
+|---|---|
+| **Privacy Policy** covering the app and the site. The app collects no data: photos and the picked Files folder are analysed on the iPhone, and readings and settings stay on the device. Purchases are handled by Apple. | `web/src/app/privacy/page.tsx` |
+| **Terms of Use**: Apple's Standard EULA plus the app's own terms. They cover approving deletions, Files deletions being permanent, the auto-renewal and Lifetime terms the paywall shows, refunds through Apple, the limits on liability, and the Apple clause. | `web/src/app/terms/page.tsx` |
+| **Support page** (the App Store Connect Support URL): restore, cancel, Lifetime on top of a subscription, refunds, Photos access in Test Mode, Recently Deleted, and privacy. It has an email contact once `NEXT_PUBLIC_SUPPORT_EMAIL` is set. | `web/src/app/support/page.tsx`, `web/src/lib/site.ts` |
+| **The app links all three from one `PaywallConfig.siteURL`.** Terms now point at the site's `/terms`, and Settings gains Support. A test checks the URLs. | `ios/StorageApp/Purchases/Plans.swift`, `SettingsView.swift` |
+| **App Store Connect copy and answers**: subtitle, description, keywords, category, age rating, App Privacy, export compliance, IAP metadata, subscription levels, and App Review notes for Test Mode. | `docs/APP_STORE.md` |
+
 ## Needs a paid Apple account or a real device
 
 - Enrol, pick the real bundle ID, and create the App Store Connect record. Create the "Pro" subscription group (Weekly, Annual) and the Lifetime IAP with the IDs from `Plan.productID`, then sign the Paid Apps agreement and add tax and banking. Until products are "Ready to Submit", a TestFlight build can't load them: release builds then say the store isn't available, and debug builds simulate.
 - **Sandbox and TestFlight purchases on a device**: buy, cancel, renew (sandbox runs time faster), Ask to Buy (pending), refund, and restore on a second device. Also check that Lifetime on top of Weekly shows Manage Subscription (fixed above).
-- **App Privacy in App Store Connect**: "Data Not Collected", which matches the manifest. After archiving, check Xcode's privacy report, which merges any SDK manifests (the app has no third-party SDKs today).
+- **App Privacy in App Store Connect**: "Data Not Collected", which matches the manifest (see `docs/APP_STORE.md`). After archiving, check Xcode's privacy report, which merges any SDK manifests (the app has no third-party SDKs today).
 - **App Store screenshots** at the sizes App Store Connect asks for (6.9" and 6.5" iPhone). CI's simulator screenshots are a 6.3" iPhone Pro and aren't store-ready.
 - **On a real phone**, check what the simulator can't:
   - iOS's own delete prompt, limited Photos access, and iCloud-only videos (now with the "can't preview" state).
@@ -122,7 +120,7 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
   - Free-space readings against Settings.
   - `photos-redirect://` and `whatsapp://` opening.
   - Large text on a small phone (iPhone SE and mini), where the fixed-height onboarding pages are tightest.
-- **Age rating, review notes, and a demo path for the reviewer.** This depends on decision 1.
+- **Age rating, review notes, and a demo path for the reviewer**: drafted in `docs/APP_STORE.md`, ready to paste once the record exists.
 
 ## How this was verified
 
