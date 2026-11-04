@@ -189,6 +189,8 @@ struct BurstPicksView: View {
             check = value
             error = nil
         case .failure(let failure):
+            // A failed check leaves nothing approved, not the last check's result.
+            check = nil
             error = failure
         }
     }

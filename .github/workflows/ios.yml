@@ -64,6 +64,13 @@ jobs:
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
+      - name: Check the app bundle (privacy manifest, usage strings)
+        working-directory: ios
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/StorageApp.app
+          test -f "$APP/PrivacyInfo.xcprivacy" || { echo "::error::PrivacyInfo.xcprivacy is missing from the app bundle"; exit 1; }
+          plutil -lint "$APP/PrivacyInfo.xcprivacy"
+          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$APP/Info.plist"
       - name: Take screenshots
         working-directory: ios
         env:
@@ -84,6 +91,16 @@ jobs:
               xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
             done
           done
+          # Large text, to check the fixed-height screens still fit.
+          xcrun simctl ui "$UDID" appearance light
+          xcrun simctl ui "$UDID" content_size accessibility-large
+          for screen in onboarding reveal paywall home; do
+            xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
+            sleep 4
+            xcrun simctl io "$UDID" screenshot "screenshots/$screen-largetext.png"
+            xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
+          done
+          xcrun simctl ui "$UDID" content_size large
           ls screenshots
       - name: Upload screenshots
         uses: actions/upload-artifact@v4

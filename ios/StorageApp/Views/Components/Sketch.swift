@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Hand-drawn pieces shared with the website's look: wobbly ink strokes that
 // draw themselves in, a handwriting font, paper grain, rubber stamps, and torn
@@ -13,9 +14,42 @@ extension Font {
         .custom("Noteworthy-Bold", size: size, relativeTo: style)
     }
 
-    /// Heavy, tight headline type, like the site's display face.
+    /// Heavy, tight headline type, like the site's display face. Follows
+    /// Dynamic Type from `size` (the size at the default text setting).
     static func display(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
-        .system(size: size, weight: .heavy, design: .default)
+        .system(size: displaySize(size, relativeTo: style), weight: .heavy, design: .default)
+    }
+
+    /// Display headlines start big, so they grow at most this much with the
+    /// largest text settings; past that they'd push buttons off fixed screens.
+    static let displayMaxScale: CGFloat = 1.35
+
+    /// `size` scaled for the text setting in `traits` (the app's current one by
+    /// default), capped at `displayMaxScale`.
+    static func displaySize(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle,
+                            traits: UITraitCollection? = nil) -> CGFloat {
+        let metrics = UIFontMetrics(forTextStyle: style.uiKit)
+        let scaled = traits.map { metrics.scaledValue(for: size, compatibleWith: $0) } ?? metrics.scaledValue(for: size)
+        return min(scaled, size * displayMaxScale)
+    }
+}
+
+extension Font.TextStyle {
+    var uiKit: UIFont.TextStyle {
+        switch self {
+        case .largeTitle: .largeTitle
+        case .title: .title1
+        case .title2: .title2
+        case .title3: .title3
+        case .headline: .headline
+        case .subheadline: .subheadline
+        case .body: .body
+        case .callout: .callout
+        case .footnote: .footnote
+        case .caption: .caption1
+        case .caption2: .caption2
+        @unknown default: .body
+        }
     }
 }
 
@@ -127,13 +161,17 @@ enum Sketch {
         let dx = end.x - start.x, dy = end.y - start.y
         let length = max(1, hypot(dx, dy))
         let control = CGPoint(x: mid.x - dy / length * bend, y: mid.y + dx / length * bend)
-        let points = (0...8).map { i -> CGPoint in
-            let t = CGFloat(i) / 8
-            let u = 1 - t
-            return CGPoint(
-                x: u * u * start.x + 2 * u * t * control.x + t * t * end.x,
-                y: u * u * start.y + 2 * u * t * control.y + t * t * end.y
-            )
+        var points: [CGPoint] = []
+        for i in 0...8 {
+            let t: CGFloat = CGFloat(i) / 8
+            let u: CGFloat = 1 - t
+            // Quadratic Bézier weights, split up so the type checker stays fast.
+            let a: CGFloat = u * u
+            let b: CGFloat = 2 * u * t
+            let c: CGFloat = t * t
+            let x: CGFloat = a * start.x + b * control.x + c * end.x
+            let y: CGFloat = a * start.y + b * control.y + c * end.y
+            points.append(CGPoint(x: x, y: y))
         }
         var path = curve(points, wobble: 0.8, seed: seed)
         // Arrowhead along the curve's final direction.

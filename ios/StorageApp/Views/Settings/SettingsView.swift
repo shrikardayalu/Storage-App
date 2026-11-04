@@ -77,6 +77,9 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Version", value: AppInfo.versionString)
                 LabeledContent("Mode", value: "Test Mode (test album only)")
+                Link("Support", destination: PaywallConfig.supportURL)
+                Link("Privacy Policy", destination: PaywallConfig.privacyURL)
+                Link("Terms of Use", destination: PaywallConfig.termsURL)
             }
         }
         .scrollContentBackground(.hidden)
@@ -119,7 +122,8 @@ private struct ProSection: View {
         Section {
             if let plan = purchases.activePlan {
                 LabeledContent("Plan", value: plan.title)
-                if plan.isSubscription && !purchases.isSimulated {
+                // Also shown with Lifetime, so a subscription bought earlier can still be cancelled.
+                if purchases.hasActiveSubscription && !purchases.isSimulated {
                     Button("Manage Subscription") { showingManage = true }
                 }
             } else {
@@ -157,6 +161,9 @@ private struct ProSection: View {
     private var footer: String {
         if purchases.isSimulated {
             return "This build can't reach the App Store, so purchases are simulated. Nothing is charged; resetting also brings back the one-time lifetime offer."
+        }
+        if purchases.activePlan == .lifetime && purchases.hasActiveSubscription {
+            return "You have Lifetime, and a subscription that still renews. Cancel it in Manage Subscription so you aren't charged again. Pro stays on either way."
         }
         return "Subscriptions renew automatically until cancelled. Cancel anytime in Manage Subscription; Pro stays on until the end of the period you paid for."
     }

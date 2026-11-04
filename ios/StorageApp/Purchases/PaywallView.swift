@@ -77,7 +77,8 @@ struct PaywallView: View {
                     features
                     VStack(spacing: 12) {
                         ForEach(Plan.paywallPlans) { plan in
-                            PlanOption(plan: plan, price: purchases.displayPrice(plan), isSelected: plan == selected) {
+                            PlanOption(plan: plan, price: purchases.displayPrice(plan), annualPerWeek: purchases.annualPerWeek,
+                                       savingsPercent: purchases.annualSavingsPercent, isSelected: plan == selected) {
                                 selected = plan
                             }
                         }
@@ -190,9 +191,10 @@ struct PaywallView: View {
             .disabled(purchases.isPurchasing)
 
             Text(termsLine)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             LegalLinks(onRestore: restore)
                 .disabled(purchases.isPurchasing)
@@ -204,7 +206,7 @@ struct PaywallView: View {
     }
 
     private var termsLine: String {
-        "\(purchases.displayPrice(selected))\(selected.cadence), renews automatically. Cancel anytime in Settings."
+        purchases.disclosure(selected)
     }
 
     private func buy() {
@@ -215,13 +217,20 @@ struct PaywallView: View {
     }
 
     private func restore() {
-        Task {
-            if await purchases.restore() {
-                boughtTick += 1
-                onPurchased()
-            } else {
-                message = PaywallMessage(title: "Restore Purchases", body: "No earlier purchase was found for this Apple ID.")
-            }
+        restorePurchases(purchases, onPurchased: onPurchased, boughtTick: $boughtTick, message: $message)
+    }
+}
+
+/// Restore from either paywall screen: Pro found closes the flow, nothing found says so.
+@MainActor
+private func restorePurchases(_ purchases: PurchaseStore, onPurchased: @escaping () -> Void,
+                              boughtTick: Binding<Int>, message: Binding<PaywallMessage?>) {
+    Task {
+        if await purchases.restore() {
+            boughtTick.wrappedValue += 1
+            onPurchased()
+        } else {
+            message.wrappedValue = PaywallMessage(title: "Restore Purchases", body: "No earlier purchase was found for this Apple ID.")
         }
     }
 }
@@ -287,6 +296,9 @@ struct InkUnderline: View {
 private struct PlanOption: View {
     let plan: Plan
     let price: String
+    /// Both from the storefront's prices once products load.
+    let annualPerWeek: String
+    let savingsPercent: Int
     let isSelected: Bool
     let action: () -> Void
 
@@ -317,7 +329,7 @@ private struct PlanOption: View {
         .sticker(fill: isSelected ? Theme.mintSoft : Theme.surface, padding: 16)
         .overlay(alignment: .topTrailing) {
             if plan == .annual {
-                RubberStamp(top: "save", main: "\(Plan.annualSavingsPercent)%", color: Theme.tomato, angle: 8)
+                RubberStamp(top: "save", main: "\(savingsPercent)%", color: Theme.tomato, angle: 8)
                     .scaleEffect(0.72)
                     .offset(x: 8, y: -20)
                     .boilingShape(0.35, seed: 9)
@@ -331,7 +343,7 @@ private struct PlanOption: View {
     private var subtitle: String {
         switch plan {
         case .weekly: "Billed weekly, cancel anytime"
-        case .annual: "Just \(Plan.annualPerWeek)/week, billed yearly"
+        case .annual: "Just \(annualPerWeek)/week, billed yearly"
         case .lifetime: "Pay once"
         }
     }
@@ -404,6 +416,17 @@ struct LifetimeOfferView: View {
                 Button("No thanks", action: onClose)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
+
+                Text(purchases.disclosure(.lifetime))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                // Restore has to be reachable from every screen that sells (Guideline 3.1.1).
+                LegalLinks {
+                    restorePurchases(purchases, onPurchased: onPurchased, boughtTick: $boughtTick, message: $message)
+                }
             }
             .disabled(purchases.isPurchasing)
         }

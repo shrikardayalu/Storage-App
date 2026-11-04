@@ -22,11 +22,16 @@ enum PaywallConfig {
         #endif
     }
 
-    /// Links App Review requires on a subscription paywall. Terms are Apple's
-    /// standard EULA until the site has its own; update the privacy link when
-    /// the site's real domain is set.
-    static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-    static let privacyURL = URL(string: "https://storageapp.example.com/privacy")!
+    /// The website that hosts the legal and support pages (`web/`). Set it to
+    /// the site's real origin, the same value as the site's
+    /// `NEXT_PUBLIC_SITE_URL`, before submitting to App Review.
+    static let siteURL = URL(string: "https://storageapp.example.com")!
+
+    /// Links App Review requires on a subscription paywall, plus support.
+    /// The site's /terms page applies Apple's Standard EULA and adds to it.
+    static let termsURL = siteURL.appending(path: "terms")
+    static let privacyURL = siteURL.appending(path: "privacy")
+    static let supportURL = siteURL.appending(path: "support")
 }
 
 /// What Pro can be bought as. Prices match web/src/lib/pricing.ts and
@@ -92,9 +97,32 @@ enum Plan: String, CaseIterable, Identifiable {
 
     /// How much annual saves against a year of weekly, rounded down.
     static var annualSavingsPercent: Int {
-        let yearOfWeekly = Plan.weekly.price * 52
-        let ratio = NSDecimalNumber(decimal: 1 - Plan.annual.price / yearOfWeekly).doubleValue
-        return Int((ratio * 100).rounded(.down))
+        savingsPercent(annual: Plan.annual.price, weekly: Plan.weekly.price)
+    }
+
+    /// How much `annual` saves against 52 weeks of `weekly`, rounded down.
+    /// Prices in any one currency, e.g. a storefront's own.
+    static func savingsPercent(annual: Decimal, weekly: Decimal) -> Int {
+        let yearOfWeekly = weekly * 52
+        guard yearOfWeekly > 0 else { return 0 }
+        let ratio = NSDecimalNumber(decimal: 1 - annual / yearOfWeekly).doubleValue
+        return max(0, Int((ratio * 100).rounded(.down)))
+    }
+
+    /// The App Store name for this plan, e.g. "Pro Annual".
+    var storeName: String { "Pro \(title)" }
+
+    /// What App Review asks a purchase screen to say (Guideline 3.1.2): the
+    /// plan's name, its price and length, when payment is taken, and how
+    /// auto-renewal works and is turned off. `price` is the formatted price.
+    func disclosure(price: String) -> String {
+        guard isSubscription else {
+            return "\(storeName): one payment of \(price), charged to your Apple ID when you confirm. No subscription, nothing renews."
+        }
+        let period = self == .weekly ? "week" : "year"
+        return "\(storeName): \(price) per \(period), charged to your Apple ID when you confirm. "
+            + "It renews automatically each \(period) unless you cancel at least 24 hours before the current period ends. "
+            + "Manage or cancel anytime in Settings > your name > Subscriptions."
     }
 
     static let proFeatures: [(symbol: String, text: String)] = [

@@ -111,6 +111,8 @@ struct VideosView: View {
             check = value
             error = nil
         case .failure(let failure):
+            // A failed check leaves nothing approved, not the last check's result.
+            check = nil
             error = failure
         }
     }
@@ -258,6 +260,17 @@ struct VideoShrinkView: View {
                 .fill(Color.black)
             if let avPlayer = player.player {
                 VideoPlayer(player: avPlayer)
+            } else if player.couldNotLoad {
+                // Shrinking still works; only the preview is missing.
+                VStack(spacing: 6) {
+                    Image(systemName: "video.slash")
+                        .font(.title2)
+                    Text("Can't play a preview of this video right now.")
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                }
+                .foregroundStyle(.white.opacity(0.85))
+                .padding()
             } else {
                 ProgressView().tint(.white)
             }
@@ -427,13 +440,19 @@ struct VideoShrinkView: View {
 @Observable
 final class TrimPlayer {
     private(set) var player: AVPlayer?
+    /// Photos couldn't hand over the video, e.g. it's in iCloud and the phone is offline.
+    private(set) var couldNotLoad = false
     var trim: VideoTrim?
     @ObservationIgnored private var observer: Any?
 
     nonisolated init() {}
 
     func load(_ id: MediaItem.ID) async {
-        guard player == nil, let item = await VideoPreviewLoader.playerItem(for: id) else { return }
+        guard player == nil else { return }
+        guard let item = await VideoPreviewLoader.playerItem(for: id) else {
+            couldNotLoad = true
+            return
+        }
         let player = AVPlayer(playerItem: item)
         observer = player.addPeriodicTimeObserver(forInterval: CMTime(value: 1, timescale: 10), queue: .main) { [weak self] time in
             MainActor.assumeIsolated { self?.keepInside(time.seconds) }

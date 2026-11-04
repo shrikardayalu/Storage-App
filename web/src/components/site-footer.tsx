@@ -60,8 +60,18 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/support" className="hover:text-paper">
+                    Support
+                  </Link>
+                </li>
+                <li>
                   <Link href="/privacy" className="hover:text-paper">
                     Privacy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-paper">
+                    Terms
                   </Link>
                 </li>
                 <li>

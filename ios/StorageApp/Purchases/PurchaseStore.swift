@@ -26,6 +26,9 @@ final class PurchaseStore {
     }
 
     private(set) var activePlan: Plan?
+    /// A weekly or annual subscription is active, even if Lifetime outranks it.
+    /// Someone who bought Lifetime on top still pays for this until they cancel it.
+    private(set) var hasActiveSubscription = false
     private(set) var isPurchasing = false
     /// Products from the App Store, once loaded.
     private(set) var products: [Plan: Product] = [:]
@@ -72,6 +75,24 @@ final class PurchaseStore {
         products[plan]?.displayPrice ?? plan.displayPrice
     }
 
+    /// The annual price spread over a week, in the storefront's currency once
+    /// products load, so it never shows dollars next to a local price.
+    var annualPerWeek: String {
+        guard let annual = products[.annual] else { return Plan.annualPerWeek }
+        return (annual.price / 52).formatted(annual.priceFormatStyle)
+    }
+
+    /// Annual's saving against a year of weekly, from the storefront's own prices.
+    var annualSavingsPercent: Int {
+        guard let annual = products[.annual], let weekly = products[.weekly] else { return Plan.annualSavingsPercent }
+        return Plan.savingsPercent(annual: annual.price, weekly: weekly.price)
+    }
+
+    /// The purchase disclosure for `plan`, with the storefront's price.
+    func disclosure(_ plan: Plan) -> String {
+        plan.disclosure(price: displayPrice(plan))
+    }
+
     // MARK: Store
 
     /// Loads products, reads what's owned, and starts listening for
@@ -106,7 +127,11 @@ final class PurchaseStore {
 
     /// Reads what this Apple ID owns right now. Lifetime beats annual beats weekly.
     func refreshEntitlements() async {
-        if isSimulated { return }
+        // Debug builds can't tell a simulated plan from a real one until the
+        // products load (or fail to). Without this, the foreground refresh at
+        // launch, which can run before `start()` loads products, wiped a
+        // simulated plan. Release builds never simulate, so this never skips there.
+        if allowsSimulation && products.isEmpty { return }
         var owned: Set<Plan> = []
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
@@ -117,6 +142,7 @@ final class PurchaseStore {
             owned.insert(plan)
         }
         activePlan = [Plan.lifetime, .annual, .weekly].first(where: owned.contains)
+        hasActiveSubscription = owned.contains(where: \.isSubscription)
     }
 
     func purchase(_ plan: Plan) async -> Outcome {
