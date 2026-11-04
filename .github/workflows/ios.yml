@@ -64,6 +64,13 @@ jobs:
             -destination "id=${{ steps.sim.outputs.udid }}" \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
+      - name: Check the app bundle (privacy manifest, usage strings)
+        working-directory: ios
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/StorageApp.app
+          test -f "$APP/PrivacyInfo.xcprivacy" || { echo "::error::PrivacyInfo.xcprivacy is missing from the app bundle"; exit 1; }
+          plutil -lint "$APP/PrivacyInfo.xcprivacy"
+          /usr/libexec/PlistBuddy -c "Print :NSPhotoLibraryUsageDescription" "$APP/Info.plist"
       - name: Take screenshots
         working-directory: ios
         env:
