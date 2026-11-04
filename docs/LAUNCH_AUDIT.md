@@ -28,7 +28,16 @@ Nothing here changes pricing, product IDs, the bundle ID
 
 Tests added for the logic above:
 
-- `StorageAppTests/PurchaseStoreTests.swift` adds 10 tests: storefront per-week and savings figures, the fallback before products load, `Plan.savingsPercent` edge cases, the disclosure text for each plan, store names matching `Products.storekit`, Lifetime on top of a subscription, Lifetime alone, a subscription expiring, a simulated plan surviving an early refresh, and the real store replacing a simulated plan.
+- `StorageAppTests/PurchaseStoreTests.swift` gets 8 new tests:
+  - storefront per-week and savings figures, and the fallback before products load
+  - `Plan.savingsPercent` edge cases
+  - the disclosure text for each plan
+  - store names matching `Products.storekit`
+  - Lifetime alone having no subscription to manage
+  - a simulated plan surviving an early refresh, and the real store replacing a simulated plan
+
+  It also extends 2 existing tests to check `hasActiveSubscription`: Lifetime bought on top of Weekly, and a subscription expiring.
+- Two existing tests, `testCancelledSubscriptionEndsProWhenItExpires` and `testRefundEndsProAtOnce`, had never run, because main stopped at the build error. Once the build worked they failed on CI: they read entitlements once, straight after `SKTestSession` expired or refunded, and StoreKit Testing applies those changes asynchronously. They now re-read until Pro is gone, up to 15 seconds, and still fail if it never goes. The app itself re-reads on every `Transaction.updates` event and every return to the foreground, so it doesn't depend on a single read.
 - `StorageAppTests/DynamicTypeTests.swift` (new) adds 5 tests: the default size, growth, shrinking, the cap, and the text-style mapping.
 
 ### Checked and fine
@@ -117,4 +126,26 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
 
 ## How this was verified
 
-Filled in from GitHub Actions runs on `pre-launch-audit`; see the final section of this file after the last push.
+GitHub Actions, workflow **iOS**, run
+[41746376782](https://github.com/shrikardayalu/Storage-App/actions/runs/41746376782)
+on `pre-launch-audit`, passed:
+
+| Job | Result |
+|---|---|
+| Safety check (`check-no-device-access.sh`) and `swift test` | Passed: 112 StorageCore tests, 0 failures |
+| Build for the simulator | Passed |
+| Check the app bundle (new) | Passed: `PrivacyInfo.xcprivacy` is in the `.app` and lints, and the Photos usage string is present |
+| Screenshots: 9 routes in light and dark, plus 4 at Accessibility Large text (new) | Taken and uploaded as the **Screenshots** artifact |
+| App tests (`xcodebuild test-without-building`) | Passed: 58 tests, 0 failures, including StoreKit Testing purchases, restore, expiry and refund |
+| Unsigned Release `.ipa` for the device | Passed |
+| TestFlight | Skipped (manual only, and needs the secrets in `docs/RELEASE.md`) |
+
+Before this branch, every iOS run on `main` since `127753f` failed at Build
+(see the first Fixed item).
+
+**What I couldn't check from here:** I can read Actions results with `gh`,
+but this environment's network policy blocks downloading artifacts, so I
+haven't looked at the screenshots myself. Please open the **Screenshots**
+artifact on the run above, especially the four `*-largetext.png` files, to
+confirm the onboarding, reveal and paywall pages still fit at large text
+sizes, and check the dark-mode shots. Nothing ran on a real device.
