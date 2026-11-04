@@ -22,11 +22,16 @@ enum PaywallConfig {
         #endif
     }
 
-    /// Links App Review requires on a subscription paywall. Terms are Apple's
-    /// standard EULA until the site has its own; update the privacy link when
-    /// the site's real domain is set.
-    static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
-    static let privacyURL = URL(string: "https://storageapp.example.com/privacy")!
+    /// The website that hosts the legal and support pages (`web/`). Set it to
+    /// the site's real origin, the same value as the site's
+    /// `NEXT_PUBLIC_SITE_URL`, before submitting to App Review.
+    static let siteURL = URL(string: "https://storageapp.example.com")!
+
+    /// Links App Review requires on a subscription paywall, plus support.
+    /// The site's /terms page applies Apple's Standard EULA and adds to it.
+    static let termsURL = siteURL.appending(path: "terms")
+    static let privacyURL = siteURL.appending(path: "privacy")
+    static let supportURL = siteURL.appending(path: "support")
 }
 
 /// What Pro can be bought as. Prices match web/src/lib/pricing.ts and

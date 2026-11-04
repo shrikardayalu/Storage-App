@@ -180,6 +180,13 @@ final class PurchaseStoreTests: XCTestCase {
         }
     }
 
+    func testLegalLinksPointAtTheSitesPages() {
+        XCTAssertEqual(PaywallConfig.privacyURL.absoluteString, PaywallConfig.siteURL.absoluteString + "/privacy")
+        XCTAssertEqual(PaywallConfig.termsURL.absoluteString, PaywallConfig.siteURL.absoluteString + "/terms")
+        XCTAssertEqual(PaywallConfig.supportURL.absoluteString, PaywallConfig.siteURL.absoluteString + "/support")
+        XCTAssertEqual(PaywallConfig.siteURL.scheme, "https")
+    }
+
     // MARK: Simulated purchases (debug builds without App Store products)
 
     func testSimulatedPlanSurvivesARefreshBeforeProductsLoad() async {
