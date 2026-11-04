@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Privacy manifest. Storage App has no network code (Tools/check-no-device-access.sh
-  fails CI on URLSession), no tracking and no analytics, so it collects no data.
+  fails CI if networking code appears), no tracking and no analytics, so it
+  collects no data.
   Required-reason APIs it uses, and why:
   - UserDefaults: onboarding answers, settings toggles, the one-time offer flag.
   - Disk space (volumeAvailableCapacity*, volumeTotalCapacity): shown on Home and
