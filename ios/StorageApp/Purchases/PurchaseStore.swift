@@ -26,6 +26,9 @@ final class PurchaseStore {
     }
 
     private(set) var activePlan: Plan?
+    /// A weekly or annual subscription is active, even if Lifetime outranks it.
+    /// Someone who bought Lifetime on top still pays for this until they cancel it.
+    private(set) var hasActiveSubscription = false
     private(set) var isPurchasing = false
     /// Products from the App Store, once loaded.
     private(set) var products: [Plan: Product] = [:]
@@ -139,6 +142,7 @@ final class PurchaseStore {
             owned.insert(plan)
         }
         activePlan = [Plan.lifetime, .annual, .weekly].first(where: owned.contains)
+        hasActiveSubscription = owned.contains(where: \.isSubscription)
     }
 
     func purchase(_ plan: Plan) async -> Outcome {

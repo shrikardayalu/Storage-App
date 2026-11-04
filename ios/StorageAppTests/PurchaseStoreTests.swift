@@ -64,6 +64,14 @@ final class PurchaseStoreTests: XCTestCase {
         _ = await store.purchase(.weekly)
         _ = await store.purchase(.lifetime)
         XCTAssertEqual(store.activePlan, .lifetime)
+        // The weekly plan still renews, so Settings must keep offering Manage Subscription.
+        XCTAssertTrue(store.hasActiveSubscription)
+    }
+
+    func testLifetimeAloneHasNoSubscriptionToManage() async {
+        let store = await makeStore()
+        _ = await store.purchase(.lifetime)
+        XCTAssertFalse(store.hasActiveSubscription)
     }
 
     func testRestoreFindsAnEarlierPurchaseOnAFreshInstall() async {
@@ -92,6 +100,7 @@ final class PurchaseStoreTests: XCTestCase {
         try session.expireSubscription(productIdentifier: Plan.annual.productID)
         await store.refreshEntitlements()
         XCTAssertFalse(store.isPro)
+        XCTAssertFalse(store.hasActiveSubscription)
     }
 
     func testRefundEndsProAtOnce() async throws {
