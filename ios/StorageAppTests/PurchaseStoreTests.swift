@@ -24,6 +24,18 @@ final class PurchaseStoreTests: XCTestCase {
         session = nil
     }
 
+    /// StoreKit Testing applies an expiry or refund asynchronously, so
+    /// `currentEntitlements` can still list the transaction for a moment.
+    /// Re-reads until `condition` holds or `timeout` passes.
+    private func refresh(_ store: PurchaseStore, until condition: () -> Bool, timeout: TimeInterval = 15) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        await store.refreshEntitlements()
+        while !condition(), Date() < deadline {
+            try? await Task.sleep(for: .milliseconds(250))
+            await store.refreshEntitlements()
+        }
+    }
+
     private func makeStore() async -> PurchaseStore {
         let store = PurchaseStore(defaults: defaults, allowsSimulation: false)
         await store.start()
@@ -98,7 +110,7 @@ final class PurchaseStoreTests: XCTestCase {
         XCTAssertTrue(store.isPro)
 
         try session.expireSubscription(productIdentifier: Plan.annual.productID)
-        await store.refreshEntitlements()
+        await refresh(store, until: { !store.isPro })
         XCTAssertFalse(store.isPro)
         XCTAssertFalse(store.hasActiveSubscription)
     }
@@ -109,7 +121,7 @@ final class PurchaseStoreTests: XCTestCase {
         let transaction = try XCTUnwrap(session.allTransactions().first)
 
         try session.refundTransaction(identifier: transaction.identifier)
-        await store.refreshEntitlements()
+        await refresh(store, until: { !store.isPro })
         XCTAssertFalse(store.isPro)
     }
 
