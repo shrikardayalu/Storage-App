@@ -20,6 +20,7 @@ struct RecentlyDeletedGuideView: View {
     @AppStorage(Self.showStepsKey) private var showSteps = true
     /// Shows the full steps this time only, while they stay off.
     @State private var seeFullSteps = false
+    @State private var couldNotOpenPhotos = false
 
     /// Also toggled in Settings.
     static let showStepsKey = "guide.showSteps"
@@ -156,6 +157,11 @@ struct RecentlyDeletedGuideView: View {
         .task(id: step) {
             if step == .measure { await model.checkReclaim() }
         }
+        .alert("Couldn't open Photos", isPresented: $couldNotOpenPhotos) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Open the Photos app from your Home Screen, then follow the steps here.")
+        }
     }
 
     // MARK: Top bar
@@ -264,7 +270,10 @@ struct RecentlyDeletedGuideView: View {
     }
 
     private func openPhotos() {
-        if let url = URL(string: "photos-redirect://") { openURL(url) }
+        guard let url = URL(string: "photos-redirect://") else { return }
+        openURL(url) { accepted in
+            if !accepted { couldNotOpenPhotos = true }
+        }
     }
 
     // MARK: Controls

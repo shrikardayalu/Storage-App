@@ -77,6 +77,8 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Version", value: AppInfo.versionString)
                 LabeledContent("Mode", value: "Test Mode (test album only)")
+                Link("Privacy Policy", destination: PaywallConfig.privacyURL)
+                Link("Terms of Use", destination: PaywallConfig.termsURL)
             }
         }
         .scrollContentBackground(.hidden)
