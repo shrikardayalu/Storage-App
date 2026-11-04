@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // Hand-drawn pieces shared with the website's look: wobbly ink strokes that
 // draw themselves in, a handwriting font, paper grain, rubber stamps, and torn
@@ -13,9 +14,42 @@ extension Font {
         .custom("Noteworthy-Bold", size: size, relativeTo: style)
     }
 
-    /// Heavy, tight headline type, like the site's display face.
+    /// Heavy, tight headline type, like the site's display face. Follows
+    /// Dynamic Type from `size` (the size at the default text setting).
     static func display(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
-        .system(size: size, weight: .heavy, design: .default)
+        .system(size: displaySize(size, relativeTo: style), weight: .heavy, design: .default)
+    }
+
+    /// Display headlines start big, so they grow at most this much with the
+    /// largest text settings; past that they'd push buttons off fixed screens.
+    static let displayMaxScale: CGFloat = 1.35
+
+    /// `size` scaled for the text setting in `traits` (the app's current one by
+    /// default), capped at `displayMaxScale`.
+    static func displaySize(_ size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle,
+                            traits: UITraitCollection? = nil) -> CGFloat {
+        let metrics = UIFontMetrics(forTextStyle: style.uiKit)
+        let scaled = traits.map { metrics.scaledValue(for: size, compatibleWith: $0) } ?? metrics.scaledValue(for: size)
+        return min(scaled, size * displayMaxScale)
+    }
+}
+
+extension Font.TextStyle {
+    var uiKit: UIFont.TextStyle {
+        switch self {
+        case .largeTitle: .largeTitle
+        case .title: .title1
+        case .title2: .title2
+        case .title3: .title3
+        case .headline: .headline
+        case .subheadline: .subheadline
+        case .body: .body
+        case .callout: .callout
+        case .footnote: .footnote
+        case .caption: .caption1
+        case .caption2: .caption2
+        @unknown default: .body
+        }
     }
 }
 
