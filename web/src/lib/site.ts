@@ -14,6 +14,14 @@ export const siteConfig = {
   /** App Store Connect provider token, used to attribute installs to pages. */
   appStoreProviderToken: process.env.NEXT_PUBLIC_APP_STORE_PROVIDER_TOKEN || "",
   locale: "en_US",
+  /**
+   * Where people reach a human for support, privacy and legal requests. Shown
+   * on /support, /privacy and /terms. App Store Connect needs a working
+   * support contact, so set this before launch.
+   */
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "",
+  /** Date /privacy and /terms last changed. Update it with any change to either page. */
+  legalUpdated: "2026-11-04",
 };
 
 export function absoluteUrl(path = "/") {

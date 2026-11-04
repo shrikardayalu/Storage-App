@@ -15,6 +15,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     })),
     { url: absoluteUrl("/pricing") },
     { url: absoluteUrl("/about") },
+    { url: absoluteUrl("/support") },
     { url: absoluteUrl("/privacy") },
+    { url: absoluteUrl("/terms") },
   ];
 }
