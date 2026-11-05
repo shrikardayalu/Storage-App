@@ -292,6 +292,38 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(receipt.onlyApprovedRemoved)
     }
 
+    func testOneTapPhotoCleanupRemovesJunkAndMakesStillsWithOneGuide() async throws {
+        let items = [item("dog", bytes: 3_000_000), item("dog-copy", bytes: 900_000), item("blur"), item("live", bytes: 5_000_000, live: 3_000_000)]
+        func signals(_ axis: Int, sharpness: Double = 400) -> PhotoSignals {
+            var print = [Float](repeating: 0, count: 4)
+            print[axis] = 1
+            return PhotoSignals(featurePrint: print, sharpness: sharpness, brightness: 0.5, darkFraction: 0)
+        }
+        let analysis = MockPhotoAnalysis(signals: [
+            "dog": signals(0), "dog-copy": signals(0), "blur": signals(1, sharpness: 5), "live": signals(2),
+        ])
+        let model = AppModel(library: MockPhotoLibrary(items: items), analysis: analysis)
+        await model.scanTestAlbum()
+        await model.findJunk()
+
+        let plan = try XCTUnwrap(model.photoCleanupPlan)
+        XCTAssertEqual(plan.remove, ["dog-copy", "blur"])
+        XCTAssertEqual(plan.keepers, ["dog"])
+        XCTAssertEqual(plan.convert, ["live"])
+        XCTAssertEqual(plan.totalBytes, 900_000 + 1_000_000 + 3_000_000)
+        XCTAssertEqual(model.saving(for: .photoCleanup), plan.totalBytes)
+
+        let error = await model.cleanUpPhotos(plan)
+        XCTAssertNil(error)
+        XCTAssertEqual(model.albumScan?.total.count, 2)
+        XCTAssertTrue(model.convertibleLivePhotos.isEmpty)
+        XCTAssertEqual(model.photoCleanupPlan?.isEmpty, true)
+        guard case .photoCleanup(let receipt, let stills)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertEqual(receipt?.deleted, ["dog-copy", "blur"])
+        XCTAssertEqual(stills.count, 1)
+        XCTAssertEqual(model.guide?.expectedBytes, plan.totalBytes)
+    }
+
     // MARK: Files cleanup (Build Plan step 8)
 
     func testFilesCleanupDeletesOnlyApprovedFilesInThePickedFolder() async {

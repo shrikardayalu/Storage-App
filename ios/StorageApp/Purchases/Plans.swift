@@ -125,10 +125,12 @@ enum Plan: String, CaseIterable, Identifiable {
             + "Manage or cancel anytime in Settings > your name > Subscriptions."
     }
 
+    /// The paywall's list. Matches the methods with `CleanupMethod.isPro`.
     static let proFeatures: [(symbol: String, text: String)] = [
         ("film", "Shrink 4K videos without deleting them"),
         ("scissors", "Trim long recordings to the good part"),
-        ("livephoto", "Keep Live Photos as stills"),
-        ("square.stack.3d.up", "Pick the best shot from every burst"),
+        ("livephoto", "Keep Live Photos as stills, minus the hidden video"),
+        ("square.on.square", "Clear duplicates, blurry shots and junk"),
+        ("wand.and.stars", "Clean up all your photos in one tap"),
     ]
 }

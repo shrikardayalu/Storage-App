@@ -79,3 +79,17 @@ struct WorkingOverlay: View {
         .accessibilityElement(children: .combine)
     }
 }
+
+/// The small mint PRO tag on anything that needs Pro.
+struct ProTag: View {
+    var body: some View {
+        Text("PRO")
+            .font(.caption2.weight(.heavy))
+            .tracking(0.8)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Theme.mint, in: Capsule())
+            .foregroundStyle(Color(hex: 0x1A1A17))
+            .accessibilityLabel("Pro")
+    }
+}

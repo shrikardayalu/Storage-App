@@ -4,8 +4,10 @@ import SwiftUI
 /// What the paywall knows about this person's library, so it can lead with
 /// their own number instead of a generic pitch.
 struct PaywallContext: Equatable {
-    /// What the shrink tools could save in the scanned album, if a scan ran.
+    /// What the Pro tools could save in the scanned album, if a scan ran.
     var proBytes: Int64?
+    /// Set when the paywall follows a free cleanup: what that cleanup freed.
+    var freedBytes: Int64? = nil
 
     static let generic = PaywallContext(proBytes: nil)
 }
@@ -117,7 +119,7 @@ struct PaywallView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let bytes = context.proBytes, bytes > 0 {
-                Text("your scan found")
+                Text(eyebrow)
                     .font(.hand(20))
                     .foregroundStyle(Theme.accent)
                     .handwritten(progress, start: 0, length: 0.15)
@@ -134,7 +136,7 @@ struct PaywallView: View {
                         .frame(height: 12)
                         .offset(y: 10)
                 }
-                Text("you can get back by shrinking, not deleting.")
+                Text(context.freedBytes == nil ? "more you can get back with Pro." : "more waiting for Pro.")
                     .font(.display(24))
                     .boiling()
                     .padding(.top, 6)
@@ -150,11 +152,16 @@ struct PaywallView: View {
                         .stamped(progress, at: 0.1)
                 }
             }
-            Text("Pro makes your photos and videos smaller, so you get the space back and keep every memory.")
+            Text("Pro shrinks big videos, turns Live Photos into stills, and clears duplicates and junk in one tap, so you get the space back and keep every memory.")
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .padding(.top, 4)
         }
+    }
+
+    private var eyebrow: String {
+        guard let freed = context.freedBytes, freed > 0 else { return "your scan found" }
+        return "you just freed \(ByteFormatter.string(freed, precision: .twoDecimals)). nice. there's"
     }
 
     private var features: some View {

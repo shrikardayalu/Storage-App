@@ -58,13 +58,12 @@ Tests added for the logic above:
 
 From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), with onboarding on top until it's finished. It also shows the two full-screen guides and one error alert.
 
-- **Onboarding**: hook, pain, goal, shrink demo, Photos permission, scan, reveal, then the paywall (only while `requiresPro`). Back works on pain through privacy. The scan has a state for each outcome, and each offers "Continue without a scan":
+- **Onboarding** (reworked 2026-11-05): hook, pain (which explains the Photos permission in a footnote), scan (ends on "Videos take N% of it" and "Show me what to do"), then "Which ones do you want to try?", which finishes onboarding. No paywall in onboarding. Back works on pain. The scan has a state for each outcome, and each offers "Continue without a scan", which finishes onboarding:
   - Access denied: Open Settings, then rescan automatically on return.
   - The album is missing or there are two: Scan again.
   - The album is empty.
-  - Nothing found: skips the reveal.
 
-  The paywall's ✕ leads to the Lifetime offer once, and "No thanks" finishes onboarding. Restore or a purchase also finishes it. No dead ends.
+  Home then shows "Your plan" with the picks until it's closed. The paywall opens from a Pro pick or card, and once after the first free cleanup; its ✕ leads to the Lifetime offer once. No dead ends.
 - **Home**: the storage card (loading, failed and loaded states), Results, the test-album card (scan, scan again, error with Open Settings), "space waiting in Recently Deleted" (reopens the last guide), Clean up (shown only once a scan has items), Files, Other apps guides, and Results again.
 - **Junk review**: shows progress while analysing, then either "Nothing to clean" or the review. The review has a safety check, a confirm step, removal, and then the Recently Deleted guide. When a copy is also in another album, it's shown as blocked.
 - **Burst picks, Live Photos to stills, video shrink**: each has an empty state, a per-item blocked state, an error line, a confirm step and the guide afterwards. The video screen makes a copy before anything changes, and throws the copy away when you leave the screen.

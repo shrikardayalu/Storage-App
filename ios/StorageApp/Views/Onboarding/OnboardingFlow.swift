@@ -2,28 +2,27 @@ import StorageCore
 import SwiftUI
 import UIKit
 
-/// First run, from the hook to the paywall. See `OnboardingStep` for why the
-/// steps come in this order. Every number shown is the person's own: real
-/// free space on the hook and the pain screen, a real scan on the receipt,
-/// real estimates on the reveal. The shrink demo is the one exception, and
-/// says it's an example.
+/// First run: two screens that say "we get it", a live scan that shows where
+/// the space went, then "which ones do you want to try?". No paywall: see
+/// `OnboardingStep` for why. Every number shown is the person's own: real free space
+/// on the first two screens, a real scan, real estimates on the picks.
 ///
 /// One drawing, `HeroPhone`, stays on screen the whole way and moves between
 /// steps, so the flow reads as one story instead of a stack of slides: the
-/// phone fills, the alerts fall out of it, it gets locked, it prints the
-/// scan, and it drains as the reveal counts up. Only the words change.
+/// phone fills, the alerts fall out of it, it prints the scan, and it drains
+/// as the picks add up. Only the words change.
 struct OnboardingFlow: View {
     var startAt: OnboardingStep = .hook
-    /// Fixed numbers for CI screenshots, which have no library to scan.
-    var sampleReveal: RevealNumbers?
+    /// Fixed suggestions for CI screenshots, which have no library to scan.
+    var sampleSuggestions: [Suggestion]?
     let onFinish: () -> Void
 
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var step: OnboardingStep = .hook
-    @State private var answers = OnboardingAnswers.load()
-    @State private var reveal: RevealNumbers?
+    @State private var answers = OnboardingAnswers()
+    @State private var suggestions: [Suggestion] = []
 
     // The hero phone's story so far.
     @State private var drawProgress: CGFloat = 0
@@ -44,7 +43,7 @@ struct OnboardingFlow: View {
                     drawProgress: drawProgress,
                     level: heroLevel,
                     spills: step == .hook && filled && usedFraction >= 0.7,
-                    locked: step == .privacy || step == .scan,
+                    locked: step == .scan,
                     stamped: stamped && (step == .hook || step == .pain)
                 )
                 .frame(width: hero.width, height: hero.height)
@@ -62,7 +61,7 @@ struct OnboardingFlow: View {
         .sensoryFeedback(.impact(weight: .heavy), trigger: stampTick)
         .onAppear(perform: begin)
         .onChange(of: step) { _, new in
-            if new == .reveal { drain() }
+            if new == .picks { drain() }
         }
     }
 
@@ -73,28 +72,20 @@ struct OnboardingFlow: View {
             HookPage(top: top, onNext: advance)
         case .pain:
             PainPage(top: top, onNext: advance)
-        case .goal:
-            GoalPage(top: top, answers: $answers, onNext: advance)
-        case .shrink:
-            ShrinkPage(top: top, onNext: advance)
-        case .privacy:
-            PrivacyPage(top: top, onNext: advance)
         case .scan:
-            ScanPage(top: top) { numbers in
-                reveal = numbers
-                if let numbers, !numbers.isEmpty {
-                    advance()
-                } else if showsPaywall {
-                    // Nothing found, or no access: skip the reveal, keep the pitch.
-                    step = .paywall
-                } else {
+            ScanPage(top: top) { found in
+                suggestions = found ?? []
+                if suggestions.isEmpty {
+                    // No access, an empty album, or nothing to suggest: straight to Home.
                     finish()
+                } else {
+                    advance()
                 }
             }
-        case .reveal:
-            RevealPage(top: top, numbers: reveal ?? .sample, answers: answers, showsPaywall: showsPaywall, onNext: advance)
+        case .picks:
+            PicksPage(top: top, suggestions: suggestions, picks: $answers.picks, onNext: advance)
         case .paywall:
-            PaywallFlow(context: PaywallContext(proBytes: reveal?.proBytes), onDone: finish)
+            PaywallFlow(context: PaywallContext(proBytes: model.proSaving), onDone: finish)
         }
     }
 
@@ -106,11 +97,8 @@ struct OnboardingFlow: View {
         switch step {
         case .hook: share = 0.42
         case .pain: share = 0.19
-        case .goal: share = 0.16
-        case .shrink: share = 0.14
-        case .privacy: share = 0.3
         case .scan: share = 0.12
-        case .reveal: share = 0.18
+        case .picks: share = 0.1
         case .paywall: share = 0.1
         }
         let height = size.height * share
@@ -122,32 +110,30 @@ struct OnboardingFlow: View {
     private func tilt(for step: OnboardingStep) -> Double {
         switch step {
         case .pain: -5
-        case .goal: 4
-        case .shrink: -3
-        case .reveal: 4
+        case .picks: 4
         default: 0
         }
     }
 
     private var usedFraction: Double { model.deviceStorage?.usedFraction ?? 0.9 }
 
-    /// Empty, then the phone's real fill, then what's left after the reveal's saving.
+    /// Empty, then the phone's real fill, then what's left if every suggestion were done.
     private var heroLevel: CGFloat {
         guard filled else { return 0 }
-        guard drained, let reveal, let total = model.deviceStorage?.totalBytes, total > 0 else { return CGFloat(usedFraction) }
-        return CGFloat(max(0.04, usedFraction - Double(reveal.totalBytes) / Double(total)))
+        guard drained, let total = model.deviceStorage?.totalBytes, total > 0 else { return CGFloat(usedFraction) }
+        return CGFloat(max(0.04, usedFraction - Double(suggestions.totalBytes) / Double(total)))
     }
 
     /// The hook draws the phone in, fills it, then stamps it. Later steps
     /// (screenshot routes) start with the phone already drawn.
     private func begin() {
         step = startAt
-        reveal = sampleReveal
+        if let sampleSuggestions { suggestions = sampleSuggestions }
         guard startAt == .hook, !reduceMotion else {
             drawProgress = 1
             filled = true
             stamped = usedFraction >= 0.8
-            if startAt == .reveal { drain() }
+            if startAt == .picks { drain() }
             return
         }
         Task {
@@ -162,7 +148,7 @@ struct OnboardingFlow: View {
         }
     }
 
-    /// Runs alongside the reveal's count-up, so the tank empties as the number climbs.
+    /// The tank empties as the picks screen comes in.
     private func drain() {
         Task {
             try? await Task.sleep(for: .milliseconds(350))
@@ -172,11 +158,8 @@ struct OnboardingFlow: View {
 
     // MARK: Moving through
 
-    private var showsPaywall: Bool { purchases.requiresPro }
-
     private func advance() {
-        answers.save()
-        if let next = step.next(showsPaywall: showsPaywall) {
+        if let next = step.next {
             step = next
         } else {
             finish()
@@ -189,6 +172,7 @@ struct OnboardingFlow: View {
 
     private func finish() {
         answers.save()
+        UserDefaults.standard.set(false, forKey: OnboardingAnswers.planDismissedKey)
         OnboardingAnswers.markCompleted()
         onFinish()
     }
@@ -320,41 +304,6 @@ struct CountingBytes: View, Animatable {
     }
 }
 
-/// A big selectable choice, as a sticker that tilts a little when picked.
-private struct ChoiceSticker: View {
-    let symbol: String
-    let title: String
-    let isOn: Bool
-    var tilt: Double = 0
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: symbol)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Theme.ink)
-                    .frame(width: 30)
-                Text(title)
-                    .font(.headline)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 4)
-                InkCheck(isOn: isOn, size: 24)
-            }
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .sticker(fill: isOn ? Theme.mintSoft : Theme.surface, radius: 18, padding: 14)
-        .rotationEffect(.degrees(isOn ? tilt : 0))
-        .scaleEffect(isOn ? 1.02 : 1)
-        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: isOn)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
-    }
-}
-
 // MARK: - 1. Hook
 
 /// The person's own phone filling up (the hero), with their real free space.
@@ -460,9 +409,23 @@ private struct PainPage: View {
             Button("Make it stop", action: onNext)
                 .buttonStyle(.sticker)
                 .opacity(shown >= Self.alerts.count ? 1 : 0.001)
+            Text(scanNote)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .opacity(shown >= Self.alerts.count ? 1 : 0.001)
         }
         .task { await play() }
+        .task { await model.refreshPhotoAccess() }
         .sensoryFeedback(.impact(weight: .medium, intensity: 0.8), trigger: shown)
+    }
+
+    /// The Photos permission, explained before iOS asks for it.
+    private var scanNote: String {
+        let scan = "Next, a quick scan of your \u{201C}\(TestMode.albumName)\u{201D} album. Nothing leaves your iPhone, and nothing is deleted unless you say so."
+        guard model.photoAccess == .notDetermined else { return scan }
+        return scan + " iOS will ask for Photos access: choose \u{201C}Allow Full Access\u{201D}."
     }
 
     private var runway: StorageRunway? {
@@ -525,237 +488,11 @@ private struct AlertCard: View {
     }
 }
 
-// MARK: - 3. What it's for
-
-private struct GoalPage: View {
-    let top: CGFloat
-    @Binding var answers: OnboardingAnswers
-    let onNext: () -> Void
-    @State private var progress: CGFloat = 0
-    @State private var advancing = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Color.clear.frame(height: top)
-            Text("one tap")
-                .font(.hand(20))
-                .foregroundStyle(Theme.accent)
-                .handwritten(progress, start: 0, length: 0.3)
-            Text("What do you need\nthe space for?")
-                .font(.display(36))
-                .boiling()
-                .padding(.bottom, 20)
-                .accessibilityAddTraits(.isHeader)
-            VStack(spacing: 12) {
-                ForEach(Array(SpaceGoal.allCases.enumerated()), id: \.element) { index, goal in
-                    ChoiceSticker(symbol: goal.symbol, title: goal.title, isOn: answers.goal == goal,
-                                  tilt: index.isMultiple(of: 2) ? -1.2 : 1.2) {
-                        pick(goal)
-                    }
-                    .opacity(sketchStep(progress, start: 0.15 + CGFloat(index) * 0.1, length: 0.2))
-                    .offset(y: 18 * (1 - sketchStep(progress, start: 0.15 + CGFloat(index) * 0.1, length: 0.2)))
-                }
-            }
-            Spacer(minLength: 20)
-        }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 12)
-        .drawing($progress, duration: 1.2)
-        .sensoryFeedback(.selection, trigger: answers.goal)
-    }
-
-    /// Picking is the answer: a beat to see the tick, then on.
-    private func pick(_ goal: SpaceGoal) {
-        guard !advancing else { return }
-        answers.goal = goal
-        advancing = true
-        Task {
-            try? await Task.sleep(for: .milliseconds(450))
-            onNext()
-        }
-    }
-}
-
-// MARK: - 4. Shrink, don't delete
-
-/// The Pro idea in one moment: a big video squashes down and keeps its stamp.
-private struct ShrinkPage: View {
-    let top: CGFloat
-    let onNext: () -> Void
-    @State private var replay = 0
-    @State private var stage = 0
-
-    private static let before: Double = 1_240_000_000
-    private static let after: Double = 410_000_000
-
-    var body: some View {
-        PageLayout(top: top) {
-            VStack(spacing: 14) {
-                videoCard
-                liveCard
-                Button {
-                    replay += 1
-                } label: {
-                    Label("watch again", systemImage: "arrow.counterclockwise")
-                        .font(.hand(17))
-                        .foregroundStyle(Theme.accent)
-                }
-                .opacity(stage >= 4 ? 1 : 0)
-            }
-            .padding(.top, 6)
-        } words: {
-            Text("Shrink it.\nDon't delete it.")
-                .font(.display(40))
-                .boiling()
-                .accessibilityAddTraits(.isHeader)
-            Text("Deleting isn't the only way. Storage App can also make big videos and Live Photos smaller, so you keep the memory and get the space.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-            Text("Example sizes. Your own numbers come next.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        } actions: {
-            Button("Nice. What about mine?", action: onNext)
-                .buttonStyle(.sticker)
-        }
-        .task(id: replay) { await play() }
-        .sensoryFeedback(.impact(weight: .heavy), trigger: stage == 2)
-        .sensoryFeedback(.impact(weight: .medium), trigger: stage == 3)
-    }
-
-    private var videoCard: some View {
-        HStack(spacing: 14) {
-            IllustrationView(.video, size: 52)
-                .boilingShape(seed: 11)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Beach day.mov")
-                    .font(.headline)
-                Text(stage >= 2 ? "1080p · 2:14" : "4K · 2:14")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .contentTransition(.numericText())
-            }
-            Spacer(minLength: 4)
-            CountingBytes(bytes: stage >= 2 ? Self.after : Self.before)
-                .font(.metric(.title3))
-                .foregroundStyle(stage >= 2 ? Theme.accent : Theme.ink)
-        }
-        .sticker(fill: stage >= 2 ? Theme.mintSoft : Theme.surface, padding: 16)
-        // Squash and stretch: squeezed flat, then springs back a bit smaller.
-        .scaleEffect(x: stage == 1 ? 1.08 : 1, y: stage == 1 ? 0.62 : (stage >= 2 ? 0.94 : 1), anchor: .bottom)
-        .overlay(alignment: .topTrailing) {
-            if stage >= 2 {
-                RubberStamp(top: "same", main: "video", color: Theme.accent, angle: 10)
-                    .boilingShape(seed: 13)
-                    .offset(x: 10, y: -26)
-                    .transition(.scale(scale: 2.2).combined(with: .opacity))
-            }
-        }
-        .overlay(alignment: .bottomLeading) {
-            if stage >= 2 {
-                Text("\u{2212}67%")
-                    .font(.hand(22))
-                    .foregroundStyle(Theme.tomato)
-                    .boiling()
-                    .rotationEffect(.degrees(-8))
-                    .offset(x: 8, y: 30)
-                    .transition(.opacity)
-            }
-        }
-    }
-
-    private var liveCard: some View {
-        HStack(spacing: 14) {
-            IllustrationView(.photo, size: 44)
-                .boilingShape(seed: 15)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(stage >= 3 ? "Still photo" : "Live Photo")
-                    .font(.headline)
-                    .contentTransition(.opacity)
-                Text("same picture, no video clip")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 4)
-            CountingBytes(bytes: stage >= 3 ? 2_300_000 : 5_800_000, precision: .compact)
-                .font(.metric(.headline))
-                .foregroundStyle(stage >= 3 ? Theme.accent : Theme.ink)
-        }
-        .sticker(fill: stage >= 3 ? Theme.mintSoft : Theme.surface, padding: 14)
-        .padding(.top, 22)
-        .opacity(stage >= 3 ? 1 : 0)
-        .offset(y: stage >= 3 ? 0 : 24)
-    }
-
-    private func play() async {
-        stage = 0
-        try? await Task.sleep(for: .milliseconds(900))
-        withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) { stage = 1 }
-        try? await Task.sleep(for: .milliseconds(240))
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.55)) { stage = 2 }
-        try? await Task.sleep(for: .milliseconds(1100))
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { stage = 3 }
-        try? await Task.sleep(for: .milliseconds(900))
-        withAnimation(.easeOut) { stage = 4 }
-    }
-}
-
-// MARK: - 5. Photos permission, explained first
-
-/// The hero phone gets its padlock here.
-private struct PrivacyPage: View {
-    let top: CGFloat
-    let onNext: () -> Void
-    @Environment(AppModel.self) private var model
-    @State private var progress: CGFloat = 0
-
-    private var promises: [String] {
-        [
-            "Your photos are never uploaded. Everything is checked right on your iPhone.",
-            "Nothing is deleted or changed until you say so.",
-            "For now it only reads your \u{201C}\(TestMode.albumName)\u{201D} album.",
-        ]
-    }
-
-    var body: some View {
-        PageLayout(top: top) {
-            EmptyView()
-        } words: {
-            Text("Your photos stay\non your iPhone.")
-                .font(.display(36))
-                .boiling()
-                .accessibilityAddTraits(.isHeader)
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(Array(promises.enumerated()), id: \.offset) { index, promise in
-                    HStack(alignment: .top, spacing: 12) {
-                        InkCheck(isOn: progress > 0.3 + CGFloat(index) * 0.18, size: 24)
-                        Text(promise)
-                            .font(.subheadline.weight(.medium))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .opacity(sketchStep(progress, start: 0.2 + CGFloat(index) * 0.18, length: 0.15))
-                }
-            }
-            .padding(.top, 6)
-        } actions: {
-            Button(model.photoAccess.canRead ? "Scan my album" : "Allow Photos access", action: onNext)
-                .buttonStyle(.sticker)
-            if model.photoAccess == .notDetermined {
-                Text("iOS asks next. Choose \u{201C}Allow Full Access\u{201D}.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .drawing($progress, duration: 1.8)
-        .task { await model.refreshPhotoAccess() }
-    }
-}
-
-// MARK: - 6. The scan, printed out of the phone
+// MARK: - 3. The scan, printed out of the phone, and where the space went
 
 private struct ScanPage: View {
     let top: CGFloat
-    let onDone: (RevealNumbers?) -> Void
+    let onDone: ([Suggestion]?) -> Void
     @Environment(AppModel.self) private var model
     @Environment(\.scenePhase) private var scenePhase
 
@@ -781,6 +518,8 @@ private struct ScanPage: View {
     @State private var shown = 0
     @State private var run = 0
     @State private var printTick = 0
+    @State private var bloat: Bloat?
+    @State private var found: [Suggestion] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -788,6 +527,10 @@ private struct ScanPage: View {
             switch phase {
             case .reading, .printing, .done:
                 receipt
+                if phase == .done, let bloat {
+                    BloatSummary(bloat: bloat)
+                        .transition(.opacity.combined(with: .offset(y: 20)))
+                }
             case .denied:
                 notice(
                     illustration: .lock,
@@ -806,9 +549,15 @@ private struct ScanPage: View {
                 )
             }
             Spacer(minLength: 12)
+            if phase == .done {
+                Button("Show me what to do") { onDone(found) }
+                    .buttonStyle(.sticker)
+                    .transition(.opacity)
+            }
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
+        .animation(.spring(response: 0.42, dampingFraction: 0.78), value: phase)
         .task(id: run) { await scan() }
         .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.6), trigger: printTick)
         .onChange(of: scenePhase) { _, phase in
@@ -847,7 +596,8 @@ private struct ScanPage: View {
                 }
                 ForEach(Array(lines.prefix(shown))) { line in
                     if line.isTotal { DashedRule() }
-                    ReceiptLine(title: line.title, detail: line.detail, bytes: line.bytes, isTotal: line.isTotal)
+                    ReceiptLine(title: line.title, detail: line.detail, bytes: line.bytes, isTotal: line.isTotal,
+                                isHighlighted: phase == .done && line.id == bloat?.group.rawValue)
                         .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
                 }
                 if phase == .printing, model.isAnalyzing, shown >= lines.count {
@@ -858,15 +608,14 @@ private struct ScanPage: View {
                     }
                     .padding(.vertical, 8)
                 }
+            }
+            .overlay(alignment: .topTrailing) {
                 if phase == .done {
-                    HStack {
-                        Spacer()
-                        RubberStamp(top: "scan", main: "done", color: Theme.accent, angle: -8)
-                            .boilingShape(seed: 23)
-                            .transition(.scale(scale: 2.4).combined(with: .opacity))
-                        Spacer()
-                    }
-                    .padding(.top, 4)
+                    RubberStamp(top: "scan", main: "done", color: Theme.accent, angle: -8)
+                        .boilingShape(seed: 23)
+                        .scaleEffect(0.8)
+                        .offset(x: 8, y: 22)
+                        .transition(.scale(scale: 2.4).combined(with: .opacity))
                 }
             }
             .onReceipt(padding: 18)
@@ -905,6 +654,8 @@ private struct ScanPage: View {
         phase = .reading
         lines = []
         shown = 0
+        bloat = nil
+        found = []
         let started = Date()
 
         await model.scanTestAlbum()
@@ -936,22 +687,15 @@ private struct ScanPage: View {
         }
         await analysis
 
-        let numbers = RevealNumbers(freeBytes: model.junkReport?.suggestedBytes ?? 0, proBytes: model.proSaving)
-        if let report = model.junkReport, !report.isEmpty {
-            lines.append(Line(id: "junk", title: "Duplicates & junk", detail: "\(report.suggestedCount)", bytes: report.suggestedBytes))
-            try? await Task.sleep(for: .milliseconds(420))
-            shown = lines.count
-            printTick += 1
-        }
-        lines.append(Line(id: "total", title: "Could free", detail: "", bytes: numbers.totalBytes, isTotal: true))
+        lines.append(Line(id: "total", title: "Total", detail: "\(scan.total.count)", bytes: scan.total.bytes, isTotal: true))
         try? await Task.sleep(for: .milliseconds(500))
         shown = lines.count
         printTick += 1
         try? await Task.sleep(for: .milliseconds(450))
+        found = model.suggestions
+        bloat = Bloat(scan: scan)
         phase = .done
         printTick += 1
-        try? await Task.sleep(for: .milliseconds(1300))
-        onDone(numbers)
     }
 
     private func openSettings() {
@@ -967,6 +711,8 @@ private struct ReceiptLine: View {
     let detail: String
     let bytes: Int64
     let isTotal: Bool
+    /// The biggest kind of thing in the album, marked once the scan is done.
+    var isHighlighted = false
     @State private var shownBytes: Double = 0
 
     var body: some View {
@@ -981,8 +727,13 @@ private struct ReceiptLine: View {
             Spacer(minLength: 8)
             CountingBytes(bytes: shownBytes)
                 .font(isTotal ? .metric(.title2) : .metric(.subheadline))
-                .foregroundStyle(isTotal ? Theme.accent : Theme.ink)
+                .foregroundStyle(isTotal || isHighlighted ? Theme.accent : Theme.ink)
         }
+        .padding(.vertical, isHighlighted ? 4 : 0)
+        .padding(.horizontal, isHighlighted ? 8 : 0)
+        .background(Theme.mintSoft.opacity(isHighlighted ? 1 : 0), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.horizontal, isHighlighted ? -8 : 0)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isHighlighted)
         .onAppear {
             withAnimation(.easeOut(duration: isTotal ? 0.9 : 0.4)) { shownBytes = Double(bytes) }
         }
@@ -1006,138 +757,163 @@ private struct ReadingIndicator: View {
     }
 }
 
-// MARK: - 7. The reveal
+/// Under the receipt: the biggest kind of thing, and why it's worth a look.
+private struct BloatSummary: View {
+    let bloat: Bloat
 
-/// The number counts up while the hero phone above drains to match.
-private struct RevealPage: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(bloat.group.title) take \(bloat.percent)% of it.")
+                .font(.display(26))
+                .boiling()
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(bloat.why)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 16)
+    }
+}
+
+// MARK: - 4. Which ones do you want to try?
+
+/// The scan's suggestions, biggest first, as ticks. The top one starts ticked.
+private struct PicksPage: View {
     let top: CGFloat
-    let numbers: RevealNumbers
-    let answers: OnboardingAnswers
-    let showsPaywall: Bool
+    let suggestions: [Suggestion]
+    @Binding var picks: [CleanupMethod]
     let onNext: () -> Void
-
     @State private var progress: CGFloat = 0
-    @State private var shownBytes: Double = 0
-    @State private var confetti = 0
-    @State private var settled = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Color.clear.frame(height: top)
-            Text("you could free up")
-                .font(.hand(22))
+            Text("here's what would help most")
+                .font(.hand(20))
                 .foregroundStyle(Theme.accent)
-                .handwritten(progress, start: 0, length: 0.15)
-
-            ZStack(alignment: .leading) {
-                CountingBytes(bytes: shownBytes)
-                    .font(.display(60))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .boiling()
-                    .accessibilityLabel(ByteFormatter.accessibilityString(numbers.totalBytes, precision: .twoDecimals))
-                InkConfetti(trigger: confetti)
-                    .frame(width: 10, height: 10)
-                    .offset(x: 110)
-            }
-            .padding(.vertical, 2)
-            .background(alignment: .leading) {
-                CircledLoop(progress: progress)
-                    .frame(width: 260, height: 90)
-                    .offset(x: -18)
-            }
-
-            Text(answers.goal?.revealPhrase ?? "without losing a memory")
-                .font(.display(22))
+                .handwritten(progress, start: 0, length: 0.25)
+            Text("Which ones do you\nwant to try?")
+                .font(.display(34))
                 .boiling()
-                .padding(.top, 6)
-            if numbers.morePhotos > 0 {
-                Text("that's room for about \(numbers.morePhotos.formatted()) more photos")
-                    .font(.hand(18))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.bottom, 4)
+                .accessibilityAddTraits(.isHeader)
+            ScrollView {
+                VStack(spacing: 10) {
+                    ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
+                        let shown = sketchStep(progress, start: 0.15 + CGFloat(index) * 0.08, length: 0.2)
+                        PickRow(
+                            suggestion: suggestion,
+                            isBest: index == 0,
+                            isOn: picks.contains(suggestion.method),
+                            tilt: index.isMultiple(of: 2) ? -1 : 1
+                        ) {
+                            toggle(suggestion.method)
+                        }
+                        .opacity(shown)
+                        .offset(y: 18 * (1 - shown))
+                    }
+                }
+                // Room for the tilt and the "best bet" note.
+                .padding(.top, 16)
+                .padding(.bottom, 6)
+                .padding(.horizontal, 2)
             }
-
-            VStack(spacing: 10) {
-                SplitRow(illustration: .trash, title: "Delete duplicates & junk", tag: "free", bytes: numbers.freeBytes)
-                    .opacity(settled ? 1 : 0)
-                    .offset(y: settled ? 0 : 20)
-                SplitRow(illustration: .compress, title: "Shrink, keep every memory", tag: "pro", bytes: numbers.proBytes)
-                    .opacity(settled ? 1 : 0)
-                    .offset(y: settled ? 0 : 28)
-            }
-            .padding(.top, 16)
-            .animation(.spring(response: 0.5, dampingFraction: 0.75), value: settled)
-
-            Spacer(minLength: 12)
-            Text("Estimated from your \u{201C}\(TestMode.albumName)\u{201D} album.")
+            .scrollBounceBehavior(.basedOnSize)
+            Spacer(minLength: 10)
+            Text(footer)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 8)
-            Button(showsPaywall ? "Get it all back" : "Start cleaning", action: onNext)
+            Button("Let's do it", action: onNext)
                 .buttonStyle(.sticker)
-                .opacity(settled ? 1 : 0.001)
+                .disabled(picks.isEmpty)
+                .opacity(picks.isEmpty ? 0.5 : 1)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
-        .drawing($progress, duration: 2)
-        .sensoryFeedback(.success, trigger: confetti)
-        .task { await play() }
-    }
-
-    /// Same timing as the hero's drain, so the number and the tank move together.
-    private func play() async {
-        try? await Task.sleep(for: .milliseconds(350))
-        withAnimation(.easeOut(duration: 1.6)) { shownBytes = Double(numbers.totalBytes) }
-        try? await Task.sleep(for: .milliseconds(1500))
-        confetti += 1
-        settled = true
-    }
-}
-
-/// A loose pen loop circling the big number.
-private struct CircledLoop: View {
-    let progress: CGFloat
-    private static let design = CGSize(width: 260, height: 90)
-    private static let loop = Sketch.loop(around: CGRect(x: 8, y: 8, width: 244, height: 74), seed: 50)
-
-    var body: some View {
-        BoilPoseReader { pose in
-            DrawnStroke(path: Sketch.boil(Self.loop, pose: pose, amount: 0.8),
-                        design: Self.design, progress: progress, start: 0.55, length: 0.3)
-                .stroke(Theme.mint, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+        .drawing($progress, duration: 1.4)
+        .sensoryFeedback(.selection, trigger: picks)
+        .onAppear {
+            if picks.isEmpty, let first = suggestions.first { picks = [first.method] }
         }
-        .accessibilityHidden(true)
+    }
+
+    private var pickedBytes: Int64 {
+        suggestions.filter { picks.contains($0.method) }.totalBytes
+    }
+
+    private var footer: String {
+        let source = "estimated from your \u{201C}\(TestMode.albumName)\u{201D} album."
+        guard pickedBytes > 0 else { return "Sizes " + source }
+        return "Up to \(ByteFormatter.string(pickedBytes, precision: .twoDecimals)) back, " + source
+    }
+
+    /// Keeps the picks in the order they're shown.
+    private func toggle(_ method: CleanupMethod) {
+        if let index = picks.firstIndex(of: method) {
+            picks.remove(at: index)
+        } else {
+            let order = suggestions.map(\.method)
+            picks = order.filter { picks.contains($0) || $0 == method }
+        }
     }
 }
 
-/// Free vs Pro, side by side on the reveal.
-private struct SplitRow: View {
-    let illustration: Illustration
-    let title: String
-    let tag: String
-    let bytes: Int64
+/// One suggestion: what it is, what it could free, and a tick.
+private struct PickRow: View {
+    let suggestion: Suggestion
+    let isBest: Bool
+    let isOn: Bool
+    var tilt: Double = 0
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            IllustrationView(illustration, size: 40)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                Text(tag.uppercased())
-                    .font(.caption2.weight(.heavy))
-                    .tracking(0.8)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(tag == "pro" ? Theme.mint : Theme.well, in: Capsule())
-                    .foregroundStyle(Color(hex: 0x1A1A17))
+        Button(action: action) {
+            HStack(spacing: 12) {
+                IllustrationView(suggestion.method.illustration, size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(suggestion.method.title)
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(suggestion.method.pitch)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 4)
+                if let bytes = suggestion.bytes {
+                    Text("\u{2212}" + ByteFormatter.string(bytes, precision: .twoDecimals))
+                        .font(.metric(.subheadline))
+                        .monospacedDigit()
+                        .foregroundStyle(Theme.accent)
+                }
+                InkCheck(isOn: isOn, size: 24)
             }
-            Spacer(minLength: 6)
-            Text(ByteFormatter.string(bytes, precision: .twoDecimals))
-                .font(.metric(.headline))
-                .monospacedDigit()
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
-        .sticker(padding: 12)
+        .buttonStyle(.plain)
+        .sticker(fill: isOn ? Theme.mintSoft : Theme.surface, radius: 18, padding: 12)
+        .overlay(alignment: .topTrailing) {
+            if isBest {
+                Text("best bet")
+                    .font(.hand(16))
+                    .foregroundStyle(Theme.tomato)
+                    .rotationEffect(.degrees(-6))
+                    .offset(x: -10, y: -14)
+                    .accessibilityHidden(true)
+            }
+        }
+        .rotationEffect(.degrees(isOn ? tilt : 0))
+        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: isOn)
+        .accessibilityElement(children: .combine)
+        .accessibilityHint(isBest ? "Frees the most space." : "")
+        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
     }
 }
 
@@ -1148,8 +924,8 @@ private struct SplitRow: View {
         .tint(Theme.accent)
 }
 
-#Preview("Reveal") {
-    OnboardingFlow(startAt: .reveal, sampleReveal: .sample, onFinish: {})
+#Preview("Picks") {
+    OnboardingFlow(startAt: .picks, sampleSuggestions: Suggestion.sample, onFinish: {})
         .environment(AppModel.preview())
         .environment(PurchaseStore(defaults: UserDefaults(suiteName: "preview")!))
         .tint(Theme.accent)

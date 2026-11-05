@@ -14,12 +14,35 @@ fall back to simulated purchases. Release builds never simulate.
 | Annual   | $39.99/year   | Main paywall (selected by default), site ("save 88%") |
 | Lifetime | $49.99 once   | App only: one-time offer after the paywall is closed without buying, shown once ever |
 
-Free: scan, browse, delete, and duplicates and junk. Pro: the shrink tools
-(shrink and trim videos, Live Photos to stills, best shot of each burst). The
-paywall shows at the end of onboarding, right after the scan reveals what could
-be freed, and again when a free user taps a Pro card on Home (they carry a PRO
-tag). Screenshot re-save is promised on the site but isn't built, so the app's
-paywall doesn't list it.
+Free does it by hand; Pro does the heavy hitters, and does them in one tap.
+
+- **Free:** scan, browse, delete by hand, **Swipe to clean** (likely deletes
+  one at a time: extra copies, blurry and black shots, receipts, documents,
+  old screenshots; swipe left to delete, right to keep, with undo, and the
+  deletes happen together at the end), best shot of each burst, the
+  other-app guides (Messages, WhatsApp, offloading, Safari, downloads) and
+  folder cleanup in Files.
+- **Pro:** shrink and trim videos, Live Photos to stills, duplicates and junk
+  in bulk, and **one-tap Photo Cleanup** (Live Photos to stills, extra
+  copies, and blurry, black and old shots together; receipts and documents
+  are left alone).
+
+The split lives in one place, `CleanupMethod.isPro`
+(`ios/StorageApp/Purchases/CleanupMethod.swift`); `Plan.proFeatures` lists the
+Pro ones on the paywall. The site's pricing page (`web/src/lib/pricing.ts`)
+still lists the old split and needs updating.
+
+**When the paywall shows.** Never in onboarding. Onboarding is two screens
+(hook, "Sound familiar?"), a live scan that shows where the space went, then
+"Which ones do you want to try?" with no PRO tags. The picks are remembered,
+and Home's "Your plan" card walks through them in `PlanOrder`: the free fix
+that frees the most comes first, but only if it makes a dent (1% of the
+album, capped at 250 MB); otherwise Swipe to clean leads. Pro picks follow,
+and the paywall opens when one is tapped, with their own number on it. It
+also opens once ever, right after the first free cleanup gives space back
+("you just freed X. there's Y more waiting for Pro"), and whenever a free
+user taps a Pro card on Home. Screenshot re-save is promised on the site but
+isn't built, so the app's paywall doesn't list it.
 
 No free trial, by choice: cleanup is a one-and-done job, so a trial would let
 people free their space and cancel without paying. The free scan (which shows

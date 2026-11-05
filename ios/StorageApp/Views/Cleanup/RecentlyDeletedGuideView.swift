@@ -113,6 +113,7 @@ struct RecentlyDeletedGuideView: View {
         switch guide.kind {
         case .convertedLivePhotos: .stills
         case .shrunkVideo: .video
+        case .photoCleanup(_, let stills): stills.isEmpty ? .none : .stills
         case .deleted, .keptBurstPicks: .none
         }
     }
@@ -357,6 +358,9 @@ private struct DonePage: View {
                         burstProof(receipt)
                     case .shrunkVideo(let result):
                         videoProof(result)
+                    case .photoCleanup(let receipt, let stills):
+                        if let receipt { deletedProof(receipt) }
+                        if !stills.isEmpty { stillsProof(stills) }
                     }
                 }
                 .onReceipt()
@@ -379,6 +383,7 @@ private struct DonePage: View {
         case .convertedLivePhotos: "same photos, minus the video"
         case .keptBurstPicks: "best shots kept"
         case .shrunkVideo: "same memory, smaller file"
+        case .photoCleanup: "one tap, every photo checked"
         }
     }
 
@@ -389,7 +394,18 @@ private struct DonePage: View {
         case .keptBurstPicks(let receipt):
             "Kept \(receipt.keepers.count == 1 ? "1 shot" : "\(receipt.keepers.count) shots"), moved \(guide.count) to Recently Deleted"
         case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank your video" : "Shrank your video"
+        case .photoCleanup(let receipt, let stills):
+            Self.cleanupTitle(removed: receipt?.deleted.count ?? 0, stills: stills.count)
         }
+    }
+
+    private static func cleanupTitle(removed: Int, stills: Int) -> String {
+        let parts = [
+            removed > 0 ? "Removed \(removed == 1 ? "1 photo" : "\(removed) photos")" : nil,
+            stills > 0 ? "made \(stills == 1 ? "1 still" : "\(stills) stills")" : nil,
+        ].compactMap { $0 }
+        let text = parts.joined(separator: ", ")
+        return text.prefix(1).uppercased() + text.dropFirst()
     }
 
     @ViewBuilder

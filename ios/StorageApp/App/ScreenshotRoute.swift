@@ -15,8 +15,9 @@ enum ScreenshotRoute: String {
     case whatsapp
     /// The results screen with sample numbers (Build Plan step 11). Nothing is saved.
     case results
-    /// Onboarding's first screen, its reveal with sample numbers, and the paywall (step 12).
+    /// Onboarding's first screen, its picks with sample numbers, and the paywall (step 12).
     case onboarding
+    /// Onboarding's "which ones do you want to try?" (kept as `reveal` for CI's screenshot list).
     case reveal
     case paywall
 
@@ -24,7 +25,7 @@ enum ScreenshotRoute: String {
     var onboardingStart: OnboardingStep? {
         switch self {
         case .onboarding: .hook
-        case .reveal: .reveal
+        case .reveal: .picks
         case .paywall: .paywall
         default: nil
         }

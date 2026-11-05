@@ -4,12 +4,21 @@ import SwiftUI
 /// Dashboard: the phone's real storage, and what takes up space in the test album.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
+    @AppStorage(OnboardingAnswers.planDismissedKey) private var planDismissed = false
+    /// Re-reads the plan when onboarding finishes over Home.
+    @AppStorage(OnboardingAnswers.completedKey) private var onboardingDone = false
 
     var body: some View {
         @Bindable var model = model
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                if showsPlan {
+                    PlanCard(picks: OnboardingAnswers.load().picks) {
+                        withAnimation(.easeInOut) { planDismissed = true }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 DeviceStorageCard()
                 if model.freed.total > 0 {
                     ResultsCard(bytes: model.freed.total)
@@ -33,6 +42,16 @@ struct HomeView: View {
         .background(PaperBackground())
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $model.isShowingResults) { ResultsView() }
+        // Duplicates are checked again after a relaunch, so their card and the
+        // plan show a real number even when the tool itself needs Pro.
+        .task(id: model.albumScan?.total.count) {
+            if model.albumScan != nil, model.junkReport == nil { await model.findJunk() }
+        }
+    }
+
+    /// The onboarding picks, until they're closed. Needs a scan for its numbers.
+    private var showsPlan: Bool {
+        onboardingDone && !planDismissed && model.albumScan != nil && !OnboardingAnswers.load().picks.isEmpty
     }
 
     private var header: some View {
@@ -240,20 +259,162 @@ private struct SpaceWaitingCard: View {
     }
 }
 
-/// What the app can do to the test album so far. The shrink tools need Pro;
-/// without it their cards open the paywall instead.
+/// Opens a cleanup method: its tool, its guide, or the paywall when it needs Pro.
+private struct MethodLink<Label: View>: View {
+    let method: CleanupMethod
+    let onPaywall: () -> Void
+    @ViewBuilder var label: Label
+    @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
+
+    var body: some View {
+        if method.isPro && purchases.requiresPro {
+            Button(action: onPaywall) { label }
+                .buttonStyle(.plain)
+        } else if let guide = method.guide {
+            Button { model.open(guide) } label: { label }
+                .buttonStyle(.plain)
+        } else {
+            NavigationLink { destination } label: { label }
+                .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var destination: some View {
+        switch method {
+        case .shrinkVideos: VideosView()
+        case .photoCleanup: PhotoCleanupView()
+        case .duplicates: JunkReviewView()
+        case .livePhotos: LivePhotoStillsView()
+        case .swipe: SwipeCleanView()
+        case .bursts: BurstPicksView()
+        case .chatAttachments: EmptyView()
+        }
+    }
+}
+
+/// What they picked in onboarding, as a checklist that opens each tool, in
+/// `PlanOrder`: the free fix that frees the most leads ("start here"), Pro
+/// picks follow and open the paywall when tapped. Done ones sink to the bottom.
+private struct PlanCard: View {
+    let picks: [CleanupMethod]
+    let onClose: () -> Void
+    @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
+    @State private var showingPaywall = false
+
+    var body: some View {
+        let rows = ordered
+        let next = rows.first { !isDone($0) }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Your plan")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text(next == nil && rows.allSatisfy(isDone) ? "all done, nice" : "from your picks")
+                    .font(.hand(16))
+                    .foregroundStyle(Theme.accent)
+                Spacer(minLength: 8)
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Hide plan")
+            }
+            ForEach(rows) { method in
+                MethodLink(method: method, onPaywall: { showingPaywall = true }) {
+                    PlanRow(method: method, bytes: model.saving(for: method), isDone: isDone(method),
+                            isLocked: isLocked(method), isNext: method == next)
+                }
+                .disabled(isDone(method))
+            }
+        }
+        .sticker(padding: 16)
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallFlow(context: PaywallContext(proBytes: model.proSaving))
+                .environment(purchases)
+                .tint(Theme.accent)
+        }
+    }
+
+    private func isLocked(_ method: CleanupMethod) -> Bool {
+        method.isPro && purchases.requiresPro
+    }
+
+    /// Measured, with nothing left to free. Guides can't be measured, so they stay open.
+    private func isDone(_ method: CleanupMethod) -> Bool {
+        model.saving(for: method) == 0
+    }
+
+    /// `PlanOrder`, with anything already done moved to the end.
+    private var ordered: [CleanupMethod] {
+        let planned = model.planOrder(picks)
+        return planned.filter { !isDone($0) } + planned.filter(isDone)
+    }
+}
+
+private struct PlanRow: View {
+    let method: CleanupMethod
+    let bytes: Int64?
+    let isDone: Bool
+    let isLocked: Bool
+    let isNext: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            InkCheck(isOn: isDone, size: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(method.title)
+                        .font(.headline)
+                        .strikethrough(isDone, color: .secondary)
+                    if isLocked { ProTag() }
+                }
+                Text(status)
+                    .font(isNext ? Font.hand(16) : .caption)
+                    .foregroundStyle(isNext ? Theme.accent : Color.secondary)
+            }
+            Spacer(minLength: 8)
+            if let bytes, bytes > 0 {
+                Text("\u{2212}" + ByteFormatter.string(bytes, precision: .twoDecimals))
+                    .font(.metric(.subheadline))
+                    .monospacedDigit()
+                    .foregroundStyle(isLocked ? Theme.ink : Theme.accent)
+            }
+            if !isDone {
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .foregroundStyle(.primary)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(isNext ? Theme.mintSoft : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+
+    private var status: String {
+        if isDone { return "done" }
+        if isNext { return "start here" }
+        return method.pitch
+    }
+}
+
+/// What the app can do to the test album. Pro methods (see
+/// `CleanupMethod.isPro`) open the paywall instead until Pro is unlocked.
 private struct CleanupSection: View {
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
     @State private var showingPaywall = false
 
     var body: some View {
-        let live = model.convertibleLivePhotos
-        let liveSaving = model.livePhotoSaving
-        let bursts = model.bursts
-        let burstSaving = model.burstSaving
-        let videos = model.shrinkableVideos
-        let videoSaving = model.videoSaving
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Clean up")
@@ -263,53 +424,14 @@ private struct CleanupSection: View {
                     .font(.hand(16))
                     .foregroundStyle(Theme.accent)
             }
-            if !live.isEmpty {
-                proLink {
-                    LivePhotoStillsView()
-                } label: {
+            ForEach(methods) { method in
+                MethodLink(method: method, onPaywall: { showingPaywall = true }) {
                     ActionCard(
-                        illustration: .photo,
-                        title: "Live Photos \u{2192} stills",
-                        subtitle: "\(live.count) Live \(live.count == 1 ? "Photo" : "Photos"), same photos without the video",
-                        figure: "\u{2212}" + ByteFormatter.string(liveSaving, precision: .twoDecimals),
-                        isPro: purchases.requiresPro
-                    )
-                }
-            }
-            if !videos.isEmpty {
-                proLink {
-                    VideosView()
-                } label: {
-                    ActionCard(
-                        illustration: .compress,
-                        title: "Shrink videos",
-                        subtitle: "\(videos.count) \(videos.count == 1 ? "video" : "videos"), compress or trim, same memories",
-                        figure: "\u{2212}" + ByteFormatter.string(videoSaving, precision: .twoDecimals),
-                        isPro: purchases.requiresPro
-                    )
-                }
-            }
-            NavigationLink {
-                JunkReviewView()
-            } label: {
-                ActionCard(
-                    illustration: .beaker,
-                    title: "Duplicates and junk",
-                    subtitle: junkSubtitle,
-                    figure: model.junkReport.flatMap { $0.isEmpty ? nil : "\u{2212}" + ByteFormatter.string($0.suggestedBytes, precision: .twoDecimals) }
-                )
-            }
-            .buttonStyle(.plain)
-            if !bursts.isEmpty {
-                proLink {
-                    BurstPicksView()
-                } label: {
-                    ActionCard(
-                        illustration: .stackSmall,
-                        title: "Best shot of each burst",
-                        subtitle: "\(bursts.count) \(bursts.count == 1 ? "burst" : "bursts"), keep one shot, remove the rest",
-                        figure: "\u{2212}" + ByteFormatter.string(burstSaving, precision: .twoDecimals),
-                        isPro: purchases.requiresPro
+                        illustration: method.illustration,
+                        title: method.title,
+                        subtitle: subtitle(for: method),
+                        figure: figure(for: method),
+                        isPro: method.isPro && purchases.requiresPro
                     )
                 }
             }
@@ -332,25 +454,53 @@ private struct CleanupSection: View {
                 .tint(Theme.accent)
         }
     }
-}
 
-extension CleanupSection {
-    /// Opens `destination` for Pro, or the paywall for everyone else.
-    @ViewBuilder
-    fileprivate func proLink<Destination: View>(@ViewBuilder destination: @escaping () -> Destination, label: () -> ActionCard) -> some View {
-        if purchases.requiresPro {
-            Button { showingPaywall = true } label: { label() }
-                .buttonStyle(.plain)
-        } else {
-            NavigationLink(destination: destination, label: label)
-                .buttonStyle(.plain)
+    /// The album tools with something to work on. The photo-checking ones
+    /// always show, so they can run their first check.
+    private var methods: [CleanupMethod] {
+        [CleanupMethod.photoCleanup, .swipe, .shrinkVideos, .livePhotos, .duplicates, .bursts].filter { method in
+            switch method {
+            case .livePhotos: !model.convertibleLivePhotos.isEmpty
+            case .shrinkVideos: !model.shrinkableVideos.isEmpty
+            case .bursts: !model.bursts.isEmpty
+            case .photoCleanup, .swipe, .duplicates: true
+            case .chatAttachments: false
+            }
         }
     }
 
-    fileprivate var junkSubtitle: String {
-        guard let report = model.junkReport else { return "Copies, blurry and black shots, receipts, old screenshots" }
-        if report.isEmpty { return "Nothing found. Look again after adding photos" }
-        return "\(report.suggestedCount) \(report.suggestedCount == 1 ? "photo" : "photos") to review, best copies kept"
+    private func subtitle(for method: CleanupMethod) -> String {
+        switch method {
+        case .livePhotos:
+            let count = model.convertibleLivePhotos.count
+            return "\(count) Live \(count == 1 ? "Photo" : "Photos"), same photos without the video"
+        case .shrinkVideos:
+            let count = model.shrinkableVideos.count
+            return "\(count) \(count == 1 ? "video" : "videos"), compress or trim, same memories"
+        case .bursts:
+            let count = model.bursts.count
+            return "\(count) \(count == 1 ? "burst" : "bursts"), keep one shot, remove the rest"
+        case .duplicates:
+            guard let report = model.junkReport else { return "Copies, blurry and black shots, receipts, old screenshots" }
+            if report.isEmpty { return "Nothing found. Look again after adding photos" }
+            return "\(report.suggestedCount) \(report.suggestedCount == 1 ? "photo" : "photos") to review, best copies kept"
+        case .photoCleanup:
+            guard let plan = model.photoCleanupPlan else { return method.pitch }
+            if plan.isEmpty { return "Nothing to clean right now" }
+            return "\(plan.stillCount + plan.remove.count) photos in one tap, best copies kept"
+        case .swipe:
+            guard let report = model.junkReport else { return method.pitch }
+            let count = SwipeCandidate.all(from: report).count
+            if count == 0 { return "Nothing to swipe right now" }
+            return "\(count) likely \(count == 1 ? "delete" : "deletes"), one at a time"
+        case .chatAttachments:
+            return method.pitch
+        }
+    }
+
+    private func figure(for method: CleanupMethod) -> String? {
+        guard let bytes = model.saving(for: method), bytes > 0 else { return nil }
+        return "\u{2212}" + ByteFormatter.string(bytes, precision: .twoDecimals)
     }
 }
 
@@ -464,15 +614,7 @@ private struct ActionCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(title).font(.headline)
-                    if isPro {
-                        Text("PRO")
-                            .font(.caption2.weight(.heavy))
-                            .tracking(0.8)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Theme.mint, in: Capsule())
-                            .foregroundStyle(Color(hex: 0x1A1A17))
-                    }
+                    if isPro { ProTag() }
                 }
                 Text(subtitle)
                     .font(.caption)
@@ -539,4 +681,5 @@ private struct CategoryCard: View {
 #Preview {
     NavigationStack { HomeView() }
         .environment(AppModel.preview())
+        .environment(PurchaseStore(defaults: UserDefaults(suiteName: "preview")!))
 }

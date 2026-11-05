@@ -15,6 +15,8 @@ struct CleanupGuide: Identifiable, Equatable {
         case convertedLivePhotos([StillConversion])
         case keptBurstPicks(BurstReceipt)
         case shrunkVideo(VideoReplacement)
+        /// One-tap Photo Cleanup: what was removed, and the Live Photos made into stills.
+        case photoCleanup(DeletionReceipt?, [StillConversion])
     }
 
     let id = UUID()
@@ -33,6 +35,7 @@ struct CleanupGuide: Identifiable, Equatable {
         case .convertedLivePhotos: count == 1 ? "1 Live Photo \u{2192} still" : "\(count) Live Photos \u{2192} stills"
         case .keptBurstPicks(let receipt): receipt.keepers.count == 1 ? "Best shot of 1 burst" : "Best shot of \(receipt.keepers.count) bursts"
         case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank a video" : "Shrank a video"
+        case .photoCleanup: count == 1 ? "Photo Cleanup: 1 photo" : "Photo Cleanup: \(count) photos"
         }
     }
 
@@ -307,9 +310,6 @@ final class AppModel {
         }
     }
 
-    /// Everything the Pro tools could save in the scanned album, without deleting a memory.
-    var proSaving: Int64 { livePhotoSaving + burstSaving + videoSaving }
-
     // MARK: Duplicates + junk
 
     /// Measures any photos not measured yet, then updates the junk report. Read-only.
@@ -341,6 +341,39 @@ final class AppModel {
     /// on success, or why nothing changed.
     @discardableResult
     func removeJunk(_ remove: Set<MediaItem.ID>, keeping keepers: Set<MediaItem.ID>) async -> PhotoChangeError? {
+        if let refusal = await checkJunkRemoval(remove, keeping: keepers) { return refusal }
+        return await delete(approved: remove)
+    }
+
+    /// One-tap Photo Cleanup: removes the approved duplicates and junk (with
+    /// the same checks as `removeJunk`), then turns the approved Live Photos
+    /// into stills, and opens one guide for both. If the removal worked but
+    /// the stills didn't, the guide still opens for what was removed.
+    @discardableResult
+    func cleanUpPhotos(_ plan: PhotoCleanupPlan) async -> PhotoChangeError? {
+        if !plan.remove.isEmpty, let refusal = await checkJunkRemoval(plan.remove, keeping: plan.keepers) { return refusal }
+        let convert = plan.convert.subtracting(plan.remove)
+        return await change(plan.remove.union(convert)) { changes in
+            var receipt: DeletionReceipt?
+            if !plan.remove.isEmpty { receipt = try await changes.delete(plan.remove) }
+            var stills: [StillConversion] = []
+            if !convert.isEmpty {
+                do {
+                    stills = try await changes.convertLivePhotosToStills(convert)
+                } catch {
+                    // Nothing changed yet: report it as usual.
+                    guard receipt != nil else { throw error }
+                    self.errorMessage = "Removed the duplicates and junk, but couldn't turn the Live Photos into stills: \(error.localizedDescription)"
+                }
+            }
+            let removed = Array(receipt?.deleted ?? []) + stills.map(\.originalID)
+            let bytes = (receipt?.deletedBytes ?? 0) + stills.reduce(Int64(0)) { $0 + $1.savedBytes }
+            return CleanupGuide(kind: .photoCleanup(receipt, stills), removedIDs: removed, expectedBytes: bytes)
+        }
+    }
+
+    /// Why a duplicates-and-junk removal must not go ahead, or nil if it can.
+    private func checkJunkRemoval(_ remove: Set<MediaItem.ID>, keeping keepers: Set<MediaItem.ID>) async -> PhotoChangeError? {
         guard let junkReport else { return .junkChanged("Nothing has been found yet.") }
         do {
             try junkReport.validate(remove: remove, keepers: keepers)
@@ -360,7 +393,7 @@ final class AppModel {
                 break
             }
         }
-        return await delete(approved: remove)
+        return nil
     }
 
     // MARK: Changes (test album only)

@@ -1,29 +1,26 @@
 import Foundation
 import StorageCore
 
-/// The first-run funnel: hook, the pain, one quick question, the "shrink,
-/// don't delete" demo, the Photos permission, a live scan, the reveal of
-/// what could be freed, then the paywall.
+/// The first-run funnel: the hook and the pain (two screens), a live scan
+/// that shows where the space went, then "which ones do you want to try?"
 ///
-/// The order follows what the best-converting utility apps share: show the
-/// problem with the person's own numbers, make the pain felt before asking
-/// for anything, keep questions to one easy tap, explain a permission before
-/// iOS asks for it, and put the paywall straight after the moment they see
-/// their own result, the "aha", instead of before it.
+/// The person already knows their phone is full, so the funnel gets to their
+/// own numbers fast and lets them pick what to do. Nothing in onboarding asks
+/// for money: the picks are remembered, Home's plan leads with the free fix
+/// that frees the most, and a Pro pick opens the paywall only when they tap
+/// it, the moment they want it most. See `PlanOrder`.
 enum OnboardingStep: Int, CaseIterable, Comparable {
     case hook
     case pain
-    case goal
-    case shrink
-    case privacy
     case scan
-    case reveal
+    case picks
+    /// Only for the `paywall` screenshot route; the funnel never goes here.
     case paywall
 
     static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 
     /// Steps that show in the pencil progress line at the top.
-    static let tracked: [OnboardingStep] = [.hook, .pain, .goal, .shrink, .privacy, .scan, .reveal]
+    static let tracked: [OnboardingStep] = [.hook, .pain, .scan, .picks]
 
     /// Share of the tracked steps done, 0 to 1.
     var progress: Double {
@@ -31,82 +28,44 @@ enum OnboardingStep: Int, CaseIterable, Comparable {
         return Double(index + 1) / Double(Self.tracked.count)
     }
 
-    /// Back goes to the previous question, never back into the scan.
-    var canGoBack: Bool {
-        switch self {
-        case .pain, .goal, .shrink, .privacy: true
-        default: false
-        }
-    }
-
+    /// Back never returns into the scan.
     var previous: OnboardingStep? {
-        canGoBack ? OnboardingStep(rawValue: rawValue - 1) : nil
+        switch self {
+        case .pain: .hook
+        default: nil
+        }
     }
 
-    /// The step after this one. The paywall is skipped for anyone who already
-    /// has Pro or while the paywall is switched off; nil means onboarding is done.
-    func next(showsPaywall: Bool) -> OnboardingStep? {
+    var canGoBack: Bool { previous != nil }
+
+    /// The step after this one; nil means onboarding is done.
+    var next: OnboardingStep? {
         switch self {
-        case .reveal: showsPaywall ? .paywall : nil
-        case .paywall: nil
-        default: OnboardingStep(rawValue: rawValue + 1)
+        case .hook: .pain
+        case .pain: .scan
+        case .scan: .picks
+        case .picks, .paywall: nil
         }
     }
 }
 
-/// "What do you need the space for?" One answer.
-enum SpaceGoal: String, CaseIterable, Identifiable, Codable {
-    case update
-    case newMemories
-    case quietAlerts
-    case tidy
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .update: "An iOS update"
-        case .newMemories: "New photos & videos"
-        case .quietAlerts: "Stop the \u{201C}Storage Full\u{201D} alerts"
-        case .tidy: "Just a tidier phone"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .update: "arrow.down.circle"
-        case .newMemories: "camera"
-        case .quietAlerts: "bell.slash"
-        case .tidy: "wand.and.stars"
-        }
-    }
-
-    /// Ends the reveal's headline: "You could free up 4.2 GB …"
-    var revealPhrase: String {
-        switch self {
-        case .update: "for your next iOS update"
-        case .newMemories: "for new photos and videos"
-        case .quietAlerts: "to quiet the Storage Full alerts"
-        case .tidy: "and tidy up your library"
-        }
-    }
-}
-
-/// The person's answer, kept so later screens can speak to it.
+/// What the person picked, kept so Home can guide them through it.
 struct OnboardingAnswers: Equatable {
-    var goal: SpaceGoal?
+    /// Ticked on "Which ones do you want to try?", in the order shown.
+    var picks: [CleanupMethod] = []
 
     private enum Keys {
-        static let goal = "onboarding.goal"
+        static let picks = "onboarding.picks"
         static let completed = "onboarding.completed"
     }
 
     static func load(from defaults: UserDefaults = .standard) -> OnboardingAnswers {
-        OnboardingAnswers(goal: defaults.string(forKey: Keys.goal).flatMap(SpaceGoal.init(rawValue:)))
+        let raw = defaults.stringArray(forKey: Keys.picks) ?? []
+        return OnboardingAnswers(picks: raw.compactMap(CleanupMethod.init(rawValue:)))
     }
 
     func save(to defaults: UserDefaults = .standard) {
-        defaults.set(goal?.rawValue, forKey: Keys.goal)
+        defaults.set(picks.map(\.rawValue), forKey: Keys.picks)
     }
 
     static func isCompleted(in defaults: UserDefaults = .standard) -> Bool {
@@ -118,26 +77,48 @@ struct OnboardingAnswers: Equatable {
     }
 
     static let completedKey = Keys.completed
+    static let picksKey = Keys.picks
+    /// Set when the person closes Home's plan card.
+    static let planDismissedKey = "home.planDismissed"
+    /// Set once the paywall has followed a first free cleanup.
+    static let winPaywallShownKey = "paywall.afterFirstWinShown"
 }
 
-/// The numbers the reveal shows, from a finished scan.
-struct RevealNumbers: Equatable {
-    /// Deleting suggested duplicates and junk (free).
-    var freeBytes: Int64
-    /// Shrinking videos, Live Photos to stills, best shot of each burst (Pro).
-    var proBytes: Int64
+/// The biggest kind of thing in a scan, for "Videos take 64% of it".
+struct Bloat: Equatable {
+    let group: ScanGroup
+    let bytes: Int64
+    let share: Double
 
-    var totalBytes: Int64 { freeBytes + proBytes }
-    var isEmpty: Bool { totalBytes <= 0 }
+    var percent: Int { Int((share * 100).rounded()) }
 
-    /// A typical iPhone photo, for "room for about N more photos". Kept on
-    /// the large side so the figure never overpromises.
-    static let typicalPhotoBytes: Int64 = 3_500_000
+    init?(scan: LibraryScan) {
+        let total = scan.total.bytes
+        guard total > 0, let top = ScanGroup.kinds.max(by: { scan[$0].bytes < scan[$1].bytes }) else { return nil }
+        group = top
+        bytes = scan[top].bytes
+        share = Double(bytes) / Double(total)
+    }
 
-    var morePhotos: Int { roughCount(Int(totalBytes / Self.typicalPhotoBytes)) }
-
-    static let sample = RevealNumbers(freeBytes: 1_180_000_000, proBytes: 3_420_000_000)
+    /// Why that kind of thing is worth a look, in one line.
+    var why: String {
+        switch group {
+        case .videos: "Big videos are usually the fastest way to get space back."
+        case .livePhotos: "Every Live Photo hides a short video clip."
+        case .photos: "Copies and blurry shots add up quietly."
+        case .bursts: "Most of a burst is shots you'll never look at."
+        case .screenshots: "Old screenshots are usually safe to clear."
+        case .bigFormats: "4K and ProRes files are huge."
+        }
+    }
 }
+
+/// A typical iPhone photo, for "room for about N more photos". Kept on the
+/// large side so the figure never overpromises.
+let typicalPhotoBytes: Int64 = 3_500_000
+
+/// "Room for about N more photos" for a number of bytes, rounded down.
+func morePhotos(_ bytes: Int64) -> Int { roughCount(Int(max(bytes, 0) / typicalPhotoBytes)) }
 
 /// How long the phone's free space lasts, for the pain screen.
 struct StorageRunway: Equatable {
@@ -149,7 +130,7 @@ struct StorageRunway: Equatable {
 
     init(availableBytes: Int64) {
         let free = max(availableBytes, 0)
-        photos = roughCount(Int(free / RevealNumbers.typicalPhotoBytes))
+        photos = roughCount(Int(free / typicalPhotoBytes))
         videoMinutes = Int(free / Self.fourKMinuteBytes)
     }
 }

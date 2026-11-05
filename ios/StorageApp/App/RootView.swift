@@ -6,13 +6,18 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
     @AppStorage(OnboardingAnswers.completedKey) private var onboardingDone = false
+    @AppStorage(OnboardingAnswers.winPaywallShownKey) private var winPaywallShown = false
+    /// The paywall that follows a first free cleanup, once ever.
+    @State private var winPaywall: PaywallContext?
+    /// What the open other-app guide has measured so far; the model clears it on close.
+    @State private var otherAppFreed: Int64 = 0
 
     var body: some View {
         ZStack {
             tabs
             if showsOnboarding {
                 OnboardingFlow(startAt: ScreenshotRoute.current?.onboardingStart ?? .hook,
-                               sampleReveal: ScreenshotRoute.current?.onboardingStart == nil ? nil : .sample) {
+                               sampleSuggestions: ScreenshotRoute.current?.onboardingStart == nil ? nil : Suggestion.sample) {
                     withAnimation(.easeInOut(duration: 0.45)) { onboardingDone = true }
                 }
                 .transition(.opacity.combined(with: .scale(scale: 1.04)))
@@ -62,9 +67,40 @@ struct RootView: View {
                 .environment(model)
                 .tint(Theme.accent)
         }
+        // After the first free cleanup, once: "You freed X. Pro gets the other Y."
+        // Shown when they've just seen the app work, without blocking anything.
+        .fullScreenCover(isPresented: Binding(get: { winPaywall != nil }, set: { if !$0 { winPaywall = nil } })) {
+            PaywallFlow(context: winPaywall ?? .generic)
+                .environment(purchases)
+                .tint(Theme.accent)
+        }
+        .onChange(of: model.guide?.id) { old, new in
+            if old != nil, new == nil { offerAfterWin(freed: model.lastGuide?.expectedBytes ?? 0) }
+        }
+        .onChange(of: model.guideFreedBytes) { _, bytes in
+            if bytes > 0 { otherAppFreed = bytes }
+        }
+        .onChange(of: model.otherAppGuide) { old, new in
+            guard old != nil, new == nil else { return }
+            offerAfterWin(freed: otherAppFreed)
+            otherAppFreed = 0
+        }
         .task {
             ScreenshotRoute.current?.apply(to: model)
             await model.scanIfAllowed()
+        }
+    }
+
+    /// Opens the paywall once ever, right after a free cleanup gave space back,
+    /// if Pro still has something sizeable to offer.
+    private func offerAfterWin(freed: Int64) {
+        let pro = model.proSaving
+        guard purchases.requiresPro, !winPaywallShown, ScreenshotRoute.current == nil, freed > 0, pro > 0 else { return }
+        winPaywallShown = true
+        Task {
+            // Let the guide finish closing first.
+            try? await Task.sleep(for: .milliseconds(650))
+            winPaywall = PaywallContext(proBytes: pro, freedBytes: freed)
         }
     }
 }
