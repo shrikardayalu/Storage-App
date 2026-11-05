@@ -229,6 +229,8 @@ final class AppModel {
         uptime: @escaping @Sendable () -> TimeInterval = { 1_000_000_000 }
     ) {
         self.storageService = storage
+        self.restartStore = restartStore
+        self.uptime = uptime
         self.historyStore = historyStore
         self.freedStore = freedStore
         self.photoScanner = photoScanner
@@ -238,8 +240,6 @@ final class AppModel {
         self.storageHistory = historyStore.load()
         self.deviceStorage = storageHistory.latest
         self.freed = freedStore.load()
-        self.restartStore = restartStore
-        self.uptime = uptime
         self.restartCoach = restartStore.load()
     }
 
