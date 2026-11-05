@@ -17,6 +17,8 @@ struct CleanupGuide: Identifiable, Equatable {
         case shrunkVideo(VideoReplacement)
         /// One-tap Photo Cleanup: what was removed, and the Live Photos made into stills.
         case photoCleanup(DeletionReceipt?, [StillConversion])
+        /// PNG screenshots replaced by smaller HEIC copies; the PNGs are in Recently Deleted.
+        case resavedScreenshots(ScreenshotResaveReceipt)
     }
 
     let id = UUID()
@@ -36,6 +38,7 @@ struct CleanupGuide: Identifiable, Equatable {
         case .keptBurstPicks(let receipt): receipt.keepers.count == 1 ? "Best shot of 1 burst" : "Best shot of \(receipt.keepers.count) bursts"
         case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank a video" : "Shrank a video"
         case .photoCleanup: count == 1 ? "Photo Cleanup: 1 photo" : "Photo Cleanup: \(count) photos"
+        case .resavedScreenshots: count == 1 ? "Re-saved 1 screenshot" : "Re-saved \(count) screenshots"
         }
     }
 
@@ -67,6 +70,55 @@ final class AppModel {
     /// Saved readings, oldest first. At most one per minute.
     private(set) var storageHistory = StorageHistory()
     private(set) var storageReadFailed = false
+
+    // MARK: Storage health + restart coach
+
+    /// Why Home suggests a look at storage, if it does.
+    var storageWarning: StorageWarning? {
+        StorageWarning.evaluate(latest: deviceStorage, history: storageHistory)
+    }
+
+    /// Takes a fresh reading as the baseline, so the next open after a
+    /// restart can show what came back.
+    func startRestart() async {
+        await refreshDeviceStorage()
+        guard let baseline = deviceStorage else { return }
+        restartCoach = RestartCoachState(pending: PendingRestart(baseline: baseline), result: nil)
+        saveRestartCoach()
+    }
+
+    func cancelRestart() {
+        restartCoach.pending = nil
+        saveRestartCoach()
+    }
+
+    func dismissRestartResult() {
+        restartCoach.result = nil
+        saveRestartCoach()
+    }
+
+    /// On every reading: if the phone started up since the baseline, measure
+    /// what came back and add it to the results. A suggestion nobody acted on
+    /// is dropped after a few days.
+    private func checkForRestart(_ snapshot: StorageSnapshot) {
+        guard let pending = restartCoach.pending else { return }
+        if pending.restarted(now: snapshot.date, uptime: uptime()) {
+            let result = RestartResult(date: snapshot.date, gainedBytes: pending.gained(now: snapshot))
+            if result.gaveSpaceBack {
+                let id = freed.open(.restart, title: "Restarted your iPhone", baseline: pending.baseline)
+                freed.record(snapshot)
+                freed.close(id)
+            }
+            restartCoach = RestartCoachState(pending: nil, result: result)
+            saveRestartCoach()
+        } else if pending.isExpired(now: snapshot.date) {
+            cancelRestart()
+        }
+    }
+
+    private func saveRestartCoach() {
+        try? restartStore.save(restartCoach)
+    }
 
     // MARK: Test album scan
 
@@ -139,6 +191,13 @@ final class AppModel {
     /// Sample numbers for screenshots are never saved over the real results.
     private var showingSampleResults = false
 
+    // MARK: Storage health + restart coach (Build Plan step 9)
+
+    /// A restart the person is about to do, and what the last one gave back.
+    private(set) var restartCoach = RestartCoachState()
+    /// The restart guide is on screen.
+    var isShowingRestartGuide = false
+
     // MARK: Navigation
 
     var selectedTab: AppTab = .home
@@ -154,6 +213,9 @@ final class AppModel {
     private let photoChanges: any TestAlbumChangeService
     private let photoAnalyzer: any PhotoAnalysisService
     private let folderFiles: any FolderFilesService
+    private let restartStore: RestartCoachStore
+    /// Time since the phone started, including time asleep.
+    private let uptime: @Sendable () -> TimeInterval
 
     init(
         storage: any DeviceStorageService = MockDeviceStorageService(),
@@ -162,7 +224,9 @@ final class AppModel {
         photoScanner: any PhotoScanService = MockPhotoScanService(items: []),
         photoChanges: any TestAlbumChangeService = MockPhotoLibrary(items: []),
         photoAnalyzer: any PhotoAnalysisService = MockPhotoAnalysis(),
-        folderFiles: any FolderFilesService = MockFolderFiles(files: [])
+        folderFiles: any FolderFilesService = MockFolderFiles(files: []),
+        restartStore: RestartCoachStore = .inMemory,
+        uptime: @escaping @Sendable () -> TimeInterval = { 1_000_000_000 }
     ) {
         self.storageService = storage
         self.historyStore = historyStore
@@ -174,6 +238,9 @@ final class AppModel {
         self.storageHistory = historyStore.load()
         self.deviceStorage = storageHistory.latest
         self.freed = freedStore.load()
+        self.restartStore = restartStore
+        self.uptime = uptime
+        self.restartCoach = restartStore.load()
     }
 
     /// One mock library that both scans and changes, for tests and previews.
@@ -198,7 +265,9 @@ final class AppModel {
             photoScanner: PhotoKitScanService(),
             photoChanges: PhotoKitTestAlbumChanges(),
             photoAnalyzer: PhotoKitAnalyzer(),
-            folderFiles: PickedFolderFiles()
+            folderFiles: PickedFolderFiles(),
+            restartStore: .applicationSupport,
+            uptime: { SystemUptime.sinceStart() }
         )
     }
 
@@ -214,6 +283,7 @@ final class AppModel {
             storageReadFailed = false
             reclaim?.record(snapshot)
             freed.record(snapshot)
+            checkForRestart(snapshot)
             saveFreed()
             if storageHistory.append(snapshot) {
                 try? historyStore.save(storageHistory)
@@ -281,6 +351,16 @@ final class AppModel {
 
     var convertibleLivePhotos: [MediaItem] {
         albumScan?.items.filter(\.isConvertibleLivePhoto) ?? []
+    }
+
+    /// Screenshots still saved as PNG, biggest first.
+    var resavableScreenshots: [MediaItem] {
+        (albumScan?.items.filter(ScreenshotResave.isResavable) ?? []).sorted { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
+    }
+
+    /// What re-saving every PNG screenshot could save, estimated.
+    var screenshotSaving: Int64 {
+        resavableScreenshots.reduce(Int64(0)) { $0 + ScreenshotResave.estimatedSaving(for: $1) }
     }
 
     /// Bursts in the test album that still have more than one shot.
@@ -436,6 +516,18 @@ final class AppModel {
             let results = try await changes.convertLivePhotosToStills(approved)
             let saved = results.reduce(Int64(0)) { $0 + $1.savedBytes }
             return CleanupGuide(kind: .convertedLivePhotos(results), removedIDs: results.map(\.originalID), expectedBytes: saved)
+        }
+    }
+
+    /// Replaces the approved PNG screenshots with smaller HEIC copies, then
+    /// opens the guide, since the PNGs wait in Recently Deleted. Returns nil on
+    /// success, or why nothing changed.
+    @discardableResult
+    func resaveScreenshots(approved: Set<MediaItem.ID>) async -> PhotoChangeError? {
+        await change(approved) { changes in
+            let receipt = try await changes.resaveScreenshots(approved)
+            return CleanupGuide(kind: .resavedScreenshots(receipt), removedIDs: receipt.resaved.map(\.originalID),
+                                expectedBytes: receipt.savedBytes)
         }
     }
 

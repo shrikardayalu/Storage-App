@@ -22,15 +22,15 @@ Free does it by hand; Pro does the heavy hitters, and does them in one tap.
   deletes happen together at the end), best shot of each burst, the
   other-app guides (Messages, WhatsApp, offloading, Safari, downloads) and
   folder cleanup in Files.
-- **Pro:** shrink and trim videos, Live Photos to stills, duplicates and junk
-  in bulk, and **one-tap Photo Cleanup** (Live Photos to stills, extra
+- **Pro:** shrink and trim videos, Live Photos to stills, re-save screenshots,
+  duplicates and junk in bulk, and **one-tap Photo Cleanup** (Live Photos to stills, extra
   copies, and blurry, black and old shots together; receipts and documents
   are left alone).
 
 The split lives in one place, `CleanupMethod.isPro`
 (`ios/StorageApp/Purchases/CleanupMethod.swift`); `Plan.proFeatures` lists the
 Pro ones on the paywall. The site's pricing page (`web/src/lib/pricing.ts`)
-still lists the old split and needs updating.
+lists the same split.
 
 **When the paywall shows.** Never in onboarding. Onboarding is two screens
 (hook, "Sound familiar?"), a live scan that shows where the space went, then
@@ -41,8 +41,8 @@ album, capped at 250 MB); otherwise Swipe to clean leads. Pro picks follow,
 and the paywall opens when one is tapped, with their own number on it. It
 also opens once ever, right after the first free cleanup gives space back
 ("you just freed X. there's Y more waiting for Pro"), and whenever a free
-user taps a Pro card on Home. Screenshot re-save is promised on the site but
-isn't built, so the app's paywall doesn't list it.
+user taps a Pro card on Home. Screenshot re-save (PNG screenshots saved again as smaller HEIC copies)
+is a Pro tool and is on the paywall.
 
 No free trial, by choice: cleanup is a one-and-done job, so a trial would let
 people free their space and cancel without paying. The free scan (which shows

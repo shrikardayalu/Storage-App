@@ -12,7 +12,7 @@ const lines: Line[] = [
   { name: "Concert.MOV", detail: "4K · 60 fps · 11 min", method: "Re-encoded to 1080p", from: 4.2, to: 1.1, ill: "ill-video" },
   { name: "Screen recording", detail: "9 min", method: "Trimmed to the 40 s you need", from: 2.7, to: 0.2, ill: "ill-reset" },
   { name: "1,840 Live Photos", detail: "photo + 3 s of video each", method: "Kept as stills", from: 5.6, to: 2.9, ill: "ill-photo" },
-  { name: "2,140 screenshots", detail: "saved as PNG", method: "Re-saved, same pixels", from: 6.8, to: 2.4, ill: "ill-screenshot" },
+  { name: "2,140 screenshots", detail: "saved as PNG", method: "Re-saved, looks the same", from: 6.8, to: 2.4, ill: "ill-screenshot" },
 ];
 
 const totalSaved = lines.reduce((sum, l) => sum + (l.from - l.to), 0);

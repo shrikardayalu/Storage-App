@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AppCta } from "@/components/app-cta";
 import { CompareCard } from "@/components/compare-card";
+import { TodoBanner } from "@/components/todo-banner";
 import { FaqList } from "@/components/faq-list";
 import { GuideCard } from "@/components/guide-card";
 import { HowItWorks } from "@/components/how-it-works";
@@ -386,6 +387,20 @@ export default function Home() {
               and where shrinking beats deleting.
             </p>
           </div>
+          {competitors.some((c) => !c.ready) && (
+            <div className="mt-10">
+              <TodoBanner title="Write the comparison articles">
+                {competitors.filter((c) => !c.ready).length} of {competitors.length} comparisons are still
+                &ldquo;coming soon&rdquo; placeholders (hidden from Google):{" "}
+                {competitors
+                  .filter((c) => !c.ready)
+                  .map((c) => c.name)
+                  .join(", ")}
+                . Write each one, then set <code>ready: true</code> in <code>web/src/lib/comparisons.ts</code>. This
+                banner disappears once they&apos;re all ready.
+              </TodoBanner>
+            </div>
+          )}
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {competitors.map((competitor, i) => (
               <CompareCard key={competitor.slug} competitor={competitor} index={i} />

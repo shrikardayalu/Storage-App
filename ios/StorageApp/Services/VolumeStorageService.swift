@@ -75,6 +75,25 @@ extension JSONFileStore where Value == FreedLedger {
     func load() -> FreedLedger { load(or: FreedLedger()) }
 }
 
+/// The restart coach's baseline and last result (Build Plan step 9).
+typealias RestartCoachStore = JSONFileStore<RestartCoachState>
+
+extension JSONFileStore where Value == RestartCoachState {
+    static var applicationSupport: Self { .inApplicationSupport("restart-coach.json") }
+
+    func load() -> RestartCoachState { load(or: RestartCoachState()) }
+}
+
+/// Time since the phone started. `CLOCK_MONOTONIC` keeps counting while the
+/// phone sleeps, so a long sleep never looks like a restart. Used only to
+/// tell whether the phone restarted since the person tapped the restart
+/// guide (privacy manifest reason 35F9.1).
+enum SystemUptime {
+    static func sinceStart() -> TimeInterval {
+        TimeInterval(clock_gettime_nsec_np(CLOCK_MONOTONIC)) / 1_000_000_000
+    }
+}
+
 private enum JSONCoders {
     static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()

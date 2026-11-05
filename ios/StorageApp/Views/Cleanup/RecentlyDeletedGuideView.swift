@@ -34,6 +34,8 @@ struct RecentlyDeletedGuideView: View {
         case stills
         /// A video was replaced by a smaller copy; the original is in Recently Deleted.
         case video
+        /// PNG screenshots were replaced by smaller copies; the PNGs are in Recently Deleted.
+        case screenshots
     }
 
     enum Step: Int {
@@ -57,6 +59,7 @@ struct RecentlyDeletedGuideView: View {
                 case .none: "The space isn't back yet"
                 case .stills: "Your stills are safe"
                 case .video: "Your smaller video is safe"
+                case .screenshots: "Your screenshots are safe"
                 }
             case .openPhotos: "Open Photos"
             case .findAlbum: "Find Recently Deleted"
@@ -65,6 +68,7 @@ struct RecentlyDeletedGuideView: View {
                 case .none: "Tap Select, pick, Delete"
                 case .stills: "Delete only the Live versions"
                 case .video: "Delete only the original"
+                case .screenshots: "Delete only the old PNGs"
                 }
             case .confirm: "Confirm on iOS"
             case .measure: "Your space, measured"
@@ -79,6 +83,7 @@ struct RecentlyDeletedGuideView: View {
                 case .none: "iOS keeps deleted photos for 30 days in case you change your mind. Until you empty them, they still fill your iPhone."
                 case .stills: "Each still is already in your library and the test album, right where the Live Photo was. What went to Recently Deleted is only the old Live version: the same photo plus its 3-second video. iOS keeps it for 30 days, so it still takes space until you empty it."
                 case .video: "The smaller copy is already in your library and the test album, with the same date and place. What went to Recently Deleted is the original, full-size video. iOS keeps it for 30 days, so it still takes space until you empty it."
+                case .screenshots: "Each smaller copy is already in your library and the test album, with the same date. What went to Recently Deleted is the old PNG version of each screenshot. iOS keeps them for 30 days, so they still take space until you empty them."
                 }
             case .openPhotos: "Storage App can't empty Recently Deleted for you. Only you can, and it takes about ten seconds."
             case .findAlbum: "Scroll to the bottom, to Utilities. On iOS 17, it's in the Albums tab. Unlock it with Face ID or your passcode."
@@ -87,12 +92,14 @@ struct RecentlyDeletedGuideView: View {
                 case .none: "Pick only what Storage App just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
                 case .stills: "The photos from Storage App in here are the old Live versions (shown below). They look like your stills because they're the same photo, but your stills never go in Recently Deleted. Deleting these only removes the extra video."
                 case .video: "The video from Storage App in here is the original, full-size one (shown below). It looks like your smaller copy because it's the same video, but your copy never goes in Recently Deleted."
+                case .screenshots: "The screenshots from Storage App in here are the old PNG versions (shown below). They look like your screenshots because they're the same image, but your smaller copies never go in Recently Deleted."
                 }
             case .confirm:
                 switch swap {
                 case .none: "Tap Delete From This iPhone. This is the step that gives the space back."
                 case .stills: "Tap Delete From This iPhone. This erases only the old Live versions. Your stills stay in your library."
                 case .video: "Tap Delete From This iPhone. This erases only the original. Your smaller video stays in your library."
+                case .screenshots: "Tap Delete From This iPhone. This erases only the old PNGs. Your smaller screenshots stay in your library."
                 }
             }
         }
@@ -114,6 +121,7 @@ struct RecentlyDeletedGuideView: View {
         case .convertedLivePhotos: .stills
         case .shrunkVideo: .video
         case .photoCleanup(_, let stills): stills.isEmpty ? .none : .stills
+        case .resavedScreenshots: .screenshots
         case .deleted, .keptBurstPicks: .none
         }
     }
@@ -361,6 +369,8 @@ private struct DonePage: View {
                     case .photoCleanup(let receipt, let stills):
                         if let receipt { deletedProof(receipt) }
                         if !stills.isEmpty { stillsProof(stills) }
+                    case .resavedScreenshots(let receipt):
+                        screenshotProof(receipt)
                     }
                 }
                 .onReceipt()
@@ -384,6 +394,7 @@ private struct DonePage: View {
         case .keptBurstPicks: "best shots kept"
         case .shrunkVideo: "same memory, smaller file"
         case .photoCleanup: "one tap, every photo checked"
+        case .resavedScreenshots: "same screenshots, smaller files"
         }
     }
 
@@ -396,6 +407,7 @@ private struct DonePage: View {
         case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank your video" : "Shrank your video"
         case .photoCleanup(let receipt, let stills):
             Self.cleanupTitle(removed: receipt?.deleted.count ?? 0, stills: stills.count)
+        case .resavedScreenshots: "Re-saved \(guide.count == 1 ? "1 screenshot" : "\(guide.count) screenshots")"
         }
     }
 
@@ -499,6 +511,35 @@ private struct DonePage: View {
                 .tracking(1.4)
                 .foregroundStyle(.secondary)
             SizeText(bytes: result.originalBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
+        }
+    }
+
+    @ViewBuilder
+    private func screenshotProof(_ receipt: ScreenshotResaveReceipt) -> some View {
+        let results = receipt.resaved
+        SafetyLine(done: results.allSatisfy(\.isSameSize), text: "Same image, same size", progress: progress, start: 0.26)
+        SafetyLine(done: results.allSatisfy(\.keptDate), text: "Date kept", progress: progress, start: 0.34)
+        SafetyLine(done: results.allSatisfy(\.keptFavorite), text: "Favorites kept", progress: progress, start: 0.42)
+        SafetyLine(done: results.allSatisfy(\.keptAlbum), text: "Still in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.5)
+        if !results.allSatisfy(\.keptEverything) {
+            Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.tomato)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if !receipt.skipped.isEmpty {
+            Text("\(receipt.skipped.count == 1 ? "1 screenshot was" : "\(receipt.skipped.count) screenshots were") already small, so \(receipt.skipped.count == 1 ? "it was" : "they were") left alone.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        DashedRule()
+        VStack(alignment: .leading, spacing: 2) {
+            Text("BACK ONCE YOU EMPTY RECENTLY DELETED")
+                .font(.caption2.weight(.bold))
+                .tracking(1.4)
+                .foregroundStyle(.secondary)
+            SizeText(bytes: guide.expectedBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
         }
     }
 
@@ -694,6 +735,7 @@ private struct SummaryPage: View {
         case .none: "Tap Select, pick what Storage App just removed, then Delete."
         case .stills: "Tap Select, pick only the old Live versions, then Delete."
         case .video: "Tap Select, pick only the original video, then Delete."
+        case .screenshots: "Tap Select, pick only the old PNG screenshots, then Delete."
         }
     }
 
@@ -849,12 +891,18 @@ private struct LookForThese: View {
 private struct SwapSafeNote: View {
     let swap: RecentlyDeletedGuideView.Swap
 
+    private var text: String {
+        switch swap {
+        case .video: "Your smaller video stays in your library. Only the original is in Recently Deleted."
+        case .screenshots: "Your smaller screenshots stay in your library. Only the old PNGs are in Recently Deleted."
+        case .stills, .none: "Your stills stay in your library. Only the old Live versions are in Recently Deleted."
+        }
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             InkCheck(isOn: true, size: 24)
-            Text(swap == .video
-                 ? "Your smaller video stays in your library. Only the original is in Recently Deleted."
-                 : "Your stills stay in your library. Only the old Live versions are in Recently Deleted.")
+            Text(text)
                 .font(.subheadline.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
         }

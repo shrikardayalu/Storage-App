@@ -130,6 +130,7 @@ enum Plan: String, CaseIterable, Identifiable {
         ("film", "Shrink 4K videos without deleting them"),
         ("scissors", "Trim long recordings to the good part"),
         ("livephoto", "Keep Live Photos as stills, minus the hidden video"),
+        ("camera.viewfinder", "Re-save screenshots at a fraction of the size"),
         ("square.on.square", "Clear duplicates, blurry shots and junk"),
         ("wand.and.stars", "Clean up all your photos in one tap"),
     ]

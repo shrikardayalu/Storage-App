@@ -364,17 +364,16 @@ private struct PainPage: View {
     private struct SystemAlert: Identifiable {
         let id: Int
         let symbol: String
-        let app: String
         let title: String
         let body: String
     }
 
     private static let alerts: [SystemAlert] = [
-        SystemAlert(id: 0, symbol: "gearshape.fill", app: "SETTINGS", title: "iPhone Storage Full",
+        SystemAlert(id: 0, symbol: "gearshape.fill", title: "iPhone Storage Full",
                     body: "You can manage your storage in Settings."),
-        SystemAlert(id: 1, symbol: "camera.fill", app: "CAMERA", title: "Cannot Take Photo",
+        SystemAlert(id: 1, symbol: "camera.fill", title: "Cannot Take Photo",
                     body: "There is not enough available storage to take a photo."),
-        SystemAlert(id: 2, symbol: "arrow.down.circle.fill", app: "SOFTWARE UPDATE", title: "Unable to Download Update",
+        SystemAlert(id: 2, symbol: "arrow.down.circle.fill", title: "Unable to Download Update",
                     body: "This update needs more storage than you have free."),
     ]
 
@@ -383,7 +382,7 @@ private struct PainPage: View {
             // Newest on top, like the Lock Screen; each drops out of the phone above.
             VStack(spacing: -6) {
                 ForEach(Self.alerts.prefix(shown).reversed()) { alert in
-                    AlertCard(symbol: alert.symbol, app: alert.app, title: alert.title, message: alert.body)
+                    AlertCard(symbol: alert.symbol, title: alert.title, message: alert.body)
                         .rotationEffect(.degrees(alert.id == 1 ? 1.4 : -1.2))
                         .zIndex(Double(alert.id))
                         .transition(.asymmetric(
@@ -449,10 +448,10 @@ private struct PainPage: View {
     }
 }
 
-/// A Lock Screen notification, drawn on paper.
+/// A storage warning, drawn on paper. No app name or timestamp, so it reads
+/// as an illustration rather than a real iOS notification.
 private struct AlertCard: View {
     let symbol: String
-    let app: String
     let title: String
     let message: String
 
@@ -465,16 +464,6 @@ private struct AlertCard: View {
                 .background(Theme.well, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Theme.ink, lineWidth: 1.4))
             VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(app)
-                        .font(.caption2.weight(.semibold))
-                        .tracking(0.4)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("now")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
                 Text(title)
                     .font(.subheadline.weight(.bold))
                 Text(message)

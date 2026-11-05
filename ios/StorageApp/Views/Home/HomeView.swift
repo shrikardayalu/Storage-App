@@ -20,6 +20,7 @@ struct HomeView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 DeviceStorageCard()
+                StorageHealthCard()
                 if model.freed.total > 0 {
                     ResultsCard(bytes: model.freed.total)
                 }
@@ -147,6 +148,106 @@ private struct DeviceStorageCard: View {
         case ..<60: return "Updated \(minutes) min ago"
         case ..<(24 * 60): return "Updated \(minutes / 60) hr ago"
         default: return "Updated \(date.formatted(date: .abbreviated, time: .shortened))"
+        }
+    }
+}
+
+/// Build Plan step 9: warns when space is low or shrinking fast, suggests a
+/// restart, and shows what the restart gave back on the next open.
+private struct StorageHealthCard: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if let result = model.restartCoach.result {
+            resultCard(result)
+        } else if model.restartCoach.pending != nil {
+            waitingCard
+        } else if let warning = model.storageWarning {
+            warningCard(warning)
+        }
+    }
+
+    private func warningCard(_ warning: StorageWarning) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                IllustrationView(.reset, size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title(warning))
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("a restart sometimes gives some back")
+                        .font(.hand(16))
+                        .foregroundStyle(Theme.tomato)
+                }
+            }
+            Button("Show Me How") { model.isShowingRestartGuide = true }
+                .buttonStyle(.soft)
+        }
+        .sticker(padding: 16)
+    }
+
+    private var waitingCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                IllustrationView(.reset, size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Waiting for your restart")
+                        .font(.headline)
+                    Text("Open Storage App again afterwards to see what came back.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack {
+                Button("Show Steps") { model.isShowingRestartGuide = true }
+                    .buttonStyle(.soft)
+                Button("Not Now") { model.cancelRestart() }
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.leading, 8)
+            }
+        }
+        .card(padding: 16)
+    }
+
+    private func resultCard(_ result: RestartResult) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            IllustrationView(result.gaveSpaceBack ? .piggy : .reset, size: 48)
+            VStack(alignment: .leading, spacing: 4) {
+                if result.gaveSpaceBack {
+                    Text("You got back \(ByteFormatter.string(result.gainedBytes, precision: .twoDecimals)) from a restart")
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("It's counted in your results.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("The restart didn't free much this time")
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("That's normal when iOS has little to tidy up. The cleanups below are where the space is.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+            Button { model.dismissRestartResult() } label: {
+                Image(systemName: "xmark")
+                    .font(.footnote.weight(.bold))
+                    .frame(width: 32, height: 32)
+            }
+            .accessibilityLabel("Dismiss")
+        }
+        .sticker(fill: Theme.mintSoft, padding: 16)
+    }
+
+    private func title(_ warning: StorageWarning) -> String {
+        switch warning {
+        case .low(let available):
+            "Only \(ByteFormatter.string(available, precision: .twoDecimals)) free"
+        case .shrinking(let lost, let days):
+            "Free space dropped \(ByteFormatter.string(lost, precision: .twoDecimals)) in \(days) days"
         }
     }
 }
@@ -287,6 +388,7 @@ private struct MethodLink<Label: View>: View {
         case .photoCleanup: PhotoCleanupView()
         case .duplicates: JunkReviewView()
         case .livePhotos: LivePhotoStillsView()
+        case .screenshots: ScreenshotResaveView()
         case .swipe: SwipeCleanView()
         case .bursts: BurstPicksView()
         case .chatAttachments: EmptyView()
@@ -458,9 +560,10 @@ private struct CleanupSection: View {
     /// The album tools with something to work on. The photo-checking ones
     /// always show, so they can run their first check.
     private var methods: [CleanupMethod] {
-        [CleanupMethod.photoCleanup, .swipe, .shrinkVideos, .livePhotos, .duplicates, .bursts].filter { method in
+        [CleanupMethod.photoCleanup, .swipe, .shrinkVideos, .livePhotos, .screenshots, .duplicates, .bursts].filter { method in
             switch method {
             case .livePhotos: !model.convertibleLivePhotos.isEmpty
+            case .screenshots: !model.resavableScreenshots.isEmpty
             case .shrinkVideos: !model.shrinkableVideos.isEmpty
             case .bursts: !model.bursts.isEmpty
             case .photoCleanup, .swipe, .duplicates: true
@@ -474,6 +577,9 @@ private struct CleanupSection: View {
         case .livePhotos:
             let count = model.convertibleLivePhotos.count
             return "\(count) Live \(count == 1 ? "Photo" : "Photos"), same photos without the video"
+        case .screenshots:
+            let count = model.resavableScreenshots.count
+            return "\(count) \(count == 1 ? "screenshot" : "screenshots") saved as PNG, same look, far smaller"
         case .shrinkVideos:
             let count = model.shrinkableVideos.count
             return "\(count) \(count == 1 ? "video" : "videos"), compress or trim, same memories"

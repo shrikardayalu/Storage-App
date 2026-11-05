@@ -1,8 +1,10 @@
 import AVFoundation
 import CoreLocation
 import Foundation
+import ImageIO
 import Photos
 import StorageCore
+import UniformTypeIdentifiers
 
 /// The only code in the app that changes the photo library, and it can only
 /// reach the "Storage App Test" album. `Tools/check-no-device-access.sh`
@@ -100,6 +102,77 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             throw PhotoChangeError.verificationFailed("Some photos didn't convert. Scan again to see what's there.")
         }
         return results
+    }
+
+    func resaveScreenshots(_ approved: Set<MediaItem.ID>) async throws -> ScreenshotResaveReceipt {
+        let gate = try await Task.detached(priority: .userInitiated) { try Gate.open(approved) }.value
+        let originals = gate.approvedAssets
+        let notPNG = originals.filter { !Self.isPNGScreenshot($0) }.count
+        guard notPNG == 0 else { throw PhotoChangeError.notResavable(count: notPNG) }
+
+        // Encode every copy before changing anything, so a failed read changes
+        // nothing, and keep only the ones that come out clearly smaller.
+        var copies: [(original: PHAsset, data: Data, filename: String, originalBytes: Int64)] = []
+        var skipped = Set<String>()
+        for asset in originals {
+            let source = try await Self.stillImage(of: asset)
+            let originalBytes = Self.bytes(of: asset)
+            let heic = try Self.heicCopy(of: source.data)
+            if ScreenshotResave.isWorthReplacing(originalBytes: originalBytes, newBytes: Int64(heic.count)) {
+                let name = (source.filename as NSString).deletingPathExtension + ".HEIC"
+                copies.append((asset, heic, name, originalBytes))
+            } else {
+                skipped.insert(asset.localIdentifier)
+            }
+        }
+        guard !copies.isEmpty else { throw PhotoChangeError.screenshotsNotSmaller }
+
+        let album = gate.album
+        let created = Box<[String: String]>([:]) // original ID -> copy's ID
+        try await Self.perform {
+            var placeholders: [PHObjectPlaceholder] = []
+            for copy in copies {
+                let request = PHAssetCreationRequest.forAsset()
+                let options = PHAssetResourceCreationOptions()
+                options.originalFilename = copy.filename
+                request.addResource(with: .photo, data: copy.data, options: options)
+                request.creationDate = copy.original.creationDate
+                request.location = copy.original.location
+                request.isFavorite = copy.original.isFavorite
+                request.isHidden = copy.original.isHidden
+                if let placeholder = request.placeholderForCreatedAsset {
+                    placeholders.append(placeholder)
+                    created.value[copy.original.localIdentifier] = placeholder.localIdentifier
+                }
+            }
+            PHAssetCollectionChangeRequest(for: album)?.addAssets(placeholders as NSArray)
+            // In the same change, so declining iOS's prompt leaves no copies behind.
+            PHAssetChangeRequest.deleteAssets(copies.map(\.original) as NSArray)
+        }
+
+        // Re-read the album and compare each copy with its original.
+        var byID: [String: PHAsset] = [:]
+        TestAlbum.assets(in: album).enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
+        var resaved: [ResavedScreenshot] = []
+        for copy in copies {
+            guard let newID = created.value[copy.original.localIdentifier] else { continue }
+            let new = byID[newID]
+            let newBytes = new.map(Self.bytes(of:)) ?? 0
+            resaved.append(ResavedScreenshot(
+                originalID: copy.original.localIdentifier,
+                newID: newID,
+                original: Self.details(of: copy.original, inAlbum: true),
+                new: new.map { Self.details(of: $0, inAlbum: true) } ?? Self.missing,
+                originalBytes: copy.originalBytes,
+                // Photos can take a moment to report a new file's size; the encoded size stands in until then.
+                newBytes: newBytes > 0 ? newBytes : Int64(copy.data.count)
+            ))
+        }
+        let originalsLeft = copies.filter { byID[$0.original.localIdentifier] != nil }.count
+        guard resaved.count == copies.count, originalsLeft == 0 else {
+            throw PhotoChangeError.verificationFailed("Some screenshots didn't re-save. Scan again to see what's there.")
+        }
+        return ScreenshotResaveReceipt(resaved: resaved, skipped: skipped)
     }
 
     func keepBurstPicks(keep: Set<MediaItem.ID>, remove: Set<MediaItem.ID>) async throws -> BurstReceipt {
@@ -289,6 +362,32 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             }
         }
         return (asset, data.value, original)
+    }
+
+    /// A screenshot whose original file is still a PNG.
+    private static func isPNGScreenshot(_ asset: PHAsset) -> Bool {
+        guard asset.mediaType == .image, asset.mediaSubtypes.contains(.photoScreenshot), asset.burstIdentifier == nil else { return false }
+        return PHAssetResource.assetResources(for: asset).first { $0.type == .photo }?.uniformTypeIdentifier == UTType.png.identifier
+    }
+
+    /// The same image as high-quality HEIC, same pixel size, with the PNG's
+    /// metadata (including the tag that marks it as a screenshot) carried over.
+    private static func heicCopy(of png: Data) throws -> Data {
+        guard let source = CGImageSourceCreateWithData(png as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+            throw PhotoChangeError.verificationFailed("A screenshot couldn't be read. Nothing was changed.")
+        }
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(output, UTType.heic.identifier as CFString, 1, nil) else {
+            throw PhotoChangeError.verificationFailed("This iPhone can't save HEIC images. Nothing was changed.")
+        }
+        var properties = (CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]) ?? [:]
+        properties[kCGImageDestinationLossyCompressionQuality] = ScreenshotResave.quality
+        CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else {
+            throw PhotoChangeError.verificationFailed("A screenshot couldn't be re-saved. Nothing was changed.")
+        }
+        return output as Data
     }
 
     private static func details(of asset: PHAsset, inAlbum: Bool) -> AssetDetails {

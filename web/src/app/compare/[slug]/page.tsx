@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppCta } from "@/components/app-cta";
 import { CompareCard } from "@/components/compare-card";
+import { TodoBanner } from "@/components/todo-banner";
 import { Illustration } from "@/components/ink";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -59,6 +60,14 @@ export default async function ComparePage({ params }: PageProps<"/compare/[slug]
             {siteConfig.name} vs {competitor.name}
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-ink-soft">{competitor.knownFor}</p>
+          {!competitor.ready && (
+            <div className="mt-10">
+              <TodoBanner title={`Write the ${competitor.name} comparison`}>
+                This page is a placeholder and hidden from Google. Write the article, then set{" "}
+                <code>ready: true</code> for <code>{competitor.slug}</code> in <code>web/src/lib/comparisons.ts</code>.
+              </TodoBanner>
+            </div>
+          )}
           <div className="sticker mt-10 bg-mint-soft p-7">
             <p className="font-hand text-2xl text-mint-deep">coming soon</p>
             <p className="mt-2 text-lg">

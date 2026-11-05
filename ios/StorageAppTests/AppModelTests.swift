@@ -198,6 +198,29 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.guide?.expectedBytes, 3_000_000)
     }
 
+    // MARK: Screenshot re-save
+
+    func testResavingScreenshotsReplacesThePNGs() async {
+        func shot(_ id: String, _ format: MediaFormat) -> MediaItem {
+            MediaItem(id: id, category: .screenshot, format: format, filename: "\(id).\(format.fileExtension)",
+                      creationDate: Date(), pixelWidth: 1179, pixelHeight: 2556, duration: nil,
+                      originalBytes: 2_000_000, thumbnailSeed: 1)
+        }
+        let library = MockPhotoLibrary(items: [shot("png", .png), shot("heic", .heic)])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+        XCTAssertEqual(model.resavableScreenshots.map(\.id), ["png"])
+        XCTAssertEqual(model.screenshotSaving, 1_300_000)
+
+        let error = await model.resaveScreenshots(approved: ["png"])
+        XCTAssertNil(error)
+        XCTAssertTrue(model.resavableScreenshots.isEmpty)
+        XCTAssertEqual(model.albumScan?.total.count, 2)
+        guard case .resavedScreenshots(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertTrue(receipt.resaved.allSatisfy(\.keptEverything))
+        XCTAssertEqual(model.guide?.expectedBytes, 1_300_000)
+    }
+
     // MARK: Bursts (Build Plan step 5)
 
     func testKeepingBurstPicksLeavesOneShotPerBurst() async {

@@ -101,4 +101,46 @@ final class GuidesAndResultsTests: XCTestCase {
         reloaded.resetResults()
         XCTAssertTrue(FreedLedgerStore(fileURL: url).load().entries.isEmpty)
     }
+    // MARK: Restart coach (Build Plan step 9)
+
+    /// The time since the phone started, as the test sets it.
+    private final class Uptime: @unchecked Sendable {
+        var value: TimeInterval = 1_000_000
+    }
+
+    func testRestartIsMeasuredOnTheNextOpenAndCounted() async {
+        let uptime = Uptime()
+        let model = AppModel(storage: SteppingStorage([10_000_000_000, 10_000_000_000, 11_200_000_000]),
+                             uptime: { uptime.value })
+        await model.refreshDeviceStorage()
+        XCTAssertEqual(model.storageWarning, nil)
+
+        await model.startRestart()
+        XCTAssertNotNil(model.restartCoach.pending)
+
+        // The phone started after the baseline was taken.
+        uptime.value = -120
+        await model.refreshDeviceStorage()
+        XCTAssertNil(model.restartCoach.pending)
+        XCTAssertEqual(model.restartCoach.result?.gainedBytes, 1_200_000_000)
+        XCTAssertEqual(model.freed.total(for: .restart), 1_200_000_000)
+
+        model.dismissRestartResult()
+        XCTAssertNil(model.restartCoach.result)
+    }
+
+    func testNoRestartMeansNothingIsCounted() async {
+        let model = AppModel(storage: SteppingStorage([10_000_000_000, 10_000_000_000, 12_000_000_000]))
+        await model.startRestart()
+        await model.refreshDeviceStorage()
+        XCTAssertNotNil(model.restartCoach.pending)
+        XCTAssertNil(model.restartCoach.result)
+        XCTAssertEqual(model.freed.total(for: .restart), 0)
+    }
+
+    func testLowSpaceSuggestsARestart() async {
+        let model = AppModel(storage: SteppingStorage([2_000_000_000]))
+        await model.refreshDeviceStorage()
+        XCTAssertEqual(model.storageWarning, .low(availableBytes: 2_000_000_000))
+    }
 }

@@ -41,7 +41,11 @@ export async function joinWaitlist(
   try {
     const res = await fetch(webhook, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Lets the receiving webhook (n8n) refuse anything that isn't from this site.
+        ...(process.env.WAITLIST_WEBHOOK_SECRET ? { "x-waitlist-secret": process.env.WAITLIST_WEBHOOK_SECRET } : {}),
+      },
       body: JSON.stringify({ email, source, joinedAt: new Date().toISOString() }),
       signal: AbortSignal.timeout(8000),
     });

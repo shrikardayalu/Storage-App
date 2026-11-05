@@ -105,7 +105,8 @@ struct PaywallView: View {
         }
         .drawing($progress, duration: 1.8)
         .task {
-            try? await Task.sleep(for: .seconds(1.6))
+            // Short enough that App Review doesn't read it as a hidden close.
+            try? await Task.sleep(for: .seconds(0.5))
             withAnimation(.easeOut(duration: 0.4)) { showsClose = true }
         }
         .sensoryFeedback(.selection, trigger: selected)

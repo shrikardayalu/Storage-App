@@ -22,7 +22,7 @@ const name = siteConfig.name;
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `${name} is free to scan your iPhone and delete what you choose. ${name} Pro shrinks videos, Live Photos, and screenshots, from ${formatPrice(plans.weekly.price)} a week.`,
+  description: `${name} is free to scan your iPhone and clean it up by hand. ${name} Pro shrinks videos, Live Photos and screenshots, and cleans up your photos in one tap, from ${formatPrice(plans.weekly.price)} a week.`,
   alternates: { canonical: "/pricing" },
 };
 
@@ -37,7 +37,7 @@ const faq = [
   },
   {
     q: "What stays free?",
-    a: `Scanning, browsing, and deleting. You can always see what's using space and clear it yourself without paying. Pro adds the tools that shrink files instead of deleting them.`,
+    a: `Everything you do by hand: scanning, browsing and deleting, Swipe to clean, keeping the best shot of each burst, cleaning up a folder in Files, and the guides for other apps. Pro adds the tools that shrink files instead of deleting them, and does the big cleanups in one tap.`,
   },
   {
     q: "What happens to shrunk files if I cancel?",
@@ -65,10 +65,10 @@ export default function PricingPage() {
           <div className="relative">
             <p className="eyebrow">pricing</p>
             <h1 className="mx-auto mt-4 max-w-3xl font-display text-[clamp(2.6rem,6vw,4.6rem)] leading-[0.98] font-extrabold">
-              Free to find it. Pro to shrink it.
+              Free by hand. Pro in one tap.
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-lg text-ink-soft">
-              See everything filling your iPhone for free. Upgrade when you want it smaller instead of gone.
+              See everything filling your iPhone and clean it up yourself for free. Upgrade when you want it smaller instead of gone, or all done at once.
             </p>
           </div>
         </section>

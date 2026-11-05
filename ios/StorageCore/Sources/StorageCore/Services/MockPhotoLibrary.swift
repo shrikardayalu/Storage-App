@@ -106,6 +106,43 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
         return results
     }
 
+    public func resaveScreenshots(_ approved: Set<MediaItem.ID>) async throws -> ScreenshotResaveReceipt {
+        let check = try await check(approved)
+        guard check.isSafe else { throw PhotoChangeError.unsafe(check) }
+        let originals = items.filter { approved.contains($0.id) }
+        let notPNG = originals.filter { !ScreenshotResave.isResavable($0) }.count
+        guard notPNG == 0 else { throw PhotoChangeError.notResavable(count: notPNG) }
+
+        let worth = originals.filter {
+            ScreenshotResave.isWorthReplacing(originalBytes: $0.currentBytes, newBytes: ScreenshotResave.estimatedBytes(for: $0))
+        }
+        guard !worth.isEmpty else { throw PhotoChangeError.screenshotsNotSmaller }
+        guard !declinesChanges else { throw PhotoChangeError.cancelled }
+
+        var resaved: [ResavedScreenshot] = []
+        for original in worth {
+            let newBytes = ScreenshotResave.estimatedBytes(for: original)
+            let copy = MediaItem(
+                id: "\(original.id)-heic", category: .screenshot, format: .heic,
+                filename: (original.filename as NSString).deletingPathExtension + ".HEIC",
+                creationDate: original.creationDate, pixelWidth: original.pixelWidth, pixelHeight: original.pixelHeight,
+                duration: nil, originalBytes: newBytes, thumbnailSeed: original.thumbnailSeed
+            )
+            items.removeAll { $0.id == original.id }
+            items.append(copy)
+            let details = AssetDetails(
+                creationDate: original.creationDate, latitude: nil, longitude: nil, isFavorite: false,
+                pixelWidth: original.pixelWidth, pixelHeight: original.pixelHeight, isLivePhoto: false, inTestAlbum: true
+            )
+            resaved.append(ResavedScreenshot(
+                originalID: original.id, newID: copy.id, original: details, new: details,
+                originalBytes: original.currentBytes, newBytes: newBytes
+            ))
+        }
+        changeCount += 1
+        return ScreenshotResaveReceipt(resaved: resaved, skipped: Set(originals.map(\.id)).subtracting(worth.map(\.id)))
+    }
+
     public func keepBurstPicks(keep: Set<MediaItem.ID>, remove: Set<MediaItem.ID>) async throws -> BurstReceipt {
         let before = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.burstID) })
         let plan = try BurstPlan.make(keep: keep, expectedRemove: remove, members: before)

@@ -43,7 +43,7 @@ final class OnboardingTests: XCTestCase {
     // MARK: Free and Pro
 
     func testFreeDoesItByHandAndProDoesTheHeavyHitters() {
-        XCTAssertEqual(CleanupMethod.allCases.filter(\.isPro), [.shrinkVideos, .photoCleanup, .duplicates, .livePhotos])
+        XCTAssertEqual(CleanupMethod.allCases.filter(\.isPro), [.shrinkVideos, .photoCleanup, .duplicates, .livePhotos, .screenshots])
         XCTAssertEqual(CleanupMethod.allCases.filter { !$0.isPro }, [.swipe, .bursts, .chatAttachments])
     }
 

@@ -82,10 +82,10 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
    - your legal name, for the copyright line;
    - a reading of both pages by someone qualified.
 3. **Terms: done.** The site's `/terms` applies Apple's Standard EULA and adds the app's own terms. Leave the License Agreement in App Store Connect as Apple's standard one. The terms don't name a governing law, because that depends on where you or your business are. A lawyer can add it.
-4. **The paywall's ✕ appears after 1.6 seconds.** It's tappable while invisible, so nobody is trapped, but reviewers sometimes flag a delayed close.
+4. **Done (2026-11-05): the ✕ now appears after 0.5 seconds.** Was: **the paywall's ✕ appears after 1.6 seconds.** It's tappable while invisible, so nobody is trapped, but reviewers sometimes flag a delayed close.
    - Options: keep it; shorten it to about 0.5 seconds; or show it immediately.
    - **Recommendation: shorten it to about 0.5 seconds.**
-5. **The pain screen draws iOS-style system alerts** ("SETTINGS · iPhone Storage Full", "SOFTWARE UPDATE · Unable to Download Update"). They're drawn on paper and clearly illustrations, but Apple dislikes UI that imitates system alerts. This is marketing copy, so I left it alone.
+5. **Done (2026-11-05): the app labels and "now" are gone; the messages stay.** Was: **the pain screen draws iOS-style system alerts** ("SETTINGS · iPhone Storage Full", "SOFTWARE UPDATE · Unable to Download Update"). They're drawn on paper and clearly illustrations, but Apple dislikes UI that imitates system alerts. This is marketing copy, so I left it alone.
    - Options: keep it; or drop the Apple app labels (SETTINGS, CAMERA, SOFTWARE UPDATE) and keep the messages.
    - **Recommendation: drop the labels.**
 6. **The Lifetime offer is shown once, ever.** "You won't see this offer again" is true in code, because there's no other way to buy Lifetime. That also means someone who wants it later can't buy it.

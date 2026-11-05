@@ -17,18 +17,23 @@ export function formatPrice(amount: number) {
 export const annualPerWeek = plans.annual.price / 52;
 export const annualSavingsPercent = Math.floor((1 - plans.annual.price / (plans.weekly.price * 52)) * 100);
 
+// The split matches the app's CleanupMethod.isPro and Plan.proFeatures
+// (ios/StorageApp/Purchases/): free does it by hand, Pro does the heavy
+// hitters in one tap.
 export const freeFeatures = [
-  "Scan your whole library on your iPhone",
-  "See exactly what's using space",
-  "Find big videos, screenshots, and bursts",
+  "Scan your library and see what's using space",
+  "Swipe to clean: likely deletes, one at a time, with undo",
+  "Keep the best shot of every burst",
+  "Clean up big files in a folder you pick in Files",
+  "Step-by-step guides for Messages, WhatsApp, Safari and more",
   "Delete what you choose, with 30-day undo",
 ];
 
 export const proFeatures = [
   "Shrink 4K videos without deleting them",
   "Trim long recordings to the good part",
-  "Keep Live Photos as stills",
-  "Re-save bloated screenshots",
-  "Pick the best shot from every burst",
-  "No limits on how much you shrink",
+  "Keep Live Photos as stills, minus the hidden video",
+  "Re-save bloated screenshots at a fraction of the size",
+  "Clear duplicates, blurry shots and junk in bulk",
+  "Clean up all your photos in one tap",
 ];

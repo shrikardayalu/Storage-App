@@ -153,6 +153,18 @@ Hidden files, links and package contents are skipped. Only the extra copies of d
 
 **Test:** the warning shows when space is low, the restart is detected, and the before/after number is right.
 
+**Built (2026-11-05).** Home shows a storage card when free space is under 5 GB (or 5% of a smaller phone, never under 1 GB), or dropped 3 GB or more in 3 days (`StorageCore/Logic/StorageHealth.swift`). "Show Me How" opens the restart guide, with steps for Face ID or Home-button phones (picked from the screen, switchable). "I'm Restarting Now" saves free space as the baseline (`restart-coach.json` in Application Support). On every later reading the app compares the time since the phone started (`CLOCK_MONOTONIC`, which keeps counting while asleep, declared in the privacy manifest as 35F9.1) with the time since the baseline: if the phone started after it, the gain is shown on Home ("You got back X from a restart") and added to Results under Restart. Gains under 20 MB say the restart didn't free much. A baseline nobody restarted after is dropped after 3 days.
+
+**On the phone:** Home needs low space to show the card. Tap Show Me How → I'm Restarting Now, restart, open the app, and check the figure against Settings.
+
+## Screenshot re-save (added 2026-11-05)
+
+**Goal:** the site's "re-save bloated screenshots" promise. iPhone screenshots are PNG; the same image as HEIC at quality 0.9 is usually 60-80% smaller.
+
+**Built.** Home → Re-save screenshots (Pro) lists PNG screenshots in the test album, biggest first, with an estimated saving (35% of the PNG size is assumed for the copy, on the cautious side). Before changing anything the app encodes every copy (`TestAlbumChanges.resaveScreenshots`, ImageIO, same pixels, the PNG's metadata carried over) and keeps only the ones at least 20% smaller. Then one change adds the copies to the album with the original's date, location, favorite and hidden flag and moves the PNGs to Recently Deleted, behind the same album safety gate as Step 3. Afterwards each copy is checked (size, date, favorite, album) and the Recently Deleted guide explains that only the old PNGs are in there.
+
+**On the phone:** take a few screenshots, add them to the test album, re-save them, and check in Photos that each one still opens in Screenshots, looks the same zoomed in, and is smaller (swipe up for the size).
+
 ## Step 10: Guides for other apps
 
 **Goal:** help with things the app isn't allowed to touch.

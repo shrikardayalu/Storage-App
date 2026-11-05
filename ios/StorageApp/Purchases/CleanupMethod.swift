@@ -12,6 +12,7 @@ enum CleanupMethod: String, CaseIterable, Identifiable, Codable {
     case photoCleanup
     case duplicates
     case livePhotos
+    case screenshots
     case swipe
     case bursts
     case chatAttachments
@@ -21,14 +22,14 @@ enum CleanupMethod: String, CaseIterable, Identifiable, Codable {
     /// `Plan.proFeatures` lists the Pro ones on the paywall; keep it in step.
     var isPro: Bool {
         switch self {
-        case .shrinkVideos, .photoCleanup, .duplicates, .livePhotos: true
+        case .shrinkVideos, .photoCleanup, .duplicates, .livePhotos, .screenshots: true
         case .swipe, .bursts, .chatAttachments: false
         }
     }
 
     /// What onboarding offers. One-tap Photo Cleanup stands in for its parts
     /// (Live Photos, duplicates, junk) so the list doesn't count them twice.
-    static let onboardingChoices: [CleanupMethod] = [.shrinkVideos, .photoCleanup, .swipe, .bursts, .chatAttachments]
+    static let onboardingChoices: [CleanupMethod] = [.shrinkVideos, .photoCleanup, .screenshots, .swipe, .bursts, .chatAttachments]
 
     var title: String {
         switch self {
@@ -36,6 +37,7 @@ enum CleanupMethod: String, CaseIterable, Identifiable, Codable {
         case .photoCleanup: "One-tap Photo Cleanup"
         case .duplicates: "Duplicates and junk"
         case .livePhotos: "Live Photos \u{2192} stills"
+        case .screenshots: "Re-save screenshots"
         case .swipe: "Swipe to clean"
         case .bursts: "Best shot of each burst"
         case .chatAttachments: "Old Messages attachments"
@@ -49,6 +51,7 @@ enum CleanupMethod: String, CaseIterable, Identifiable, Codable {
         case .photoCleanup: "Live Photos to stills, duplicates and junk, all at once"
         case .duplicates: "Copies, blurry shots, old screenshots"
         case .livePhotos: "Keep the photo, drop the hidden video clip"
+        case .screenshots: "Same screenshots, a fraction of the size"
         case .swipe: "Likely deletes, one at a time. Swipe left to delete"
         case .bursts: "Keep the best shot, clear the rest"
         case .chatAttachments: "We'll show you where they pile up"
@@ -61,6 +64,7 @@ enum CleanupMethod: String, CaseIterable, Identifiable, Codable {
         case .photoCleanup: .phoneSparkle
         case .duplicates: .beaker
         case .livePhotos: .photo
+        case .screenshots: .screenshot
         case .swipe: .trash
         case .bursts: .stackSmall
         case .chatAttachments: .screenshot
@@ -240,6 +244,7 @@ extension AppModel {
         case .photoCleanup: photoCleanupPlan?.totalBytes
         case .duplicates: junkReport?.suggestedBytes
         case .livePhotos: livePhotoSaving
+        case .screenshots: screenshotSaving
         case .swipe: junkReport.map { report in SwipeCandidate.all(from: report).reduce(Int64(0)) { $0 + $1.item.currentBytes } }
         case .bursts: burstSaving
         case .chatAttachments: nil
@@ -253,7 +258,11 @@ extension AppModel {
 
     /// Everything the Pro tools could free in the scanned album, counted once.
     var proSaving: Int64 {
-        [CleanupMethod.shrinkVideos, .photoCleanup].reduce(0) { $0 + (saving(for: $1) ?? 0) }
+        let removed = photoCleanupPlan?.remove ?? []
+        // Screenshots Photo Cleanup would remove aren't counted again for re-saving.
+        let screenshots = resavableScreenshots.filter { !removed.contains($0.id) }
+            .reduce(Int64(0)) { $0 + ScreenshotResave.estimatedSaving(for: $1) }
+        return [CleanupMethod.shrinkVideos, .photoCleanup].reduce(screenshots) { $0 + (saving(for: $1) ?? 0) }
     }
 
     /// One-tap Photo Cleanup for the scanned album, once the photos have been checked.

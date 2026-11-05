@@ -61,6 +61,12 @@ struct RootView: View {
                 .environment(model)
                 .tint(Theme.accent)
         }
+        // Step 9: how to restart, with the baseline taken for the next open.
+        .fullScreenCover(isPresented: $model.isShowingRestartGuide) {
+            RestartGuideView()
+                .environment(model)
+                .tint(Theme.accent)
+        }
         // WhatsApp, Messages, Settings: steps only the person can do, then a free-space check.
         .fullScreenCover(item: $model.otherAppGuide) { guide in
             OtherAppGuideView(guide: guide)

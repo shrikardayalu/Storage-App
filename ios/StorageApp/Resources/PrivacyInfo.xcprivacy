@@ -10,6 +10,9 @@
     used to measure what each cleanup gave back.
   - File timestamps (contentModificationDate, contentAccessDate): only for files in
     the folder the person picked with the Files picker ("old downloads").
+  - System boot time (clock_gettime CLOCK_MONOTONIC): only to tell whether the
+    phone restarted since the person opened the restart guide, to measure the
+    space a restart gave back. Never leaves the device.
   Update this file if any of that changes.
 -->
 <plist version="1.0">
@@ -44,6 +47,14 @@
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>3B52.1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>35F9.1</string>
 			</array>
 		</dict>
 	</array>
