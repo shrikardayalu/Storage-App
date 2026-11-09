@@ -69,19 +69,25 @@ struct HomeView: View {
         .padding(.top, 12)
     }
 
-    /// Exactly one thing to do next, most urgent first: finish a cleanup,
-    /// scan, follow the plan, or the best tool for this album.
+    /// The next step: scan, follow the plan (biggest free fix first, then the
+    /// Pro picks that open the paywall), or the best tool for this album.
+    /// Space still in Recently Deleted is a reminder under it, never instead
+    /// of it: iOS can take a long time to count that space, and hiding the
+    /// plan until it does stalled the free-then-Pro funnel.
     @ViewBuilder
     private var upNext: some View {
-        if let waiting = model.spaceWaiting {
-            SpaceWaitingCard(bytes: waiting)
-        } else if model.albumScan == nil {
-            ScanCard()
-        } else if showsPlan {
-            PlanCard(picks: OnboardingAnswers.load().picks)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-        } else if let best = PhotoToolsSection.best(model) {
-            BestNextCard(method: best, onPaywall: { showingPaywall = true })
+        VStack(alignment: .leading, spacing: 16) {
+            if model.albumScan == nil {
+                ScanCard()
+            } else if showsPlan {
+                PlanCard(picks: OnboardingAnswers.load().picks)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            } else if let best = PhotoToolsSection.best(model) {
+                BestNextCard(method: best, onPaywall: { showingPaywall = true })
+            }
+            if let waiting = model.spaceWaiting {
+                SpaceWaitingCard(bytes: waiting)
+            }
         }
     }
 }
