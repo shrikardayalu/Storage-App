@@ -184,7 +184,7 @@ struct BurstPicksView: View {
     private func runCheck() async {
         let all = Set(bursts.flatMap(\.shots).map(\.id))
         guard !all.isEmpty else { return }
-        switch await model.safetyCheck(all) {
+        switch await model.albumCheck(all) {
         case .success(let value):
             check = value
             error = nil

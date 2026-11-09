@@ -133,30 +133,40 @@ extension [Suggestion] {
     }
 }
 
-/// The order Home's plan walks through the picks. Free fixes that make a
-/// real dent come first, biggest first, so the first thing someone does
-/// frees noticeable space. Pro picks wait after them, and open the paywall
-/// when tapped: that's the moment they want it most.
+/// The order Home's plan walks through the picks.
+///
+/// On the free tier, every free fix comes first, biggest first, so the first
+/// thing someone does is something they can actually do. Pro picks wait
+/// after them, and open the paywall when tapped: that's the moment they want
+/// it most. Once Pro is unlocked, the Pro tools lead, biggest first, since
+/// they do the heavy lifting in one tap; free fixes follow.
 enum PlanOrder {
-    /// A free fix "makes a dent" at 1% of the album, capped at 250 MB, so a
-    /// single burst in a 100 GB library never leads.
+    /// A free fix "makes a dent" at 1% of the album, capped at 250 MB. When no
+    /// free pick does, the swipe feed is added up front so a single tiny burst
+    /// never leads on its own.
     static func threshold(albumBytes: Int64) -> Int64 {
         max(1, min(250_000_000, albumBytes / 100))
     }
 
-    static func build(picks: [CleanupMethod], saving: (CleanupMethod) -> Int64?, albumBytes: Int64) -> [CleanupMethod] {
+    static func build(picks: [CleanupMethod], saving: (CleanupMethod) -> Int64?, albumBytes: Int64, hasPro: Bool) -> [CleanupMethod] {
+        // Biggest first; not yet measured goes last; ties keep the pick order.
+        func bySaving(_ list: [CleanupMethod]) -> [CleanupMethod] {
+            list.enumerated().sorted { lhs, rhs in
+                let (a, b) = (saving(lhs.element) ?? -1, saving(rhs.element) ?? -1)
+                return a != b ? a > b : lhs.offset < rhs.offset
+            }.map(\.element)
+        }
+        let free = bySaving(picks.filter { !$0.isPro && $0.guide == nil })
+        let guides = picks.filter { $0.guide != nil }
+        let pro = bySaving(picks.filter(\.isPro))
+        if hasPro {
+            return pro + free + guides
+        }
         let line = threshold(albumBytes: albumBytes)
-        let free = picks.filter { !$0.isPro }
-        let measuredFree = free.filter { $0.guide == nil }
-        let big = measuredFree
-            .filter { (saving($0) ?? 0) >= line }
-            .sorted { (saving($0) ?? 0) > (saving($1) ?? 0) }
-        let small = measuredFree.filter { !big.contains($0) }
-        let guides = free.filter { $0.guide != nil }
+        let makesDent = free.contains { (saving($0) ?? 0) >= line }
         // Nothing free makes a dent: the swipe feed always has something to show.
-        let lead: [CleanupMethod] = big.isEmpty && !picks.contains(.swipe) && saving(.swipe) != 0 ? [.swipe] : []
-        let pro = picks.filter(\.isPro)
-        return lead + big + guides + pro + small
+        let lead: [CleanupMethod] = !makesDent && !picks.contains(.swipe) && saving(.swipe) != 0 ? [.swipe] : []
+        return lead + free + guides + pro
     }
 }
 
@@ -275,8 +285,9 @@ extension AppModel {
         junkReport.map { PhotoCleanupPlan(report: $0, livePhotos: convertibleLivePhotos) }
     }
 
-    /// The plan card's order for these picks.
-    func planOrder(_ picks: [CleanupMethod]) -> [CleanupMethod] {
-        PlanOrder.build(picks: picks, saving: { saving(for: $0) }, albumBytes: albumScan?.total.bytes ?? 0)
+    /// The plan card's order for these picks: free fixes first on the free
+    /// tier, Pro tools first once Pro is unlocked.
+    func planOrder(_ picks: [CleanupMethod], hasPro: Bool) -> [CleanupMethod] {
+        PlanOrder.build(picks: picks, saving: { saving(for: $0) }, albumBytes: albumScan?.total.bytes ?? 0, hasPro: hasPro)
     }
 }

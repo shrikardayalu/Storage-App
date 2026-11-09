@@ -71,8 +71,8 @@ final class OnboardingTests: XCTestCase {
 
     private let album: Int64 = 10_000_000_000  // 10 GB: a free fix needs 100 MB to lead.
 
-    private func order(_ picks: [CleanupMethod], _ savings: [CleanupMethod: Int64]) -> [CleanupMethod] {
-        PlanOrder.build(picks: picks, saving: { savings[$0] }, albumBytes: album)
+    private func order(_ picks: [CleanupMethod], _ savings: [CleanupMethod: Int64], hasPro: Bool = false) -> [CleanupMethod] {
+        PlanOrder.build(picks: picks, saving: { savings[$0] }, albumBytes: album, hasPro: hasPro)
     }
 
     func testTheBiggestFreeFixLeadsAndProWaitsBehindIt() {
@@ -81,9 +81,22 @@ final class OnboardingTests: XCTestCase {
     }
 
     func testATinyFreeFixNeverLeads() {
-        // One burst worth 40 KB: the swipe feed leads instead, and the burst goes last.
+        // One burst worth 40 KB: the swipe feed leads, and the burst still comes before Pro.
         let plan = order([.shrinkVideos, .bursts], [.shrinkVideos: 3_000_000_000, .bursts: 40_000, .swipe: 500_000_000])
-        XCTAssertEqual(plan, [.swipe, .shrinkVideos, .bursts])
+        XCTAssertEqual(plan, [.swipe, .bursts, .shrinkVideos])
+    }
+
+    func testOnTheFreeTierEveryFreePickComesBeforePro() {
+        // Swipe is picked but small, and bursts aren't measured yet: both still beat Pro.
+        let plan = order([.shrinkVideos, .photoCleanup, .swipe, .bursts], [.shrinkVideos: 3_000_000_000, .photoCleanup: 2_000_000_000, .swipe: 5_000_000])
+        XCTAssertEqual(plan, [.swipe, .bursts, .shrinkVideos, .photoCleanup])
+    }
+
+    func testWithProTheProToolsLeadBiggestFirst() {
+        let plan = order([.swipe, .chatAttachments, .photoCleanup, .shrinkVideos, .bursts],
+                         [.swipe: 900_000_000, .bursts: 200_000_000, .photoCleanup: 1_000_000_000, .shrinkVideos: 3_000_000_000],
+                         hasPro: true)
+        XCTAssertEqual(plan, [.shrinkVideos, .photoCleanup, .swipe, .bursts, .chatAttachments])
     }
 
     func testOnlyProPicksStillStartWithSomethingFree() {

@@ -225,7 +225,8 @@ struct CleanupReviewView: View {
                 check = value
                 checkError = nil
             case .failure(let error):
-                check = nil
+                // Keep a refused check so each row it names says why and can be taken off.
+                if case .unsafe(let refused) = error { check = refused } else { check = nil }
                 checkError = error
             }
         }

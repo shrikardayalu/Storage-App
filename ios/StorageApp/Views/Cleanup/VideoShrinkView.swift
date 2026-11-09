@@ -106,7 +106,7 @@ struct VideosView: View {
     private func runCheck() async {
         let all = Set(videos.map(\.id))
         guard !all.isEmpty else { return }
-        switch await model.safetyCheck(all) {
+        switch await model.albumCheck(all) {
         case .success(let value):
             check = value
             error = nil

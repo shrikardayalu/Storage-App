@@ -82,7 +82,7 @@ struct HomeView: View {
             } else if showsPlan {
                 PlanCard(picks: OnboardingAnswers.load().picks)
                     .transition(.opacity.combined(with: .move(edge: .top)))
-            } else if let best = PhotoToolsSection.best(model) {
+            } else if let best = PhotoToolsSection.best(model, hasPro: !purchases.requiresPro) {
                 BestNextCard(method: best, onPaywall: { showingPaywall = true })
             }
             if let waiting = model.spaceWaiting {
@@ -500,7 +500,7 @@ private struct PlanCard: View {
 
     /// `PlanOrder`, with anything already done moved to the end.
     private var ordered: [CleanupMethod] {
-        let planned = model.planOrder(picks)
+        let planned = model.planOrder(picks, hasPro: !purchases.requiresPro)
         return planned.filter { !isDone($0) } + planned.filter(isDone)
     }
 }
@@ -646,8 +646,8 @@ private struct PhotoToolsSection: View {
 
     /// Home's suggestion when there's no plan: the first tool in plan order
     /// (free fixes first) with something to free.
-    static func best(_ model: AppModel) -> CleanupMethod? {
-        model.planOrder(available(model)).first { (model.saving(for: $0) ?? 0) > 0 }
+    static func best(_ model: AppModel, hasPro: Bool) -> CleanupMethod? {
+        model.planOrder(available(model), hasPro: hasPro).first { (model.saving(for: $0) ?? 0) > 0 }
     }
 
     static func subtitle(for method: CleanupMethod, model: AppModel) -> String {
