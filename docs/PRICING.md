@@ -10,9 +10,9 @@ fall back to simulated purchases. Release builds never simulate.
 
 | Plan     | Price         | Where it appears                                   |
 | -------- | ------------- | -------------------------------------------------- |
-| Weekly   | $6.99/week    | Main paywall, site                                 |
-| Annual   | $39.99/year   | Main paywall (selected by default), site ("save 88%") |
-| Lifetime | $49.99 once   | App only: one-time offer after the paywall is closed without buying, shown once ever |
+| Weekly   | $4.99/week    | Main paywall, site                                 |
+| Annual   | $24.99/year   | Main paywall (selected by default), site ("save 90%") |
+| Lifetime | $34.99 once   | App only: one-time offer after the paywall is closed without buying, shown once ever |
 
 Free does it by hand; Pro does the heavy hitters, and does them in one tap.
 
@@ -58,7 +58,7 @@ Prices are placeholders, kept in two places: `web/src/lib/pricing.ts` and
 - App: `ios/StorageApp/Purchases/` (`PaywallConfig`, `PurchaseStore`,
   `PaywallFlow`), and onboarding in `ios/StorageApp/Views/Onboarding/`.
   Launch with `-paywallEnabled NO` to try the app with nothing gated.
-- Product IDs: `com.example.storageapp.pro.weekly`, `.pro.annual` (one
+- Product IDs: `com.simpleshrink.app.pro.weekly`, `.pro.annual` (one
   subscription group) and `.pro.lifetime` (non-consumable), in `Plan.productID`
   and `ios/Products.storekit`. Change both if the bundle ID changes.
 

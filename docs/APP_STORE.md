@@ -102,9 +102,9 @@ They must not show the Test Mode badge if Test Mode is off by then.
 
 | Reference name | Product ID | Type | Price | Display name | Description |
 |---|---|---|---|---|---|
-| Pro Weekly | `com.example.storageapp.pro.weekly` | Auto-renewable, group "Pro", 1 week | $6.99 | Pro Weekly | Shrink videos, trim, Live Photos to stills, burst picks. |
-| Pro Annual | `com.example.storageapp.pro.annual` | Auto-renewable, group "Pro", 1 year | $39.99 | Pro Annual | Shrink videos, trim, Live Photos to stills, burst picks. |
-| Pro Lifetime | `com.example.storageapp.pro.lifetime` | Non-consumable | $49.99 | Pro Lifetime | Every Pro feature, forever. One payment. |
+| Pro Weekly | `com.simpleshrink.app.pro.weekly` | Auto-renewable, group "Pro", 1 week | $4.99 | Pro Weekly | Shrink videos, trim, Live Photos to stills, burst picks. |
+| Pro Annual | `com.simpleshrink.app.pro.annual` | Auto-renewable, group "Pro", 1 year | $24.99 | Pro Annual | Shrink videos, trim, Live Photos to stills, burst picks. |
+| Pro Lifetime | `com.simpleshrink.app.pro.lifetime` | Non-consumable | $34.99 | Pro Lifetime | Every Pro feature, forever. One payment. |
 
 These match `ios/Products.storekit` and `Plan` in the app. The display names
 must stay "Pro Weekly", "Pro Annual" and "Pro Lifetime": the paywall's

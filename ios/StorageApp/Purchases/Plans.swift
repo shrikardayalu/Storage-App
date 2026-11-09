@@ -51,7 +51,7 @@ enum Plan: String, CaseIterable, Identifiable {
     /// App Store Connect product IDs. Weekly and annual share one subscription
     /// group, so switching between them replaces rather than stacks.
     var productID: String {
-        "com.example.storageapp.pro.\(rawValue)"
+        "com.simpleshrink.app.pro.\(rawValue)"
     }
 
     init?(productID: String) {
@@ -69,9 +69,9 @@ enum Plan: String, CaseIterable, Identifiable {
 
     var price: Decimal {
         switch self {
-        case .weekly: 6.99
-        case .annual: 39.99
-        case .lifetime: 49.99
+        case .weekly: 4.99
+        case .annual: 24.99
+        case .lifetime: 34.99
         }
     }
 
@@ -90,7 +90,7 @@ enum Plan: String, CaseIterable, Identifiable {
 
     var isSubscription: Bool { self != .lifetime }
 
-    /// Annual price spread over a week, e.g. "$0.77".
+    /// Annual price spread over a week, e.g. "$0.48".
     static var annualPerWeek: String {
         (Plan.annual.price / 52).formatted(.currency(code: "USD").precision(.fractionLength(2)))
     }

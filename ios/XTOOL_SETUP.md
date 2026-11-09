@@ -147,6 +147,6 @@ Add new Swift files under `StorageApp/`; SwiftPM picks them up automatically. On
 - *`This action cannot be completed at this time. (-80045 / -80046)`*: Apple rejected the sign-in. These errors have come in waves that affect every xtool user, for example [xtool#329](https://github.com/xtool-org/xtool/issues/329) (fixed in 1.22.2) and [xtool#378](https://github.com/xtool-org/xtool/issues/378) (-80046 after the 2FA code, fixed in 1.23.0). Don't retry repeatedly, because Apple may stop sending codes. Update xtool when a fix is released (download the new AppImage over `/usr/local/bin/xtool`), then run `xtool auth login` again.
 - *`gsa.apple.com ... HTTP 503`*: Apple's sign-in server is temporarily down. Wait 20 minutes or more and try once.
 - *A "MacBook Pro" sign-in prompt on your devices*: expected. xtool signs in as a virtual Mac.
-- *Bundle ID unavailable*: `com.example.storageapp` may already be registered to another team. Change `bundleID` in `xtool.yml` to something unique, such as `com.<yourname>.storageapp`.
+- *Bundle ID unavailable*: `com.simpleshrink.app` may already be registered to another team. Change `bundleID` in `xtool.yml` to something unique, such as `com.<yourname>.storageapp`.
 - *App installs but won't open*: turn on Developer Mode and trust the developer profile (see section 4). With a free Apple ID, also check that the app isn't more than 7 days old.
 - *Maximum number of apps reached*: delete another sideloaded app from the phone (free accounts allow 3).

@@ -5,8 +5,8 @@
 // dismisses the paywall, so it never undercuts the recurring plans here.
 
 export const plans = {
-  weekly: { price: 6.99, period: "week" },
-  annual: { price: 39.99, period: "year" },
+  weekly: { price: 4.99, period: "week" },
+  annual: { price: 24.99, period: "year" },
 } as const;
 
 export function formatPrice(amount: number) {

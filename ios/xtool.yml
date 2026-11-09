@@ -1,6 +1,6 @@
 # xtool build config (see XTOOL_SETUP.md). Mirrors the app target in project.yml.
 version: 1
-bundleID: com.example.storageapp
+bundleID: com.simpleshrink.app
 product: StorageApp
 infoPath: xtool-Info.plist
 iconPath: StorageApp/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png

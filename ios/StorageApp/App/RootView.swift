@@ -1,3 +1,4 @@
+import StoreKit
 import SwiftUI
 
 /// Tab bar shell, with onboarding over it on first run. Error alerts live
@@ -7,6 +8,9 @@ struct RootView: View {
     @Environment(PurchaseStore.self) private var purchases
     @AppStorage(OnboardingAnswers.completedKey) private var onboardingDone = false
     @AppStorage(OnboardingAnswers.winPaywallShownKey) private var winPaywallShown = false
+    /// The app version the rating prompt was last asked for, so it's asked once per version.
+    @AppStorage("reviewAskedVersion") private var reviewAskedVersion = ""
+    @Environment(\.requestReview) private var requestReview
     /// The paywall that follows a first free cleanup, once ever.
     @State private var winPaywall: PaywallContext?
     /// What the open other-app guide has measured so far; the model clears it on close.
@@ -126,12 +130,29 @@ struct RootView: View {
     /// if Pro still has something sizeable to offer.
     private func offerAfterWin(freed: Int64) {
         let pro = model.proSaving
-        guard purchases.requiresPro, !winPaywallShown, ScreenshotRoute.current == nil, freed > 0, pro > 0 else { return }
+        guard purchases.requiresPro, !winPaywallShown, ScreenshotRoute.current == nil, freed > 0, pro > 0 else {
+            // No paywall this time, so it's a good moment to ask for a rating.
+            askForReview(freed: freed)
+            return
+        }
         winPaywallShown = true
         Task {
             // Let the guide finish closing first.
             try? await Task.sleep(for: .milliseconds(650))
             winPaywall = PaywallContext(proBytes: pro, freedBytes: freed)
+        }
+    }
+
+    /// Asks for an App Store rating right after a cleanup gave space back, at
+    /// most once per app version. iOS decides whether the prompt appears, and
+    /// shows it at most three times a year.
+    private func askForReview(freed: Int64) {
+        guard freed > 0, ScreenshotRoute.current == nil, reviewAskedVersion != AppInfo.versionString else { return }
+        reviewAskedVersion = AppInfo.versionString
+        Task {
+            // Let the guide finish closing first.
+            try? await Task.sleep(for: .milliseconds(900))
+            requestReview()
         }
     }
 }

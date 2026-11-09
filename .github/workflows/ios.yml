@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  BUNDLE_ID: com.example.storageapp
+  BUNDLE_ID: com.simpleshrink.app
 
 jobs:
   core-tests:
@@ -49,8 +49,8 @@ jobs:
           devices = json.load(sys.stdin)["devices"]
           phones = [d for runtime in sorted(devices, reverse=True) if "iOS" in runtime
                     for d in devices[runtime] if d["name"].startswith("iPhone")]
-          # Prefer a standard-size Pro model for representative screenshots.
-          preferred = [d for d in phones if "Pro" in d["name"] and "Max" not in d["name"]]
+          # Prefer a Pro Max (6.9-inch): its screenshots are the size App Store Connect asks for.
+          preferred = [d for d in phones if "Pro Max" in d["name"]]
           print((preferred or phones)[0]["udid"])
           ')
           echo "Using simulator $UDID"

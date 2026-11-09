@@ -18,8 +18,6 @@ What's ready in the repo, and the steps only the account holder can do.
 - **Test Mode is still on in every build.** The app reads and changes only the
   "Storage App Test" album, by choice for now. Removing it means widening the
   Photos code past the test album and rewriting `ios/Tools/check-no-device-access.sh`.
-- **Bundle ID** is still `com.example.storageapp` (also in `xtool.yml`,
-  `Plan.productID`, `Products.storekit`, and the workflow's `BUNDLE_ID`).
 - **Photos permission text** in `project.yml` and `xtool-Info.plist` mentions the test album.
 - **The legal pages need the real domain and a support email**: `NEXT_PUBLIC_SITE_URL` and
   `NEXT_PUBLIC_SUPPORT_EMAIL` for the site, and `PaywallConfig.siteURL` in the app.
@@ -28,11 +26,12 @@ What's ready in the repo, and the steps only the account holder can do.
 ## Steps that need the paid Apple Developer account ($99/year)
 
 1. Enroll at developer.apple.com and note your **Team ID** (Membership page).
-2. Pick the real bundle ID and replace `com.example.storageapp` everywhere listed above.
+2. Register the bundle ID `com.simpleshrink.app` (set 2026-11-09 in `project.yml`, `xtool.yml`,
+   `Plan.productID`, `Products.storekit` and the workflow's `BUNDLE_ID`).
 3. In App Store Connect: **Apps > +** to create the app with that bundle ID.
-4. Under the app's **Subscriptions**, create group "Pro" with Weekly ($6.99, 1 week)
-   and Annual ($39.99, 1 year). Under **In-App Purchases**, create Lifetime
-   ($49.99, non-consumable). Use the product IDs from `Plan.productID`.
+4. Under the app's **Subscriptions**, create group "Pro" with Weekly ($4.99, 1 week)
+   and Annual ($24.99, 1 year). Under **In-App Purchases**, create Lifetime
+   ($34.99, non-consumable). Use the product IDs from `Plan.productID`.
 5. **Users and Access > Integrations > App Store Connect API**: create a key
    with the **App Manager** role. Download the `.p8` (only offered once).
 6. In GitHub: **Settings > Secrets and variables > Actions**, add:
