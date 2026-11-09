@@ -26,10 +26,14 @@ public struct ReclaimMeasurement: Hashable, Sendable {
         latest = snapshot
     }
 
-    /// Free space gained since the baseline; never negative.
+    /// Free space gained since the baseline; never negative. Right after
+    /// Recently Deleted is emptied, iOS often marks the space purgeable before
+    /// it shows up as plain free space, so a gain in either reading counts.
     public var reclaimedBytes: Int64 {
         guard let latest else { return 0 }
-        return max(0, latest.availableBytes - baseline.availableBytes)
+        let plain = latest.availableBytes - baseline.availableBytes
+        let important = latest.availableForImportantUsageBytes - baseline.availableForImportantUsageBytes
+        return max(0, plain, important)
     }
 
     /// Progress toward the expected amount, from 0 to 1.

@@ -33,7 +33,7 @@ extension FreedSource {
     }
 }
 
-/// Everything Storage App measured coming back, by action, checked against
+/// Everything SimpleShrink measured coming back, by action, checked against
 /// the real change in free space since the first one (Build Plan step 11).
 struct ResultsView: View {
     @Environment(AppModel.self) private var model
@@ -90,7 +90,7 @@ struct ResultsView: View {
                 .accessibilityHidden(true)
             Text(freed.total > 0
                  ? "Each figure is free space read right before the action and again after, so it's what really came back."
-                 : "Clean up photos, videos or files, or follow a guide. Storage App reads free space before and after each one and adds it up here.")
+                 : "Clean up photos, videos or files, or follow a guide. SimpleShrink reads free space before and after each one and adds it up here.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -203,7 +203,7 @@ private struct CheckCard: View {
                 Text(matches
                      ? "They match. Nothing else changed free space much since then."
                      : change > total
-                        ? "Free space grew more than Storage App counted, from things it didn't do (iOS clearing caches, other apps)."
+                        ? "Free space grew more than SimpleShrink counted, from things it didn't do (iOS clearing caches, other apps)."
                         : "Free space grew less than counted. Something else used space since then, like downloads, new photos, or app updates.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

@@ -61,7 +61,7 @@ struct RestartGuideView: View {
                 .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
-            Text("A restart gives iOS a chance to clear out temporary files it's been holding on to. Sometimes that frees a lot, sometimes very little. Storage App can't do it for you, but it measures what comes back.")
+            Text("A restart gives iOS a chance to clear out temporary files it's been holding on to. Sometimes that frees a lot, sometimes very little. SimpleShrink can't do it for you, but it measures what comes back.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -92,7 +92,7 @@ struct RestartGuideView: View {
     private var actionBar: some View {
         VStack(spacing: 8) {
             if isReady {
-                Label("Free space saved. Restart now, then open Storage App again.", systemImage: "checkmark.circle.fill")
+                Label("Free space saved. Restart now, then open SimpleShrink again.", systemImage: "checkmark.circle.fill")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.accent)
                     .multilineTextAlignment(.center)
@@ -126,7 +126,7 @@ enum RestartSteps {
                 : "Press and hold the side button and either volume button until the power-off slider appears.",
             "Drag the slider, then wait about 30 seconds for your iPhone to turn off.",
             "Press and hold the side button until you see the Apple logo.",
-            "Unlock your iPhone and open Storage App. It measures the space that came back.",
+            "Unlock your iPhone and open SimpleShrink. It measures the space that came back.",
         ]
     }
 

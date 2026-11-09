@@ -11,9 +11,14 @@ struct VolumeStorageService: DeviceStorageService {
         var errorDescription: String? { "The iPhone didn't report its storage." }
     }
 
-    var volumeURL = URL(fileURLWithPath: NSHomeDirectory())
+    var volumePath = NSHomeDirectory()
 
     func currentSnapshot() async throws -> StorageSnapshot {
+        // Foundation caches resource values on a URL object, so reusing one URL
+        // can return the same free space forever. A fresh URL, with its cache
+        // cleared, makes every reading a real one.
+        var volumeURL = URL(fileURLWithPath: volumePath)
+        volumeURL.removeAllCachedResourceValues()
         let values = try volumeURL.resourceValues(forKeys: [
             .volumeTotalCapacityKey,
             .volumeAvailableCapacityKey,

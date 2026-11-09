@@ -48,7 +48,7 @@ struct EmptyStateView: View {
 
 /// Banner note on what the app may read and change.
 struct SafetyNote: View {
-    var text = "Test Mode: Storage App sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. In Files, it sees only a folder you pick. It changes only what you approve, and nothing else on your iPhone."
+    var text = "Test Mode: SimpleShrink sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. In Files, it sees only a folder you pick. It changes only what you approve, and nothing else on your iPhone."
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {

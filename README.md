@@ -1,6 +1,6 @@
-# Storage App
+# SimpleShrink
 
-Storage App (temporary name) is an iPhone utility that helps people find unnecessary photos, screenshots, and large videos, then choose whether to remove them or compress supported media to free up storage.
+SimpleShrink is an iPhone utility that helps people find unnecessary photos, screenshots, and large videos, then choose whether to remove them or compress supported media to free up storage.
 
 This repository contains the marketing website and, later, the iOS app and content tooling. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together.
 

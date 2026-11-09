@@ -31,11 +31,11 @@ public enum PhotoChangeError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .needsFullAccess:
-            "Storage App needs full Photos access to check that each item is in \u{201C}\(TestMode.albumName)\u{201D} before changing it. Nothing was changed."
+            "SimpleShrink needs full Photos access to check that each item is in \u{201C}\(TestMode.albumName)\u{201D} before changing it. Nothing was changed."
         case .albumNotFound(let name):
             "There's no album named \u{201C}\(name)\u{201D}. Nothing was changed."
         case .albumAmbiguous(let name):
-            "More than one album is named \u{201C}\(name)\u{201D}. Rename the extras so Storage App knows which one to use. Nothing was changed."
+            "More than one album is named \u{201C}\(name)\u{201D}. Rename the extras so SimpleShrink knows which one to use. Nothing was changed."
         case .unsafe(let check):
             "\(check.problem ?? "The safety check failed.") Nothing was changed."
         case .notLivePhoto(let count):
@@ -47,7 +47,7 @@ public enum PhotoChangeError: LocalizedError, Equatable {
         case .exportFailed(let detail):
             "The smaller copy couldn't be made: \(detail) Nothing was changed."
         case .videoNotSmaller:
-            "This video is already about as small as it gets at this quality. Try 1080p or trimming it. Nothing was changed."
+            "This video is already about as small as it gets at this quality. Try \u{201C}Smaller file\u{201D} or trimming it. Nothing was changed."
         case .notResavable(let count):
             "\(count == 1 ? "1 item isn't" : "\(count) items aren't") a PNG screenshot any more. Scan again. Nothing was changed."
         case .screenshotsNotSmaller:

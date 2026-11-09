@@ -112,7 +112,7 @@ struct LivePhotoStillsView: View {
                 SafetyLine(done: true, text: "Favorite", progress: progress, start: 0.69)
                 SafetyLine(done: true, text: "The album", progress: progress, start: 0.76)
             }
-            Text("Your stills stay in your library. Only the old Live versions go to Recently Deleted, so you'll see them there. Storage App checks each still afterwards and shows you the result.")
+            Text("Your stills stay in your library. Only the old Live versions go to Recently Deleted, so you'll see them there. SimpleShrink checks each still afterwards and shows you the result.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

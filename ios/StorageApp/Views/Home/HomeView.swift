@@ -1,66 +1,67 @@
 import StorageCore
 import SwiftUI
 
-/// Dashboard: the phone's real storage, and what takes up space in the test album.
+/// Home, laid out like the best iPhone utilities: one summary at the top, one
+/// clear next step, then everything else in short grouped lists.
 struct HomeView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage(OnboardingAnswers.planDismissedKey) private var planDismissed = false
+    @Environment(PurchaseStore.self) private var purchases
     /// Re-reads the plan when onboarding finishes over Home.
     @AppStorage(OnboardingAnswers.completedKey) private var onboardingDone = false
+    @State private var showingPaywall = false
 
     var body: some View {
         @Bindable var model = model
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) {
                 header
-                if showsPlan {
-                    PlanCard(picks: OnboardingAnswers.load().picks) {
-                        withAnimation(.easeInOut) { planDismissed = true }
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-                DeviceStorageCard()
+                    .writesIn()
+                StorageSummaryCard()
+                    .drawsIn(section: 0)
                 StorageHealthCard()
-                if model.freed.total > 0 {
-                    ResultsCard(bytes: model.freed.total)
-                }
-                TestAlbumCard()
-                if let waiting = model.spaceWaiting {
-                    SpaceWaitingCard(bytes: waiting)
-                }
+                    .drawsIn(section: 1)
+                upNext
+                    .drawsIn(section: 2)
                 if let scan = model.albumScan, scan.total.count > 0 {
-                    CleanupSection()
-                    groupSection(scan)
+                    PhotoToolsSection(onPaywall: { showingPaywall = true })
+                        .drawsIn(section: 3)
                 }
-                FilesSection()
-                OtherAppsSection()
-                SafetyNote()
-                    .padding(.top, 4)
+                MoreSection()
+                    .drawsIn(section: 4)
+                SafetyFootnote()
+                    .drawsIn(section: 5, outlined: false)
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 24)
+            .padding(.bottom, 28)
         }
         .background(PaperBackground())
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $model.isShowingResults) { ResultsView() }
-        // Duplicates are checked again after a relaunch, so their card and the
+        .fullScreenCover(isPresented: $showingPaywall) {
+            PaywallFlow(context: PaywallContext(proBytes: model.proSaving))
+                .environment(purchases)
+                .tint(Theme.accent)
+        }
+        // Duplicates are checked again after a relaunch, so their row and the
         // plan show a real number even when the tool itself needs Pro.
         .task(id: model.albumScan?.total.count) {
             if model.albumScan != nil, model.junkReport == nil { await model.findJunk() }
         }
     }
 
-    /// The onboarding picks, until they're closed. Needs a scan for its numbers.
+    /// The onboarding picks, as a checklist. Needs a scan for its numbers.
     private var showsPlan: Bool {
-        onboardingDone && !planDismissed && model.albumScan != nil && !OnboardingAnswers.load().picks.isEmpty
+        onboardingDone && model.albumScan != nil && !OnboardingAnswers.load().picks.isEmpty
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            IllustrationView(.phoneSparkle, size: 48)
-            Text("Storage App")
-                .font(.display(34))
+        HStack(alignment: .center, spacing: 10) {
+            IllustrationView(.phoneSparkle, size: 40)
+            Text("SimpleShrink")
+                .font(.display(30))
                 .boiling()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
             TestModeBadge()
@@ -68,51 +69,51 @@ struct HomeView: View {
         .padding(.top, 12)
     }
 
-    private func groupSection(_ scan: LibraryScan) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Where the space is")
-                .font(.title3.weight(.semibold))
-                .accessibilityAddTraits(.isHeader)
-            ForEach(ScanGroup.allCases.filter { scan[$0].count > 0 }) { group in
-                CategoryCard(
-                    illustration: Illustration.forGroup(group),
-                    title: group.title,
-                    subtitle: group.detail,
-                    total: scan[group]
-                ) { model.showLibrary(group: group) }
-            }
+    /// Exactly one thing to do next, most urgent first: finish a cleanup,
+    /// scan, follow the plan, or the best tool for this album.
+    @ViewBuilder
+    private var upNext: some View {
+        if let waiting = model.spaceWaiting {
+            SpaceWaitingCard(bytes: waiting)
+        } else if model.albumScan == nil {
+            ScanCard()
+        } else if showsPlan {
+            PlanCard(picks: OnboardingAnswers.load().picks)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+        } else if let best = PhotoToolsSection.best(model) {
+            BestNextCard(method: best, onPaywall: { showingPaywall = true })
         }
     }
 }
 
-/// The phone's real used and free space, with two decimals like Settings.
-private struct DeviceStorageCard: View {
+/// The phone's real free space, how full it is, and what the app has freed so far.
+private struct StorageSummaryCard: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("iPhone storage")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-
             if let snapshot = model.deviceStorage {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    SizeText(bytes: snapshot.availableBytes, style: .largeTitle, unitStyle: .title2, precision: .twoDecimals)
-                    Text("free")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                UsageBar(fraction: snapshot.usedFraction)
-                HStack {
-                    Text("\(ByteFormatter.string(snapshot.usedBytes, precision: .twoDecimals)) of \(ByteFormatter.string(snapshot.advertisedCapacityBytes)) used")
-                        .monospacedDigit()
-                    Spacer(minLength: 8)
-                    TimelineView(.periodic(from: .now, by: 30)) { context in
-                        Text(Self.updatedText(since: snapshot.date, now: context.date))
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        SizeText(bytes: snapshot.availableBytes, style: .largeTitle, unitStyle: .title2, precision: .twoDecimals)
+                        Text("free")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
+                    UsageBar(fraction: snapshot.usedFraction)
+                    HStack {
+                        Text("\(ByteFormatter.string(snapshot.usedBytes, precision: .twoDecimals)) of \(ByteFormatter.string(snapshot.advertisedCapacityBytes)) used")
+                            .monospacedDigit()
+                        Spacer(minLength: 8)
+                        TimelineView(.periodic(from: .now, by: 30)) { context in
+                            Text(Self.updatedText(since: snapshot.date, now: context.date))
+                        }
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityText(snapshot))
             } else if model.storageReadFailed {
                 Text("Couldn't read this iPhone's storage.")
                     .font(.subheadline)
@@ -121,20 +122,35 @@ private struct DeviceStorageCard: View {
                     .frame(maxWidth: .infinity, minHeight: 60)
             }
 
-            Text("Settings may show slightly different numbers.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            if model.freed.total > 0 {
+                Divider()
+                Button {
+                    model.isShowingResults = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .foregroundStyle(Theme.accent)
+                        Text("You've freed \(ByteFormatter.string(model.freed.total, precision: .twoDecimals))")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer(minLength: 8)
+                        Text("Results")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .foregroundStyle(.primary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
         }
         .sticker(padding: 18)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
     }
 
-    private var accessibilityText: String {
-        guard let snapshot = model.deviceStorage else {
-            return model.storageReadFailed ? "iPhone storage unavailable" : "iPhone storage, loading"
-        }
-        return "iPhone storage, \(ByteFormatter.accessibilityString(snapshot.availableBytes, precision: .twoDecimals)) free, "
+    private func accessibilityText(_ snapshot: StorageSnapshot) -> String {
+        "iPhone storage, \(ByteFormatter.accessibilityString(snapshot.availableBytes, precision: .twoDecimals)) free, "
             + "\(ByteFormatter.accessibilityString(snapshot.usedBytes, precision: .twoDecimals)) of "
             + "\(ByteFormatter.accessibilityString(snapshot.advertisedCapacityBytes)) used. "
             + Self.updatedText(since: snapshot.date, now: Date())
@@ -183,7 +199,7 @@ private struct StorageHealthCard: View {
             Button("Show Me How") { model.isShowingRestartGuide = true }
                 .buttonStyle(.soft)
         }
-        .sticker(padding: 16)
+        .card(padding: 16)
     }
 
     private var waitingCard: some View {
@@ -193,7 +209,7 @@ private struct StorageHealthCard: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Waiting for your restart")
                         .font(.headline)
-                    Text("Open Storage App again afterwards to see what came back.")
+                    Text("Open SimpleShrink again afterwards to see what came back.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -239,7 +255,7 @@ private struct StorageHealthCard: View {
             }
             .accessibilityLabel("Dismiss")
         }
-        .sticker(fill: Theme.mintSoft, padding: 16)
+        .card(padding: 16)
     }
 
     private func title(_ warning: StorageWarning) -> String {
@@ -269,94 +285,125 @@ private struct UsageBar: View {
     }
 }
 
-/// Test Mode: scans the "Storage App Test" album (read-only) and opens the Library.
-private struct TestAlbumCard: View {
-    @Environment(AppModel.self) private var model
+// MARK: - Up next
+
+/// A small label over the one card that says what to do next.
+private struct UpNextLabel: View {
+    var text = "Up next"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Test album")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
-
-            if let scan = model.albumScan {
-                Button {
-                    model.showLibrary(group: nil)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            SizeText(bytes: scan.total.bytes, style: .title, unitStyle: .headline, precision: .twoDecimals)
-                            Text("\(scan.total.count.formatted()) items · \(ScanSource.title(for: model.photoAccess))")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 8)
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Test album, \(scan.total.count) items, \(ByteFormatter.accessibilityString(scan.total.bytes, precision: .twoDecimals))")
-                .accessibilityHint("Shows every item in the Library, biggest first.")
-                .accessibilityAddTraits(.isButton)
-            } else {
-                Text("See what takes up space in the \u{201C}\(TestMode.albumName)\u{201D} album. Scanning only reads it.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            if let error = model.scanError {
-                ScanErrorView(error: error)
-            }
-
-            Button {
-                Task { await model.scanTestAlbum() }
-            } label: {
-                if model.isScanning {
-                    ProgressView()
-                } else {
-                    Text(model.albumScan == nil ? "Scan Test Album" : "Scan Again")
-                }
-            }
-            .buttonStyle(.soft)
-            .disabled(model.isScanning)
-        }
-        .card(padding: 18)
+        Text(text.uppercased())
+            .font(.caption.weight(.bold))
+            .tracking(1.2)
+            .foregroundStyle(.secondary)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// Space from the latest cleanup still sitting in Recently Deleted.
+/// Before the first scan: the one button that gets everything going.
+private struct ScanCard: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            UpNextLabel()
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    IllustrationView(.photo, size: 52)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Find what's taking space")
+                            .font(.headline)
+                        Text("Scans the \u{201C}\(TestMode.albumName)\u{201D} album. Scanning only reads it.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if let error = model.scanError {
+                    ScanErrorView(error: error)
+                }
+                Button {
+                    Task { await model.scanTestAlbum() }
+                } label: {
+                    if model.isScanning { ProgressView() } else { Text("Scan Test Album") }
+                }
+                .buttonStyle(.sticker)
+                .disabled(model.isScanning)
+            }
+            .sticker(fill: Theme.mintSoft, padding: 16)
+        }
+    }
+}
+
+/// Space from the latest cleanup still sitting in Recently Deleted. Until
+/// it's emptied the cleanup isn't finished, so it comes before anything else.
 private struct SpaceWaitingCard: View {
     let bytes: Int64
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Button {
-            model.reopenGuide()
-        } label: {
-            HStack(spacing: 14) {
-                IllustrationView(.trash, size: 50)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(ByteFormatter.string(bytes, precision: .twoDecimals)) waiting in Recently Deleted")
-                        .font(.headline)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("show me how to get it back")
-                        .font(.hand(16))
-                        .foregroundStyle(Theme.accent)
+        VStack(alignment: .leading, spacing: 10) {
+            UpNextLabel(text: "Finish your cleanup")
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    IllustrationView(.trash, size: 52)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(ByteFormatter.string(bytes, precision: .twoDecimals)) waiting in Recently Deleted")
+                            .font(.headline)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("Empty it in Photos to get the space back. It takes about ten seconds.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                Button("Show Me How") { model.reopenGuide() }
+                    .buttonStyle(.sticker)
             }
-            .foregroundStyle(.primary)
             .sticker(fill: Theme.mintSoft, padding: 16)
         }
-        .buttonStyle(.plain)
+    }
+}
+
+/// The tool that frees the most for this album right now, free ones first.
+private struct BestNextCard: View {
+    let method: CleanupMethod
+    let onPaywall: () -> Void
+    @Environment(AppModel.self) private var model
+    @Environment(PurchaseStore.self) private var purchases
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            UpNextLabel(text: "Best next step")
+            MethodLink(method: method, onPaywall: onPaywall) {
+                HStack(spacing: 14) {
+                    IllustrationView(method.illustration, size: 52)
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(method.title).font(.headline)
+                            if method.isPro && purchases.requiresPro { ProTag() }
+                        }
+                        Text(PhotoToolsSection.subtitle(for: method, model: model))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    if let bytes = model.saving(for: method), bytes > 0 {
+                        Text("\u{2212}" + ByteFormatter.string(bytes, precision: .twoDecimals))
+                            .font(.metric(.headline))
+                            .monospacedDigit()
+                            .foregroundStyle(Theme.accent)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .foregroundStyle(.primary)
+                .sticker(fill: Theme.mintSoft, padding: 16)
+                .contentShape(Rectangle())
+            }
+        }
     }
 }
 
@@ -401,7 +448,6 @@ private struct MethodLink<Label: View>: View {
 /// picks follow and open the paywall when tapped. Done ones sink to the bottom.
 private struct PlanCard: View {
     let picks: [CleanupMethod]
-    let onClose: () -> Void
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
     @State private var showingPaywall = false
@@ -409,34 +455,27 @@ private struct PlanCard: View {
     var body: some View {
         let rows = ordered
         let next = rows.first { !isDone($0) }
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Your plan")
-                    .font(.title3.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-                Text(next == nil && rows.allSatisfy(isDone) ? "all done, nice" : "from your picks")
-                    .font(.hand(16))
-                    .foregroundStyle(Theme.accent)
-                Spacer(minLength: 8)
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Rectangle())
+        VStack(alignment: .leading, spacing: 10) {
+            UpNextLabel()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Your plan")
+                        .font(.title3.weight(.semibold))
+                        .accessibilityAddTraits(.isHeader)
+                    Text(next == nil && rows.allSatisfy(isDone) ? "all done, nice" : "from your picks")
+                        .font(.hand(16))
+                        .foregroundStyle(Theme.accent)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Hide plan")
-            }
-            ForEach(rows) { method in
-                MethodLink(method: method, onPaywall: { showingPaywall = true }) {
-                    PlanRow(method: method, bytes: model.saving(for: method), isDone: isDone(method),
-                            isLocked: isLocked(method), isNext: method == next)
+                ForEach(rows) { method in
+                    MethodLink(method: method, onPaywall: { showingPaywall = true }) {
+                        PlanRow(method: method, bytes: model.saving(for: method), isDone: isDone(method),
+                                isLocked: isLocked(method), isNext: method == next)
+                    }
+                    .disabled(isDone(method))
                 }
-                .disabled(isDone(method))
             }
+            .sticker(padding: 16)
         }
-        .sticker(padding: 16)
         .fullScreenCover(isPresented: $showingPaywall) {
             PaywallFlow(context: PaywallContext(proBytes: model.proSaving))
                 .environment(purchases)
@@ -509,57 +548,84 @@ private struct PlanRow: View {
     }
 }
 
-/// What the app can do to the test album. Pro methods (see
-/// `CleanupMethod.isPro`) open the paywall instead until Pro is unlocked.
-private struct CleanupSection: View {
+// MARK: - Lists
+
+/// Every photo and video tool as one grouped list, biggest saving first,
+/// with the album itself at the top. Pro tools open the paywall until unlocked.
+private struct PhotoToolsSection: View {
+    let onPaywall: () -> Void
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
-    @State private var showingPaywall = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Clean up")
-                    .font(.title3.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-                Text("only in the test album")
-                    .font(.hand(16))
-                    .foregroundStyle(Theme.accent)
-            }
-            ForEach(methods) { method in
-                MethodLink(method: method, onPaywall: { showingPaywall = true }) {
-                    ActionCard(
-                        illustration: method.illustration,
-                        title: method.title,
-                        subtitle: subtitle(for: method),
-                        figure: figure(for: method),
-                        isPro: method.isPro && purchases.requiresPro
-                    )
+                SectionTitle(text: "Photos & videos")
+                Spacer(minLength: 8)
+                Button {
+                    Task { await model.scanTestAlbum() }
+                } label: {
+                    if model.isScanning {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label("Scan Again", systemImage: "arrow.clockwise")
+                            .font(.footnote.weight(.semibold))
+                    }
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.accent)
+                .frame(minHeight: 32)
+                .disabled(model.isScanning)
             }
-            Button {
-                model.isSelecting = true
-                model.showLibrary(group: nil)
-            } label: {
-                ActionCard(
-                    illustration: .trash,
-                    title: "Pick what to delete",
-                    subtitle: "Review it on a receipt before anything goes",
-                    figure: nil
-                )
+            if let error = model.scanError {
+                ScanErrorView(error: error)
             }
-            .buttonStyle(.plain)
-        }
-        .fullScreenCover(isPresented: $showingPaywall) {
-            PaywallFlow(context: PaywallContext(proBytes: model.proSaving))
-                .environment(purchases)
-                .tint(Theme.accent)
+            GroupedList {
+                if let scan = model.albumScan {
+                    Button { model.showLibrary(group: nil) } label: {
+                        ListRow(
+                            illustration: .photo,
+                            title: "Test album",
+                            subtitle: "\(scan.total.count.formatted()) items · \(ScanSource.title(for: model.photoAccess))",
+                            trailing: ByteFormatter.string(scan.total.bytes, precision: .twoDecimals),
+                            trailingIsSaving: false
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Shows every item in the Library, biggest first.")
+                }
+                ForEach(methods) { method in
+                    ListDivider()
+                    MethodLink(method: method, onPaywall: onPaywall) {
+                        ListRow(
+                            illustration: method.illustration,
+                            title: method.title,
+                            subtitle: Self.subtitle(for: method, model: model),
+                            trailing: figure(for: method),
+                            isPro: method.isPro && purchases.requiresPro
+                        )
+                    }
+                }
+                ListDivider()
+                Button {
+                    model.isSelecting = true
+                    model.showLibrary(group: nil)
+                } label: {
+                    ListRow(illustration: .trash, title: "Pick what to delete",
+                            subtitle: "Review it on a receipt before anything goes", trailing: nil)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
-    /// The album tools with something to work on. The photo-checking ones
-    /// always show, so they can run their first check.
+    /// The album tools with something to work on, biggest saving first.
     private var methods: [CleanupMethod] {
+        Self.available(model).sorted { (model.saving(for: $0) ?? -1) > (model.saving(for: $1) ?? -1) }
+    }
+
+    /// The photo-checking tools always show, so they can run their first check.
+    static func available(_ model: AppModel) -> [CleanupMethod] {
         [CleanupMethod.photoCleanup, .swipe, .shrinkVideos, .livePhotos, .screenshots, .duplicates, .bursts].filter { method in
             switch method {
             case .livePhotos: !model.convertibleLivePhotos.isEmpty
@@ -572,31 +638,37 @@ private struct CleanupSection: View {
         }
     }
 
-    private func subtitle(for method: CleanupMethod) -> String {
+    /// Home's suggestion when there's no plan: the first tool in plan order
+    /// (free fixes first) with something to free.
+    static func best(_ model: AppModel) -> CleanupMethod? {
+        model.planOrder(available(model)).first { (model.saving(for: $0) ?? 0) > 0 }
+    }
+
+    static func subtitle(for method: CleanupMethod, model: AppModel) -> String {
         switch method {
         case .livePhotos:
             let count = model.convertibleLivePhotos.count
-            return "\(count) Live \(count == 1 ? "Photo" : "Photos"), same photos without the video"
+            return "\(count) Live \(count == 1 ? "Photo" : "Photos"), keep the still"
         case .screenshots:
             let count = model.resavableScreenshots.count
-            return "\(count) \(count == 1 ? "screenshot" : "screenshots") saved as PNG, same look, far smaller"
+            return "\(count) \(count == 1 ? "screenshot" : "screenshots"), same look, far smaller"
         case .shrinkVideos:
             let count = model.shrinkableVideos.count
-            return "\(count) \(count == 1 ? "video" : "videos"), compress or trim, same memories"
+            return "\(count) \(count == 1 ? "video" : "videos"), compress or trim"
         case .bursts:
             let count = model.bursts.count
-            return "\(count) \(count == 1 ? "burst" : "bursts"), keep one shot, remove the rest"
+            return "\(count) \(count == 1 ? "burst" : "bursts"), keep the best shot"
         case .duplicates:
-            guard let report = model.junkReport else { return "Copies, blurry and black shots, receipts, old screenshots" }
-            if report.isEmpty { return "Nothing found. Look again after adding photos" }
+            guard let report = model.junkReport else { return "Copies, blurry shots, old screenshots" }
+            if report.isEmpty { return "Nothing found right now" }
             return "\(report.suggestedCount) \(report.suggestedCount == 1 ? "photo" : "photos") to review, best copies kept"
         case .photoCleanup:
             guard let plan = model.photoCleanupPlan else { return method.pitch }
             if plan.isEmpty { return "Nothing to clean right now" }
             return "\(plan.stillCount + plan.remove.count) photos in one tap, best copies kept"
         case .swipe:
-            guard let report = model.junkReport else { return method.pitch }
-            let count = SwipeCandidate.all(from: report).count
+            guard let candidates = model.swipeCandidates else { return method.pitch }
+            let count = candidates.count
             if count == 0 { return "Nothing to swipe right now" }
             return "\(count) likely \(count == 1 ? "delete" : "deletes"), one at a time"
         case .chatAttachments:
@@ -610,177 +682,122 @@ private struct CleanupSection: View {
     }
 }
 
-/// Files the person keeps outside Photos, in one folder they pick.
-private struct FilesSection: View {
+/// Files and other apps: space the app can point to but can't clear from Photos.
+private struct MoreSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Files")
-                    .font(.title3.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-                Text("only a folder you pick")
-                    .font(.hand(16))
-                    .foregroundStyle(Theme.accent)
+        VStack(alignment: .leading, spacing: 10) {
+            SectionTitle(text: "Files & other apps")
+            GroupedList {
+                NavigationLink {
+                    FilesCleanupView()
+                } label: {
+                    ListRow(illustration: .stackLarge, title: "Clean up a folder", subtitle: filesSubtitle, trailing: nil)
+                }
+                .buttonStyle(.plain)
+                ForEach(OtherAppGuide.allCases) { guide in
+                    ListDivider()
+                    Button { model.open(guide) } label: {
+                        ListRow(illustration: guide.illustration, title: guide.title, subtitle: guide.subtitle, trailing: nil)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            NavigationLink {
-                FilesCleanupView()
-            } label: {
-                ActionCard(
-                    illustration: .stackLarge,
-                    title: "Clean up a folder",
-                    subtitle: subtitle,
-                    figure: nil
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 
-    private var subtitle: String {
-        guard let scan = model.folderScan else { return "Big files, duplicate copies and old downloads in Files" }
+    private var filesSubtitle: String {
+        guard let scan = model.folderScan else { return "Big files, copies and old downloads" }
         return "\(scan.folderName): \(scan.files.count == 1 ? "1 file" : "\(scan.files.count) files"), \(ByteFormatter.string(scan.totalBytes, precision: .twoDecimals))"
     }
 }
 
-/// Everything freed so far, measured. Opens the results.
-private struct ResultsCard: View {
-    let bytes: Int64
-    @Environment(AppModel.self) private var model
+private struct SectionTitle: View {
+    let text: String
 
     var body: some View {
-        Button {
-            model.isShowingResults = true
-        } label: {
-            HStack(spacing: 14) {
-                IllustrationView(.piggy, size: 50)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("You've freed \(ByteFormatter.string(bytes, precision: .twoDecimals))")
-                        .font(.headline)
-                    Text("see what each step gave back")
-                        .font(.hand(16))
-                        .foregroundStyle(Theme.accent)
-                }
-                Spacer(minLength: 4)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .foregroundStyle(.primary)
-            .sticker(fill: Theme.mintSoft, padding: 16)
-        }
-        .buttonStyle(.plain)
+        Text(text)
+            .font(.title3.weight(.semibold))
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
-/// Guides for space Storage App isn't allowed to clear itself.
-private struct OtherAppsSection: View {
-    @Environment(AppModel.self) private var model
+/// Rows in one quiet card with hairlines between them, like a Settings list.
+private struct GroupedList<Content: View>: View {
+    @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Other apps")
-                    .font(.title3.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
-                Text("we'll show you how")
-                    .font(.hand(16))
-                    .foregroundStyle(Theme.accent)
-            }
-            ForEach(OtherAppGuide.allCases) { guide in
-                Button {
-                    model.open(guide)
-                } label: {
-                    ActionCard(illustration: guide.illustration, title: guide.title, subtitle: guide.subtitle, figure: nil)
-                }
-                .buttonStyle(.plain)
-            }
-            NavigationLink {
-                ResultsView()
-            } label: {
-                ActionCard(illustration: .piggy, title: "Results", subtitle: "What every cleanup and guide gave back, measured", figure: nil)
-            }
-            .buttonStyle(.plain)
-        }
+        VStack(spacing: 0) { content }
+            .card(padding: 0)
     }
 }
 
-private struct ActionCard: View {
+private struct ListDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(Theme.hairline)
+            .frame(height: 1)
+            .padding(.leading, 64)
+    }
+}
+
+/// One compact row: a small drawing, a title and a line, an optional figure.
+private struct ListRow: View {
     let illustration: Illustration
     let title: String
     let subtitle: String
-    let figure: String?
-    /// Shows a PRO tag: tapping opens the paywall.
+    let trailing: String?
+    var trailingIsSaving = true
     var isPro = false
 
     var body: some View {
-        HStack(spacing: 14) {
-            IllustrationView(illustration, size: 52)
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 12) {
+            IllustrationView(illustration, size: 38)
+            VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
-                    Text(title).font(.headline)
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
                     if isPro { ProTag() }
                 }
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
             }
             Spacer(minLength: 8)
-            if let figure {
-                Text(figure)
-                    .font(.metric(.headline))
+            if let trailing {
+                Text(trailing)
+                    .font(.metric(.subheadline))
                     .monospacedDigit()
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(trailingIsSaving ? Theme.accent : Color.secondary)
             }
             Image(systemName: "chevron.right")
-                .font(.footnote.weight(.semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
         }
         .foregroundStyle(.primary)
-        .sticker(padding: 14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .frame(minHeight: 60)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }
 
-private struct CategoryCard: View {
-    let illustration: Illustration
-    let title: String
-    let subtitle: String
-    let total: CategoryTotal
-    let action: () -> Void
-
+/// The safety promise, kept short at the bottom.
+private struct SafetyFootnote: View {
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 14) {
-                IllustrationView(illustration, size: 52)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.headline)
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(ByteFormatter.string(total.bytes, precision: .twoDecimals))
-                        .font(.metric(.headline))
-                        .monospacedDigit()
-                    Text("\(total.count.formatted()) items")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .foregroundStyle(.primary)
-            .card(padding: 14)
-            .contentShape(Rectangle())
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lock.shield")
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+            Text("Test Mode: SimpleShrink sees only the \u{201C}\(TestMode.albumName)\u{201D} album, your free space and a folder you pick. Nothing changes without your OK.")
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(title), \(total.count) items, \(ByteFormatter.accessibilityString(total.bytes, precision: .twoDecimals))")
-        .accessibilityHint("Shows these items in the library.")
-        .accessibilityAddTraits(.isButton)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 4)
     }
 }
 

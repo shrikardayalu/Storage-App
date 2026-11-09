@@ -2,32 +2,51 @@ import Foundation
 
 /// The two ways Step 6 re-encodes a video. Both write HEVC.
 public enum VideoQuality: String, CaseIterable, Hashable, Sendable, Identifiable {
-    /// Same resolution, re-encoded with HEVC.
+    /// Same resolution, re-encoded with HEVC at a bitrate that looks the same.
     case sameQuality
-    /// At most 1920 × 1080; smaller videos keep their size.
-    case hd1080
+    /// One resolution step down (4K to 1080p, 1080p to 720p) and a lighter
+    /// encode, so it's always clearly smaller than `sameQuality`.
+    case smaller
 
     public var id: String { rawValue }
 
     public var title: String {
         switch self {
-        case .sameQuality: "Same quality, smaller"
-        case .hd1080: "1080p"
+        case .sameQuality: "Same quality"
+        case .smaller: "Smaller file"
         }
     }
 
-    public var detail: String {
+    /// What the option does to a video of this size, in plain words.
+    public func detail(width: Int, height: Int) -> String {
+        let source = VideoShrink.resolutionName(longSide: max(width, height), shortSide: min(width, height))
         switch self {
-        case .sameQuality: "Same size on screen, more efficient file"
-        case .hd1080: "Full HD, much smaller. Great on any phone"
+        case .sameQuality:
+            return "Stays \(source). Looks the same, a more efficient file"
+        case .smaller:
+            let out = VideoShrink.outputSize(width: width, height: height, quality: self)
+            let name = VideoShrink.resolutionName(longSide: max(out.width, out.height), shortSide: min(out.width, out.height))
+            return name == source
+                ? "Stays \(source), lighter encode. Fine on a phone screen"
+                : "\(source) to \(name). Looks great on a phone, much smaller"
         }
     }
 
-    /// The longest side the result can have; nil keeps the original resolution.
-    public var maxLongSide: Int? {
+    /// The longest side the result can have for a source this size; nil keeps it.
+    public func maxLongSide(forSourceLongSide longSide: Int) -> Int? {
         switch self {
         case .sameQuality: nil
-        case .hd1080: 1920
+        case .smaller:
+            if longSide > 1920 { 1920 } else if longSide > 1280 { 1280 } else { nil }
+        }
+    }
+
+    /// HEVC bits per pixel per frame. 0.07 is visually close to an iPhone
+    /// camera's own HEVC; the smaller option trades a little detail for size.
+    var bitsPerPixelFrame: Double {
+        switch self {
+        case .sameQuality: 0.07
+        case .smaller: 0.045
         }
     }
 }
@@ -85,8 +104,6 @@ public enum VideoShrink {
     public static let minimumBytes: Int64 = 2_000_000
     /// A copy must be at least this much smaller than the original to replace it.
     public static let minimumSavingFraction = 0.05
-    /// HEVC bits per pixel per frame. Visually close to an iPhone camera's own HEVC.
-    static let bitsPerPixelFrame = 0.07
     /// The scan doesn't read frame rates, so estimates assume the camera's default.
     static let assumedFrameRate = 30.0
 
@@ -104,16 +121,28 @@ public enum VideoShrink {
     /// The pixel size of the result.
     public static func outputSize(width: Int, height: Int, quality: VideoQuality) -> (width: Int, height: Int) {
         let longSide = max(width, height)
-        guard let cap = quality.maxLongSide, longSide > cap else { return (width, height) }
+        guard let cap = quality.maxLongSide(forSourceLongSide: longSide), longSide > cap else { return (width, height) }
         let scale = Double(cap) / Double(longSide)
         return (Int((Double(width) * scale).rounded()), Int((Double(height) * scale).rounded()))
     }
 
     /// The bitrate, in bits per second, a copy is encoded at: enough for HEVC
     /// at this resolution and frame rate, and never more than the original's.
-    public static func targetBitrate(width: Int, height: Int, frameRate: Double, sourceBitrate: Double) -> Double {
+    public static func targetBitrate(
+        width: Int, height: Int, frameRate: Double, sourceBitrate: Double, quality: VideoQuality = .sameQuality
+    ) -> Double {
         let fps = min(max(frameRate, 24), 60)
-        return min(Double(width * height) * fps * bitsPerPixelFrame, sourceBitrate)
+        return min(Double(width * height) * fps * quality.bitsPerPixelFrame, sourceBitrate)
+    }
+
+    /// "4K", "1080p", "720p" or "480p", by the short side.
+    public static func resolutionName(longSide: Int, shortSide: Int) -> String {
+        switch shortSide {
+        case 2000...: "4K"
+        case 1000...: "1080p"
+        case 700...: "720p"
+        default: "\(shortSide)p"
+        }
     }
 
     /// A rough size for the result: the kept part at the target bitrate. The
@@ -123,7 +152,9 @@ public enum VideoShrink {
         let trim = edit.trim.clamped(to: duration)
         let sourceBitrate = Double(item.currentBytes) * 8 / duration
         let out = outputSize(width: item.pixelWidth, height: item.pixelHeight, quality: edit.quality)
-        let bitrate = targetBitrate(width: out.width, height: out.height, frameRate: assumedFrameRate, sourceBitrate: sourceBitrate)
+        let bitrate = targetBitrate(
+            width: out.width, height: out.height, frameRate: assumedFrameRate, sourceBitrate: sourceBitrate, quality: edit.quality
+        )
         return Int64((bitrate * trim.length / 8).rounded())
     }
 

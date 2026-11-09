@@ -32,7 +32,7 @@ wsl -d Ubuntu-24.04 -- bash -lc "swift --version; xtool --version; xtool sdk sta
 The repo stays where it is, in OneDrive on Windows; edit Swift files with any Windows editor. WSL sees it at:
 
 ```
-/mnt/c/Users/shrik/OneDrive/Desktop/Storage App/ios
+/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios
 ```
 
 Don't build in that folder directly. Builds on `/mnt/c` are slow, and OneDrive would try to sync the build output. `Tools/xtool-dev.sh` copies `ios/` to `~/storage-app-ios` inside WSL, keeps the build cache there between runs, and builds the copy.
@@ -86,14 +86,14 @@ Free Apple ID limits: an app stops launching **7 days** after it's installed (ru
 From PowerShell:
 
 ```powershell
-wsl -d Ubuntu-24.04 -- bash "/mnt/c/Users/shrik/OneDrive/Desktop/Storage App/ios/Tools/xtool-dev.sh"
+wsl -d Ubuntu-24.04 -- bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh"
 ```
 
 Or from a WSL shell:
 
 ```bash
-bash "/mnt/c/Users/shrik/OneDrive/Desktop/Storage App/ios/Tools/xtool-dev.sh"         # build, install, launch
-bash "/mnt/c/Users/shrik/OneDrive/Desktop/Storage App/ios/Tools/xtool-dev.sh" build   # compile only
+bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh"         # build, install, launch
+bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh" build   # compile only
 ```
 
 `run` (the default) builds, signs with your Apple ID, installs on the connected iPhone, and launches the app. The built app is at `~/storage-app-ios/xtool/StorageApp.app`.

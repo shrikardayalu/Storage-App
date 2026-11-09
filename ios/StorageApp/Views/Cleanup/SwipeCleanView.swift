@@ -24,6 +24,7 @@ struct SwipeCleanView: View {
 
     private var current: SwipeCandidate? { queue.indices.contains(position) ? queue[position] : nil }
     private var toDelete: [SwipeCandidate] { decisions.filter { $0.delete }.map { $0.candidate } }
+    private var kept: [MediaItem.ID] { decisions.filter { !$0.delete }.map(\.candidate.id) }
     private var deleteBytes: Int64 { toDelete.reduce(0) { $0 + $1.item.currentBytes } }
 
     var body: some View {
@@ -92,6 +93,8 @@ struct SwipeCleanView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: decisions.count)
         .task { await load() }
+        // Photos kept on a swipe stay kept: they aren't offered again next time.
+        .onDisappear { model.markSwipeKept(kept) }
         .onChange(of: model.junkReport) { _, _ in
             // After a delete the album is scanned again: start over on what's left.
             if !model.isChanging, decisions.isEmpty { Task { await load() } }
@@ -120,8 +123,11 @@ struct SwipeCleanView: View {
         .padding(.top, 8)
     }
 
+    /// How far a card has to travel (or be flicked) to count as a swipe.
+    private static let swipeDistance: CGFloat = 60
+
     private func card(_ candidate: SwipeCandidate) -> some View {
-        let lean = drag.width / 120
+        let lean = drag.width / Self.swipeDistance
         return VStack(alignment: .leading, spacing: 10) {
             SwipePhoto(id: candidate.item.id)
                 .frame(maxWidth: .infinity)
@@ -159,9 +165,13 @@ struct SwipeCleanView: View {
             DragGesture()
                 .onChanged { drag = $0.translation }
                 .onEnded { value in
-                    if value.translation.width < -110 {
+                    // A short drag or a quick flick is enough; the predicted end
+                    // counts the flick's speed, not just how far the finger went.
+                    let reach = abs(value.predictedEndTranslation.width) > abs(value.translation.width)
+                        ? value.predictedEndTranslation.width : value.translation.width
+                    if reach < -Self.swipeDistance {
                         decide(delete: true)
-                    } else if value.translation.width > 110 {
+                    } else if reach > Self.swipeDistance {
                         decide(delete: false)
                     } else {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { drag = .zero }
@@ -208,7 +218,7 @@ struct SwipeCleanView: View {
 
     private func load() async {
         await model.findJunk()
-        let candidates = model.junkReport.map(SwipeCandidate.all(from:)) ?? []
+        let candidates = model.swipeCandidates ?? []
         // Leave out anything the album check won't let the app touch, such as a photo in another album.
         var blocked: Set<MediaItem.ID> = []
         if !candidates.isEmpty, case .success(let check) = await model.albumCheck(Set(candidates.map(\.id))) {
@@ -243,6 +253,7 @@ struct SwipeCleanView: View {
         let remove = Set(toDelete.map(\.id))
         let keepers = Set(toDelete.compactMap(\.keeper))
         guard !remove.isEmpty else { return }
+        model.markSwipeKept(kept)
         if let failure = await model.removeJunk(remove, keeping: keepers) {
             error = failure
         } else {

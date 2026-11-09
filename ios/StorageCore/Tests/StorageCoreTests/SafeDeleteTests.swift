@@ -126,4 +126,15 @@ final class SafeDeleteTests: XCTestCase {
         measurement.record(snapshot(free: 9_000_000_000, at: 50))
         XCTAssertEqual(measurement.reclaimedBytes, 0)
     }
+
+    func testReclaimCountsSpaceIOSMarkedPurgeable() {
+        var measurement = ReclaimMeasurement(baseline: snapshot(free: 5_000_000_000, at: 0), expectedBytes: 1_000_000_000)
+        // Emptied, but iOS only marked the space purgeable so far.
+        measurement.record(StorageSnapshot(
+            date: referenceDate.addingTimeInterval(60), totalBytes: 128_000_000_000,
+            availableBytes: 5_000_000_000, availableForImportantUsageBytes: 5_900_000_000
+        ))
+        XCTAssertEqual(measurement.reclaimedBytes, 900_000_000)
+        XCTAssertTrue(measurement.isDone)
+    }
 }

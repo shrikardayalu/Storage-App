@@ -54,7 +54,7 @@ public struct SafetyCheck: Hashable, Sendable {
             return "\(Self.count(outsideTestAlbum.count)) no longer in \u{201C}\(TestMode.albumName)\u{201D}. Scan again, then review."
         }
         if !inOtherAlbums.isEmpty {
-            return "\(Self.count(inOtherAlbums.count)) also in another album, so Storage App won't touch \(inOtherAlbums.count == 1 ? "it" : "them"). Remove \(inOtherAlbums.count == 1 ? "it" : "them") from this review."
+            return "\(Self.count(inOtherAlbums.count)) also in another album, so SimpleShrink won't touch \(inOtherAlbums.count == 1 ? "it" : "them"). Remove \(inOtherAlbums.count == 1 ? "it" : "them") from this review."
         }
         return nil
     }

@@ -3,7 +3,7 @@
 This repository holds several **independent** pieces of one product. They share a Git history but no code, dependencies, or build tooling. There is no monorepo tool or npm workspace; each folder is set up on its own.
 
 ```
-Storage App/
+SimpleShrink/
 ├── web/          Next.js marketing site (deployed to Vercel)
 ├── ios/          Native SwiftUI app (built in Xcode on macOS, shipped via App Store Connect)
 ├── automation/   Planned SEO and content loop (documented, not implemented)

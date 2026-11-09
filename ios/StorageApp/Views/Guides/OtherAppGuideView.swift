@@ -144,7 +144,7 @@ struct OtherAppGuideView: View {
                     HStack(spacing: 10) {
                         Image(systemName: "gauge.with.dots.needle.33percent")
                             .foregroundStyle(Theme.accent)
-                        Text("Storage App measures free space now, and again at the end.")
+                        Text("SimpleShrink measures free space now, and again at the end.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)

@@ -1,4 +1,4 @@
-# Storage App — iOS
+# SimpleShrink — iOS
 
 Native iPhone app, built with Swift and SwiftUI for iOS 17 and later.
 

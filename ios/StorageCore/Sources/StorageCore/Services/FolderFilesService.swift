@@ -13,7 +13,7 @@ public enum FileChangeError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .noAccess:
-            "Storage App can't open that folder any more. Pick it again. Nothing was deleted."
+            "SimpleShrink can't open that folder any more. Pick it again. Nothing was deleted."
         case .unsafe(let check):
             "\(check.problem ?? "The safety check failed.") Scan again. Nothing was deleted."
         case .changed(let detail):

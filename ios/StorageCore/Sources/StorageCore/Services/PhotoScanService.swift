@@ -19,7 +19,7 @@ public enum PhotoScanError: LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .accessDenied:
-            "Storage App can't see your photos. You can allow access in Settings."
+            "SimpleShrink can't see your photos. You can allow access in Settings."
         case .albumNotFound(let name):
             "There's no album named \"\(name)\". Make one in the Photos app, then scan again."
         case .albumAmbiguous(let name):

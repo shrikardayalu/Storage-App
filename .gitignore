@@ -1,4 +1,4 @@
-# Root .gitignore for the Storage App monorepo.
+# Root .gitignore for the SimpleShrink monorepo.
 # web/ keeps its own Next.js .gitignore; these rules apply repo-wide.
 
 # Dependencies

@@ -253,7 +253,7 @@ final class AppModelTests: XCTestCase {
         await model.scanTestAlbum()
         XCTAssertEqual(model.shrinkableVideos.map(\.id), ["v"])
 
-        let edit = VideoEdit(quality: .hd1080, trim: VideoTrim(start: 5, end: 35))
+        let edit = VideoEdit(quality: .smaller, trim: VideoTrim(start: 5, end: 35))
         guard case .success(let prepared) = await model.prepareVideo("v", edit: edit) else { return XCTFail("No copy") }
         XCTAssertNil(model.guide, "Making a copy changes nothing")
 

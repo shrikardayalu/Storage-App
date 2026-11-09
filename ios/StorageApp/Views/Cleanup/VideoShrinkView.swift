@@ -16,7 +16,7 @@ struct VideosView: View {
         (model.albumScan?.items.filter { $0.category == .video }.count ?? 0) - videos.count
     }
     private var bestSaving: Int64 {
-        videos.reduce(0) { $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .hd1080, trim: .full($1.duration ?? 0))) }
+        videos.reduce(0) { $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .smaller, trim: .full($1.duration ?? 0))) }
     }
 
     var body: some View {
@@ -42,7 +42,7 @@ struct VideosView: View {
                     .padding(.top, 2)
                 }
                 .padding(.top, 8)
-                Text("Pick a video, choose its quality and trim the start or end. Storage App makes a smaller copy first, so you see its real size before anything in Photos changes.")
+                Text("Pick a video, choose its quality and trim the start or end. SimpleShrink makes a smaller copy first, so you see its real size before anything in Photos changes.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -153,7 +153,7 @@ private struct VideoRow: View {
             VStack(alignment: .trailing, spacing: 1) {
                 Text(ByteFormatter.string(item.currentBytes, precision: .twoDecimals))
                     .font(.subheadline.weight(.bold).monospacedDigit())
-                Text("up to −\(ByteFormatter.string(VideoShrink.estimatedSaving(for: item, edit: VideoEdit(quality: .hd1080, trim: .full(item.duration ?? 0))), precision: .twoDecimals))")
+                Text("up to −\(ByteFormatter.string(VideoShrink.estimatedSaving(for: item, edit: VideoEdit(quality: .smaller, trim: .full(item.duration ?? 0))), precision: .twoDecimals))")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Theme.accent)
             }
@@ -323,14 +323,19 @@ struct VideoShrinkView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(option.title)
                                 .font(.subheadline.weight(.semibold))
-                            Text(option.detail)
+                            Text(option.detail(width: item.pixelWidth, height: item.pixelHeight))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 6)
-                        Text("≈ \(ByteFormatter.string(estimate, precision: .twoDecimals))")
-                            .font(.subheadline.weight(.bold).monospacedDigit())
-                            .foregroundStyle(Theme.accent)
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(Self.savingText(item.currentBytes - estimate))
+                                .font(.subheadline.weight(.bold).monospacedDigit())
+                                .foregroundStyle(Theme.accent)
+                            Text("\u{2248} \(ByteFormatter.string(estimate, precision: .twoDecimals)) after")
+                                .font(.caption2.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .padding(.vertical, 6)
                     .contentShape(Rectangle())
@@ -368,8 +373,9 @@ struct VideoShrinkView: View {
                         .foregroundStyle(Theme.accent)
                 }
             }
+            savedLine(saved: item.currentBytes - after, measured: prepared != nil)
             if let prepared {
-                Text("Your copy is ready: \(ByteFormatter.string(prepared.savedBytes, precision: .twoDecimals)) smaller, \(VideoTime.string(prepared.newDuration)) long. Nothing in Photos has changed yet.")
+                Text("Your copy is ready, \(VideoTime.string(prepared.newDuration)) long. Nothing in Photos has changed yet.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -378,10 +384,41 @@ struct VideoShrinkView: View {
         .sticker(fill: prepared == nil ? Theme.surface : Theme.mintSoft, padding: 14)
     }
 
+    /// The headline figure: how much space this frees, and what share of the video that is.
+    private func savedLine(saved: Int64, measured: Bool) -> some View {
+        let share = item.currentBytes > 0 ? Double(max(saved, 0)) / Double(item.currentBytes) : 0
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(Theme.accent)
+                .accessibilityHidden(true)
+            if saved > 0 {
+                Text("\(measured ? "Saves" : "Saves about") \(ByteFormatter.string(saved, precision: .twoDecimals))")
+                    .font(.headline)
+                Spacer(minLength: 6)
+                Text("\(Int((share * 100).rounded()))% smaller")
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
+            } else {
+                Text("No space saved at this setting. Try Smaller file or trim it.")
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.top, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "Saves 120.40 MB", or "No saving" when there's nothing to gain.
+    static func savingText(_ bytes: Int64) -> String {
+        bytes > 0 ? "Saves \(ByteFormatter.string(bytes, precision: .twoDecimals))" : "No saving"
+    }
+
     private var actionBar: some View {
         VStack(spacing: 6) {
             if let prepared {
-                Button("Replace Video") { confirming = true }
+                Button(prepared.savedBytes > 0
+                       ? "Replace Video, Save \(ByteFormatter.string(prepared.savedBytes, precision: .twoDecimals))"
+                       : "Replace Video") { confirming = true }
                     .buttonStyle(.sticker)
                     .disabled(model.isChanging)
                 Button("Throw away the copy") { discardCopy() }

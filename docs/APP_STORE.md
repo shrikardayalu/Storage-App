@@ -23,7 +23,7 @@ site already make; edit it freely.
 
 | Field | Value |
 |---|---|
-| Name (30) | Storage App *(placeholder, as in `docs/RELEASE.md`)* |
+| Name (30) | SimpleShrink |
 | Subtitle (30) | Free up space, keep memories |
 | Primary category | Utilities |
 | Secondary category | Photo & Video |
@@ -60,7 +60,7 @@ duplicates, which is exempt.
 
 **Description:**
 
-> Your iPhone is full, and you don't want to delete the memories. Storage App finds what's taking the space and lets you decide what to do with each thing.
+> Your iPhone is full, and you don't want to delete the memories. SimpleShrink finds what's taking the space and lets you decide what to do with each thing.
 >
 > FREE
 > • See your real free space, and what takes it up: photos, videos, Live Photos, screenshots, bursts and big formats.
@@ -77,9 +77,9 @@ duplicates, which is exempt.
 > • Keep the best shot of every burst.
 >
 > PRIVATE BY DESIGN
-> Everything is analysed on your iPhone. Storage App has no account, collects no data and never uploads your photos.
+> Everything is analysed on your iPhone. SimpleShrink has no account, collects no data and never uploads your photos.
 >
-> Storage App Pro is available as a weekly or annual auto-renewing subscription, or as a one-time Lifetime purchase. Payment is charged to your Apple ID when you confirm. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and you can manage or cancel them in Settings → your name → Subscriptions.
+> SimpleShrink Pro is available as a weekly or annual auto-renewing subscription, or as a one-time Lifetime purchase. Payment is charged to your Apple ID when you confirm. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and you can manage or cancel them in Settings → your name → Subscriptions.
 >
 > Terms of Use: https://<your domain>/terms
 > Privacy Policy: https://<your domain>/privacy
@@ -121,12 +121,12 @@ The first subscription has to be submitted together with an app version.
 
 Paste this into **App Review Information → Notes**. No sign-in is needed.
 
-> Storage App needs no account.
+> SimpleShrink needs no account.
 >
 > The app is in Test Mode for this release: it reads and changes only a photo album named exactly "Storage App Test", so it can never touch the rest of a person's library. To review:
 >
 > 1. In Photos, create an album named Storage App Test and add some photos and videos to it: ideally a duplicate, a Live Photo, a burst and a video longer than a minute.
-> 2. Open Storage App, go through onboarding, and allow Full Access to Photos when iOS asks.
+> 2. Open SimpleShrink, go through onboarding, and allow Full Access to Photos when iOS asks.
 > 3. Home shows the album's contents. Pick what to delete opens the review screen; Duplicates and junk is free; Live Photos to stills, Shrink videos and Best shot of each burst are Pro and open the paywall.
 >
 > Every deletion is reviewed on screen and confirmed by iOS. Photos go to Recently Deleted, and the app then shows how to empty it and measures the space that comes back.

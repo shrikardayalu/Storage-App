@@ -78,8 +78,6 @@ struct OnboardingAnswers: Equatable {
 
     static let completedKey = Keys.completed
     static let picksKey = Keys.picks
-    /// Set when the person closes Home's plan card.
-    static let planDismissedKey = "home.planDismissed"
     /// Set once the paywall has followed a first free cleanup.
     static let winPaywallShownKey = "paywall.afterFirstWinShown"
 }

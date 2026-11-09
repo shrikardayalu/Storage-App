@@ -1,10 +1,13 @@
 // Public site configuration. NEXT_PUBLIC_* values are inlined at build time,
 // so each variable must be referenced directly (no dynamic lookups).
 
-const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const productionUrl = "https://simpleshrink.vercel.app";
+const rawUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.NODE_ENV === "production" ? productionUrl : "http://localhost:3000");
 
 export const siteConfig = {
-  name: process.env.NEXT_PUBLIC_APP_NAME || "Storage App",
+  name: process.env.NEXT_PUBLIC_APP_NAME || "SimpleShrink",
   /** Canonical origin with no trailing slash. Used for canonicals, sitemap, and schema. */
   url: rawUrl.replace(/\/+$/, ""),
   tagline: "Free up iPhone storage without deleting your memories",

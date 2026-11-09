@@ -19,7 +19,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Test Mode is on")
                             .font(.headline)
-                        Text("Storage App sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. It changes only items in that album that you approve on a review screen.")
+                        Text("SimpleShrink sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. It changes only items in that album that you approve on a review screen.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

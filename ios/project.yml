@@ -36,7 +36,7 @@ targets:
     info:
       path: StorageApp/Info.plist
       properties:
-        CFBundleDisplayName: Storage App
+        CFBundleDisplayName: SimpleShrink
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen:
@@ -52,7 +52,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
         # Test Mode reads one album only (Build Plan step 2). Keep in sync with xtool-Info.plist.
-        NSPhotoLibraryUsageDescription: Storage App reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.
+        NSPhotoLibraryUsageDescription: SimpleShrink reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.
         # The app offers its own "Change Selection" button instead of iOS asking on every launch.
         PHPhotoLibraryPreventAutomaticLimitedAccessAlert: true
     settings:

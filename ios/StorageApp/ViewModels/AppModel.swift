@@ -161,6 +161,17 @@ final class AppModel {
     private(set) var isAnalyzing = false
     /// Share of photos measured so far, 0 to 1.
     private(set) var analysisProgress: Double = 0
+    /// Photos swiped right (kept) in Swipe to clean. They don't come back in
+    /// the swipe feed, or count toward its saving, once a swipe session is done.
+    private(set) var swipeKept: Set<MediaItem.ID> = []
+    private let swipeKeptDefaults: UserDefaults?
+    static let swipeKeptKey = "swipe.kept"
+
+    /// Remembers photos kept in Swipe to clean so they aren't offered again.
+    func markSwipeKept(_ ids: some Sequence<MediaItem.ID>) {
+        swipeKept.formUnion(ids)
+        swipeKeptDefaults?.set(Array(swipeKept), forKey: Self.swipeKeptKey)
+    }
 
     // MARK: Files cleanup (Build Plan step 8)
 
@@ -226,9 +237,12 @@ final class AppModel {
         photoAnalyzer: any PhotoAnalysisService = MockPhotoAnalysis(),
         folderFiles: any FolderFilesService = MockFolderFiles(files: []),
         restartStore: RestartCoachStore = .inMemory,
+        swipeKeptDefaults: UserDefaults? = nil,
         uptime: @escaping @Sendable () -> TimeInterval = { 1_000_000_000 }
     ) {
         self.storageService = storage
+        self.swipeKeptDefaults = swipeKeptDefaults
+        self.swipeKept = Set(swipeKeptDefaults?.stringArray(forKey: Self.swipeKeptKey) ?? [])
         self.restartStore = restartStore
         self.uptime = uptime
         self.historyStore = historyStore
@@ -267,6 +281,7 @@ final class AppModel {
             photoAnalyzer: PhotoKitAnalyzer(),
             folderFiles: PickedFolderFiles(),
             restartStore: .applicationSupport,
+            swipeKeptDefaults: .standard,
             uptime: { SystemUptime.sinceStart() }
         )
     }
@@ -383,10 +398,10 @@ final class AppModel {
         bursts.reduce(Int64(0)) { $0 + $1.savedBytes(keeping: $1.suggestedKeeper) }
     }
 
-    /// What shrinking every video to 1080p, untrimmed, could save.
+    /// What shrinking every video with the smaller option, untrimmed, could save.
     var videoSaving: Int64 {
         shrinkableVideos.reduce(Int64(0)) {
-            $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .hd1080, trim: .full($1.duration ?? 0)))
+            $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .smaller, trim: .full($1.duration ?? 0)))
         }
     }
 
@@ -616,7 +631,7 @@ final class AppModel {
     /// "space back" figure, because iOS can take a moment to count the space
     /// from an emptied Recently Deleted. Stops early once the space is back.
     /// Apps can't look inside Recently Deleted, so free space is the proof.
-    func checkReclaim(readings: Int = 6, every interval: Duration = .seconds(2)) async {
+    func checkReclaim(readings: Int = 15, every interval: Duration = .seconds(2)) async {
         guard !isCheckingReclaim else { return }
         isCheckingReclaim = true
         defer { isCheckingReclaim = false }

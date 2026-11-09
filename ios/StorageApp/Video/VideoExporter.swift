@@ -51,7 +51,8 @@ enum VideoExporter {
         let width = scaled.width / 2 * 2
         let height = scaled.height / 2 * 2
         let bitrate = VideoShrink.targetBitrate(
-            width: width, height: height, frameRate: Double(frameRate), sourceBitrate: Double(sourceBitrate)
+            width: width, height: height, frameRate: Double(frameRate), sourceBitrate: Double(sourceBitrate),
+            quality: edit.quality
         )
 
         let reader = try AVAssetReader(asset: asset)

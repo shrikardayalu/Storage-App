@@ -95,7 +95,7 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
    - **Recommendation: keep it.** It's honest, and common in this category.
 8. **`photos-redirect://` isn't a documented URL scheme** (Guideline 2.5.1, public APIs). Many apps use it, and the button now falls back to an alert.
    - **Recommendation: keep it.** If review objects, drop the button and keep the written steps.
-9. **The display name is "Storage App", and the bundle ID is `com.example.storageapp`.** Both are placeholders, already listed in `docs/RELEASE.md`. Decide them before the App Store Connect record is created, because product IDs derive from the bundle ID.
+9. **The display name is "SimpleShrink" (decided 2026-11-06); the bundle ID `com.example.storageapp` is still a placeholder** in `docs/RELEASE.md`. Decide it before the App Store Connect record is created, because product IDs derive from the bundle ID.
 
 ## Added after the audit
 

@@ -9,7 +9,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Storage App</string>
+	<string>SimpleShrink</string>
 	<key>CFBundleShortVersionString</key>
 	<string>0.1.0</string>
 	<key>CFBundleVersion</key>
@@ -30,7 +30,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Storage App reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.</string>
+	<string>SimpleShrink reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.</string>
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
 	<true/>
 </dict>

@@ -51,10 +51,11 @@ final class VideoShrinkTests: XCTestCase {
 
     // MARK: Estimates
 
-    func testOutputSizeCapsTheLongSideAt1080p() {
-        XCTAssertTrue(VideoShrink.outputSize(width: 3840, height: 2160, quality: .hd1080) == (1920, 1080))
-        XCTAssertTrue(VideoShrink.outputSize(width: 2160, height: 3840, quality: .hd1080) == (1080, 1920))
-        XCTAssertTrue(VideoShrink.outputSize(width: 1280, height: 720, quality: .hd1080) == (1280, 720))
+    func testSmallerStepsDownOneResolution() {
+        XCTAssertTrue(VideoShrink.outputSize(width: 3840, height: 2160, quality: .smaller) == (1920, 1080))
+        XCTAssertTrue(VideoShrink.outputSize(width: 2160, height: 3840, quality: .smaller) == (1080, 1920))
+        XCTAssertTrue(VideoShrink.outputSize(width: 1920, height: 1080, quality: .smaller) == (1280, 720))
+        XCTAssertTrue(VideoShrink.outputSize(width: 1280, height: 720, quality: .smaller) == (1280, 720))
         XCTAssertTrue(VideoShrink.outputSize(width: 3840, height: 2160, quality: .sameQuality) == (3840, 2160))
     }
 
@@ -62,18 +63,27 @@ final class VideoShrinkTests: XCTestCase {
         let item = video()
         let full = VideoTrim.full(60)
         let same = VideoShrink.estimatedBytes(for: item, edit: VideoEdit(quality: .sameQuality, trim: full))
-        let hd = VideoShrink.estimatedBytes(for: item, edit: VideoEdit(quality: .hd1080, trim: full))
-        let hdHalf = VideoShrink.estimatedBytes(for: item, edit: VideoEdit(quality: .hd1080, trim: VideoTrim(start: 0, end: 30)))
+        let hd = VideoShrink.estimatedBytes(for: item, edit: VideoEdit(quality: .smaller, trim: full))
+        let hdHalf = VideoShrink.estimatedBytes(for: item, edit: VideoEdit(quality: .smaller, trim: VideoTrim(start: 0, end: 30)))
         XCTAssertLessThan(same, item.currentBytes)
         XCTAssertLessThan(hd, same)
         XCTAssertEqual(Double(hdHalf), Double(hd) / 2, accuracy: 2)
     }
 
+    func testSmallerIsAlwaysSmallerThanSameQuality() {
+        // A typical iPhone 1080p HEVC clip: both options used to come out the same.
+        let clip = video(width: 1920, height: 1080, bytes: 45_000_000, format: .hevc)
+        let same = VideoShrink.estimatedBytes(for: clip, edit: VideoEdit(quality: .sameQuality, trim: .full(60)))
+        let smaller = VideoShrink.estimatedBytes(for: clip, edit: VideoEdit(quality: .smaller, trim: .full(60)))
+        XCTAssertLessThan(smaller, same / 2)
+        XCTAssertEqual(VideoQuality.smaller.detail(width: 1920, height: 1080), "1080p to 720p. Looks great on a phone, much smaller")
+    }
+
     func testEstimateNeverExceedsTheOriginalBitrate() {
         // Already a lean 1080p file: re-encoding can't promise anything, but trimming still can.
         let lean = video(width: 1920, height: 1080, bytes: 20_000_000)
-        XCTAssertEqual(VideoShrink.estimatedBytes(for: lean, edit: VideoEdit(quality: .hd1080, trim: .full(60))), 20_000_000)
-        XCTAssertEqual(VideoShrink.estimatedBytes(for: lean, edit: VideoEdit(quality: .hd1080, trim: VideoTrim(start: 0, end: 15))), 5_000_000)
+        XCTAssertEqual(VideoShrink.estimatedBytes(for: lean, edit: VideoEdit(quality: .sameQuality, trim: .full(60))), 20_000_000)
+        XCTAssertEqual(VideoShrink.estimatedBytes(for: lean, edit: VideoEdit(quality: .sameQuality, trim: VideoTrim(start: 0, end: 15))), 5_000_000)
     }
 
     func testTargetBitrateFollowsResolutionAndFrameRateButNeverExceedsTheSource() {
@@ -94,7 +104,7 @@ final class VideoShrinkTests: XCTestCase {
     // MARK: Checks afterwards
 
     func testMatchingCopyKeepsEverything() {
-        let edit = VideoEdit(quality: .hd1080, trim: VideoTrim(start: 5, end: 45))
+        let edit = VideoEdit(quality: .smaller, trim: VideoTrim(start: 5, end: 45))
         let result = VideoReplacement(
             originalID: "o", newID: "n", edit: edit, original: details(),
             new: details(date: referenceDate.addingTimeInterval(0.3), duration: 40.1, bytes: 60_000_000), originalGone: true
@@ -127,7 +137,7 @@ final class VideoShrinkTests: XCTestCase {
 
     func testMockReplacesOnlyThePreparedVideo() async throws {
         let library = MockPhotoLibrary(items: [video(id: "v"), video(id: "other")])
-        let edit = VideoEdit(quality: .hd1080, trim: VideoTrim(start: 10, end: 40))
+        let edit = VideoEdit(quality: .smaller, trim: VideoTrim(start: 10, end: 40))
         let prepared = try await library.prepareVideo("v", edit: edit)
         XCTAssertEqual(prepared.newDuration, 30)
         XCTAssertLessThan(prepared.newBytes, prepared.originalBytes)
@@ -145,7 +155,7 @@ final class VideoShrinkTests: XCTestCase {
     func testMockRefusesAVideoInAnotherAlbum() async {
         let library = MockPhotoLibrary(items: [video(id: "v")], inOtherAlbums: ["v"])
         do {
-            _ = try await library.prepareVideo("v", edit: VideoEdit(quality: .hd1080, trim: .full(60)))
+            _ = try await library.prepareVideo("v", edit: VideoEdit(quality: .smaller, trim: .full(60)))
             XCTFail("Should refuse")
         } catch let error as PhotoChangeError {
             guard case .unsafe = error else { return XCTFail("Wrong error: \(error)") }
@@ -158,7 +168,7 @@ final class VideoShrinkTests: XCTestCase {
         let lean = video(id: "v", width: 1280, height: 720, bytes: 10_000_000)
         let library = MockPhotoLibrary(items: [lean])
         do {
-            _ = try await library.prepareVideo("v", edit: VideoEdit(quality: .hd1080, trim: .full(60)))
+            _ = try await library.prepareVideo("v", edit: VideoEdit(quality: .sameQuality, trim: .full(60)))
             XCTFail("Should refuse")
         } catch {
             XCTAssertEqual(error as? PhotoChangeError, .videoNotSmaller)

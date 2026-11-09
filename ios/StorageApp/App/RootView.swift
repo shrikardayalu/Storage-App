@@ -11,6 +11,9 @@ struct RootView: View {
     @State private var winPaywall: PaywallContext?
     /// What the open other-app guide has measured so far; the model clears it on close.
     @State private var otherAppFreed: Int64 = 0
+    /// Home drawing itself in after onboarding; 1 when there's nothing to draw.
+    @State private var drawIn: CGFloat = 1
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -18,11 +21,32 @@ struct RootView: View {
             if showsOnboarding {
                 OnboardingFlow(startAt: ScreenshotRoute.current?.onboardingStart ?? .hook,
                                sampleSuggestions: ScreenshotRoute.current?.onboardingStart == nil ? nil : Suggestion.sample) {
+                    // Onboarding can be reopened from Settings; always land on Home after it.
+                    model.selectedTab = .home
                     withAnimation(.easeInOut(duration: 0.45)) { onboardingDone = true }
+                    drawHome()
                 }
                 .transition(.opacity.combined(with: .scale(scale: 1.04)))
                 .zIndex(1)
             }
+        }
+        .onAppear { if showsOnboarding { drawIn = 0 } }
+        // "Show Onboarding Again" in Settings: blank Home again under it.
+        .onChange(of: onboardingDone) { _, done in
+            if !done, showsOnboarding { drawIn = 0 }
+        }
+    }
+
+    /// Draws Home onto the page as onboarding fades off it.
+    private func drawHome() {
+        guard !reduceMotion else {
+            withAnimation(.easeOut(duration: 0.3)) { drawIn = 1 }
+            return
+        }
+        Task {
+            // Let onboarding start fading so the first strokes are seen.
+            try? await Task.sleep(for: .milliseconds(200))
+            withAnimation(.linear(duration: DrawIn.duration)) { drawIn = 1 }
         }
     }
 
@@ -36,6 +60,7 @@ struct RootView: View {
         @Bindable var model = model
         return TabView(selection: $model.selectedTab) {
             NavigationStack { HomeView() }
+                .environment(\.drawInProgress, drawIn)
                 .tabItem { Label("Home", systemImage: "house") }
                 .tag(AppTab.home)
 

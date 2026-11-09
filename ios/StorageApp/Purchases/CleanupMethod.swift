@@ -1,7 +1,7 @@
 import Foundation
 import StorageCore
 
-/// The ways Storage App frees space, as onboarding suggests them and Home
+/// The ways SimpleShrink frees space, as onboarding suggests them and Home
 /// lists them. Which ones need Pro is decided here, in `isPro`, and nowhere
 /// else: onboarding's picks, Home's cards and the plan card all read it.
 ///
@@ -245,10 +245,15 @@ extension AppModel {
         case .duplicates: junkReport?.suggestedBytes
         case .livePhotos: livePhotoSaving
         case .screenshots: screenshotSaving
-        case .swipe: junkReport.map { report in SwipeCandidate.all(from: report).reduce(Int64(0)) { $0 + $1.item.currentBytes } }
+        case .swipe: swipeCandidates.map { $0.reduce(Int64(0)) { $0 + $1.item.currentBytes } }
         case .bursts: burstSaving
         case .chatAttachments: nil
         }
+    }
+
+    /// The swipe feed: every junk suggestion except photos already kept on a swipe.
+    var swipeCandidates: [SwipeCandidate]? {
+        junkReport.map { SwipeCandidate.all(from: $0).filter { !swipeKept.contains($0.id) } }
     }
 
     /// What onboarding suggests after a scan, biggest saving first.

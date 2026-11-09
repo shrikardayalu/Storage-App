@@ -172,7 +172,6 @@ struct OnboardingFlow: View {
 
     private func finish() {
         answers.save()
-        UserDefaults.standard.set(false, forKey: OnboardingAnswers.planDismissedKey)
         OnboardingAnswers.markCompleted()
         onFinish()
     }
@@ -524,7 +523,7 @@ private struct ScanPage: View {
                 notice(
                     illustration: .lock,
                     title: "Photos access is off",
-                    message: "Storage App needs to see your \u{201C}\(TestMode.albumName)\u{201D} album to find space. You can turn access on in Settings.",
+                    message: "SimpleShrink needs to see your \u{201C}\(TestMode.albumName)\u{201D} album to find space. You can turn access on in Settings.",
                     primary: ("Open Settings", openSettings)
                 )
             case .problem(let message):
@@ -890,11 +889,16 @@ private struct PickRow: View {
         .sticker(fill: isOn ? Theme.mintSoft : Theme.surface, radius: 18, padding: 12)
         .overlay(alignment: .topTrailing) {
             if isBest {
-                Text("best bet")
-                    .font(.hand(16))
-                    .foregroundStyle(Theme.tomato)
-                    .rotationEffect(.degrees(-6))
-                    .offset(x: -10, y: -14)
+                // A solid chip, so it reads over the card's edge in both themes.
+                Text("BEST BET")
+                    .font(.caption2.weight(.heavy))
+                    .tracking(0.8)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Theme.tomato, in: Capsule())
+                    .foregroundStyle(.white)
+                    .rotationEffect(.degrees(-4))
+                    .offset(x: -12, y: -10)
                     .accessibilityHidden(true)
             }
         }

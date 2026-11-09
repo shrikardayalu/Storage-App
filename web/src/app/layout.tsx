@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Gochi_Hand, Hanken_Grotesk, Schibsted_Grotesk } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { JsonLd } from "@/components/json-ld";
 import { RevealObserver } from "@/components/reveal-observer";
 import { graph, organizationSchema, websiteSchema } from "@/lib/schema";
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         {children}
+        <Analytics />
         <RevealObserver />
         <JsonLd data={graph(organizationSchema(), websiteSchema())} />
       </body>

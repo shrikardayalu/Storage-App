@@ -151,7 +151,7 @@ struct FilesCleanupView: View {
         if model.pickedFolder == nil {
             VStack(alignment: .leading, spacing: 14) {
                 IllustrationView(.stackLarge, size: 72)
-                Text("Pick a folder in Files, such as \u{201C}\(TestMode.albumName)\u{201D} in On My iPhone. Storage App looks for big files, duplicate copies and old downloads in it, and can't see anything else.")
+                Text("Pick a folder in Files, such as \u{201C}\(TestMode.albumName)\u{201D} in On My iPhone. SimpleShrink looks for big files, duplicate copies and old downloads in it, and can't see anything else.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

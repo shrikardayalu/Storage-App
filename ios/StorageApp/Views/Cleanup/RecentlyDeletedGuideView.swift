@@ -85,14 +85,14 @@ struct RecentlyDeletedGuideView: View {
                 case .video: "The smaller copy is already in your library and the test album, with the same date and place. What went to Recently Deleted is the original, full-size video. iOS keeps it for 30 days, so it still takes space until you empty it."
                 case .screenshots: "Each smaller copy is already in your library and the test album, with the same date. What went to Recently Deleted is the old PNG version of each screenshot. iOS keeps them for 30 days, so they still take space until you empty them."
                 }
-            case .openPhotos: "Storage App can't empty Recently Deleted for you. Only you can, and it takes about ten seconds."
+            case .openPhotos: "SimpleShrink can't empty Recently Deleted for you. Only you can, and it takes about ten seconds."
             case .findAlbum: "Scroll to the bottom, to Utilities. On iOS 17, it's in the Albums tab. Unlock it with Face ID or your passcode."
             case .select:
                 switch swap {
-                case .none: "Pick only what Storage App just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
-                case .stills: "The photos from Storage App in here are the old Live versions (shown below). They look like your stills because they're the same photo, but your stills never go in Recently Deleted. Deleting these only removes the extra video."
-                case .video: "The video from Storage App in here is the original, full-size one (shown below). It looks like your smaller copy because it's the same video, but your copy never goes in Recently Deleted."
-                case .screenshots: "The screenshots from Storage App in here are the old PNG versions (shown below). They look like your screenshots because they're the same image, but your smaller copies never go in Recently Deleted."
+                case .none: "Pick only what SimpleShrink just removed (shown below). Delete All works too, but only if nothing else in there matters to you."
+                case .stills: "The photos from SimpleShrink in here are the old Live versions (shown below). They look like your stills because they're the same photo, but your stills never go in Recently Deleted. Deleting these only removes the extra video."
+                case .video: "The video from SimpleShrink in here is the original, full-size one (shown below). It looks like your smaller copy because it's the same video, but your copy never goes in Recently Deleted."
+                case .screenshots: "The screenshots from SimpleShrink in here are the old PNG versions (shown below). They look like your screenshots because they're the same image, but your smaller copies never go in Recently Deleted."
                 }
             case .confirm:
                 switch swap {
@@ -689,7 +689,7 @@ private struct MeasurePage: View {
                     .foregroundStyle(check.gainedBytes > 0 ? Theme.ink : Theme.tomato)
                 Text("Open Recently Deleted in Photos. If the items are still there, they aren't erased yet: tap Select, pick them, then Delete From This iPhone. If it's empty, give iOS a minute and measure again.")
             } else {
-                Text("Empty Recently Deleted, then come back here. Storage App measures again each time you return. iOS can take a minute to update free space.")
+                Text("Empty Recently Deleted, then come back here. SimpleShrink measures again each time you return. iOS can take a minute to update free space.")
             }
         }
         .font(.subheadline)
@@ -732,7 +732,7 @@ private struct SummaryPage: View {
 
     private var selectLine: String {
         switch swap {
-        case .none: "Tap Select, pick what Storage App just removed, then Delete."
+        case .none: "Tap Select, pick what SimpleShrink just removed, then Delete."
         case .stills: "Tap Select, pick only the old Live versions, then Delete."
         case .video: "Tap Select, pick only the original video, then Delete."
         case .screenshots: "Tap Select, pick only the old PNG screenshots, then Delete."

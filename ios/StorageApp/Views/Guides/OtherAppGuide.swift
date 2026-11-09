@@ -29,7 +29,7 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
     /// Where the guide's Open button goes.
     enum Destination {
         case whatsapp
-        /// Storage App's own page in Settings: apps can't open any other page.
+        /// SimpleShrink's own page in Settings: apps can't open any other page.
         case settings
 
         var label: String {
@@ -50,7 +50,7 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
         var hint: String? {
             switch self {
             case .whatsapp: nil
-            case .settings: "Settings opens on Storage App's own page. Tap Back at the top left to reach the rest of Settings."
+            case .settings: "Settings opens on SimpleShrink's own page. Tap Back at the top left to reach the rest of Settings."
             }
         }
     }
@@ -100,15 +100,15 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
         self == .whatsapp ? .whatsapp : .settings
     }
 
-    /// The first page: what this frees, and why Storage App can't do it itself.
+    /// The first page: what this frees, and why SimpleShrink can't do it itself.
     var intro: String {
         switch self {
         case .whatsapp:
-            "WhatsApp keeps every video, photo and voice note from your chats, and big group chats add up fast. iOS keeps other apps' files locked away, so Storage App can't clear them, but WhatsApp shows you exactly what's big."
+            "WhatsApp keeps every video, photo and voice note from your chats, and big group chats add up fast. iOS keeps other apps' files locked away, so SimpleShrink can't clear them, but WhatsApp shows you exactly what's big."
         case .messages:
             "Videos and photos in your texts stay on your iPhone for as long as the messages do. Only you can clear them, from Settings."
         case .offloadApps:
-            "Offloading removes an app but keeps its documents and data. Its icon stays, and tapping it downloads the app again, right where you left off. iOS hides other apps from Storage App, so this is done in Settings."
+            "Offloading removes an app but keeps its documents and data. Its icon stays, and tapping it downloads the app again, right where you left off. iOS hides other apps from SimpleShrink, so this is done in Settings."
         case .safari:
             "Safari keeps websites' saved files so pages load faster. Clearing them frees space, but signs you out of websites."
         case .downloads:
