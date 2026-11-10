@@ -41,9 +41,16 @@ enum VideoExporter {
         let audio = try await asset.loadTracks(withMediaType: .audio)
         let duration = try await asset.load(.duration).seconds
         let trim = edit.trim.clamped(to: duration)
-        let (natural, transform, frameRate, sourceBitrate, formats) = try await video.load(
-            .naturalSize, .preferredTransform, .nominalFrameRate, .estimatedDataRate, .formatDescriptions
+        let (natural, transform, frameRate, sourceBitrate, formats, segments) = try await video.load(
+            .naturalSize, .preferredTransform, .nominalFrameRate, .estimatedDataRate, .formatDescriptions, .segments
         )
+        // Many Android videos open with an empty edit: a gap of a few milliseconds
+        // before the first frame. Read from the gap and the copy starts with a
+        // black frame, which Photos then shows as the video's thumbnail.
+        let firstFrame = segments.first { !$0.isEmpty }?.timeMapping.target.start ?? .zero
+        let readStart = firstFrame.seconds > trim.start && firstFrame.seconds < trim.end - VideoTrim.minimumLength / 2
+            ? firstFrame
+            : CMTime(seconds: trim.start, preferredTimescale: 600)
         let color = ColorInfo(formats.first)
 
         // naturalSize is the encoded (unrotated) size; the transform rotates it on playback.
@@ -57,7 +64,7 @@ enum VideoExporter {
 
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = CMTimeRange(
-            start: CMTime(seconds: trim.start, preferredTimescale: 600),
+            start: readStart,
             end: CMTime(seconds: trim.end, preferredTimescale: 600)
         )
         let videoOut = AVAssetReaderTrackOutput(track: video, outputSettings: [
