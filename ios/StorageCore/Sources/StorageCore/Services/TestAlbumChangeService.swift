@@ -90,6 +90,10 @@ public protocol TestAlbumChangeService: Sendable {
     /// location, favorite and album. The original goes to Recently Deleted in
     /// the same change. Afterwards the album is re-read and the copy checked.
     func replaceVideo(with prepared: PreparedVideo) async throws -> VideoReplacement
+    /// Replaces several videos with their prepared copies in one change, so iOS
+    /// asks once. Same checks and guarantees as `replaceVideo`; if any original
+    /// changed or any copy is missing, nothing changes.
+    func replaceVideos(with prepared: [PreparedVideo]) async throws -> [VideoReplacement]
     /// Throws away a prepared copy that won't be used.
     func discard(_ prepared: PreparedVideo) async
 }

@@ -276,6 +276,76 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         )
     }
 
+    func replaceVideos(with prepared: [PreparedVideo]) async throws -> [VideoReplacement] {
+        guard !prepared.isEmpty else { return [] }
+        let ids = Set(prepared.map(\.originalID))
+        let gate = try await Task.detached(priority: .userInitiated) { try Gate.open(ids) }.value
+        let byOriginal = Dictionary(gate.approvedAssets.map { ($0.localIdentifier, $0) }, uniquingKeysWith: { a, _ in a })
+
+        // Every original and copy is checked before anything changes.
+        struct Swap {
+            let prepared: PreparedVideo
+            let original: PHAsset
+            let before: VideoDetails
+            let name: String
+        }
+        var swaps: [Swap] = []
+        for copy in prepared {
+            guard let original = byOriginal[copy.originalID], original.mediaType == .video,
+                  Self.version(of: original) == copy.sourceVersion else {
+                throw PhotoChangeError.videoUnsupported("A video changed since the smaller copies were made. Make them again.")
+            }
+            guard FileManager.default.fileExists(atPath: copy.fileURL.path) else {
+                throw PhotoChangeError.videoUnsupported("A smaller copy is gone. Make them again.")
+            }
+            let name = PHAssetResource.assetResources(for: original).first { $0.type == .video }?.originalFilename ?? "Video.MOV"
+            swaps.append(Swap(prepared: copy, original: original, before: Self.videoDetails(of: original, bytes: copy.originalBytes), name: name))
+        }
+
+        let album = gate.album
+        let created = Box<[String: String]>([:])
+        try await Self.perform {
+            var placeholders: [PHObjectPlaceholder] = []
+            for swap in swaps {
+                let request = PHAssetCreationRequest.forAsset()
+                let options = PHAssetResourceCreationOptions()
+                options.originalFilename = (swap.name as NSString).deletingPathExtension + ".MOV"
+                options.shouldMoveFile = true
+                request.addResource(with: .video, fileURL: swap.prepared.fileURL, options: options)
+                request.creationDate = swap.original.creationDate
+                request.location = swap.original.location
+                request.isFavorite = swap.original.isFavorite
+                request.isHidden = swap.original.isHidden
+                if let placeholder = request.placeholderForCreatedAsset {
+                    created.value[swap.prepared.originalID] = placeholder.localIdentifier
+                    placeholders.append(placeholder)
+                }
+            }
+            PHAssetCollectionChangeRequest(for: album)?.addAssets(placeholders as NSArray)
+            // In the same change, so declining iOS's prompt leaves no copies behind.
+            PHAssetChangeRequest.deleteAssets(swaps.map(\.original) as NSArray)
+        }
+
+        var inAlbum: [String: PHAsset] = [:]
+        TestAlbum.assets(in: album).enumerateObjects { asset, _, _ in inAlbum[asset.localIdentifier] = asset }
+        return try swaps.map { swap in
+            guard let newID = created.value[swap.prepared.originalID], let copy = inAlbum[newID] else {
+                throw PhotoChangeError.verificationFailed(
+                    "A smaller copy didn't show up in the album. If its original is in Recently Deleted, recover it there."
+                )
+            }
+            let copyBytes = Self.bytes(of: copy)
+            return VideoReplacement(
+                originalID: swap.original.localIdentifier,
+                newID: newID,
+                edit: swap.prepared.edit,
+                original: swap.before,
+                new: Self.videoDetails(of: copy, bytes: copyBytes > 0 ? copyBytes : swap.prepared.newBytes),
+                originalGone: inAlbum[swap.original.localIdentifier] == nil
+            )
+        }
+    }
+
     func discard(_ prepared: PreparedVideo) async {
         VideoExporter.remove(prepared.fileURL)
     }

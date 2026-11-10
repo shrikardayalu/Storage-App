@@ -209,6 +209,29 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
         )
     }
 
+    public func replaceVideos(with prepared: [PreparedVideo]) async throws -> [VideoReplacement] {
+        // Checks every copy first, so a bad one leaves everything as it was.
+        for copy in prepared {
+            guard preparedVideos.contains(copy.id) else {
+                throw PhotoChangeError.videoUnsupported("That smaller copy is gone. Make it again.")
+            }
+            guard let original = items.first(where: { $0.id == copy.originalID }),
+                  "\(original.currentBytes)" == copy.sourceVersion else {
+                throw PhotoChangeError.videoUnsupported("A video changed since the copies were made.")
+            }
+        }
+        let check = try await check(Set(prepared.map(\.originalID)))
+        guard check.isSafe else { throw PhotoChangeError.unsafe(check) }
+        guard !declinesChanges else { throw PhotoChangeError.cancelled }
+        let changesBefore = changeCount
+        var results: [VideoReplacement] = []
+        for copy in prepared {
+            results.append(try await replaceVideo(with: copy))
+        }
+        changeCount = changesBefore + 1
+        return results
+    }
+
     public func discard(_ prepared: PreparedVideo) async {
         preparedVideos.remove(prepared.id)
     }

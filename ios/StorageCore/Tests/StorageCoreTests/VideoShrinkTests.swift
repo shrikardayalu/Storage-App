@@ -37,6 +37,32 @@ final class VideoShrinkTests: XCTestCase {
         XCTAssertFalse(VideoTrim(start: 0, end: 50).isFull(of: 60))
     }
 
+    // MARK: Smart pick
+
+    private func named(_ filename: String, width: Int = 1920, height: Int = 1080, age: TimeInterval = 0) -> MediaItem {
+        MediaItem(id: filename, category: .video, format: .hevc, filename: filename,
+                  creationDate: referenceDate.addingTimeInterval(-age), pixelWidth: width, pixelHeight: height,
+                  duration: 60, originalBytes: 100_000_000, thumbnailSeed: 1)
+    }
+
+    func testSmartPickShrinksWhatRarelyNeedsFullQuality() {
+        let year: TimeInterval = 365 * 24 * 3600
+        XCTAssertEqual(VideoShrink.smartPick(for: named("RPReplay_Final1.MP4"), now: referenceDate).quality, .smaller)
+        XCTAssertEqual(VideoShrink.smartPick(for: named("trim.4F2A.MOV"), now: referenceDate).quality, .smaller)
+        XCTAssertEqual(VideoShrink.smartPick(for: named("IMG_0001.MOV", width: 3840, height: 2160, age: 2 * year), now: referenceDate).quality, .smaller)
+    }
+
+    func testSmartPickKeepsCameraVideosLookingTheSame() {
+        XCTAssertEqual(VideoShrink.smartPick(for: named("IMG_0002.MOV"), now: referenceDate).quality, .sameQuality)
+        XCTAssertEqual(VideoShrink.smartPick(for: named("IMG_0003.MOV", width: 3840, height: 2160, age: 3600), now: referenceDate).quality, .sameQuality)
+    }
+
+    func testBatchSettingsOverrideSmartPick() {
+        let clip = named("RPReplay_Final1.MP4")
+        XCTAssertEqual(VideoShrink.pick(.sameQuality, for: clip).quality, .sameQuality)
+        XCTAssertEqual(VideoShrink.pick(.smaller, for: named("IMG_0002.MOV")).quality, .smaller)
+    }
+
     // MARK: Which videos
 
     func testOnlyEditableVideosAreShrinkable() {

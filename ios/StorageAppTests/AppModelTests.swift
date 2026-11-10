@@ -266,6 +266,30 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.guide?.expectedBytes, 340_000_000)
     }
 
+    func testShrinkingAllVideosSwapsThemInOneChange() async {
+        func video(_ id: String, bytes: Int64) -> MediaItem {
+            MediaItem(id: id, category: .video, format: .h264, filename: "IMG_\(id).MOV", creationDate: Date(),
+                      pixelWidth: 3840, pixelHeight: 2160, duration: 60, originalBytes: bytes, thumbnailSeed: 0)
+        }
+        // "lean" is already below what the copy would be, so it's left alone.
+        let library = MockPhotoLibrary(items: [video("a", bytes: 340_000_000), video("b", bytes: 200_000_000),
+                                               video("lean", bytes: 20_000_000), item("plain")])
+        let model = AppModel(library: library)
+        await model.scanTestAlbum()
+
+        let error = await model.shrinkVideos(["a": .smaller, "b": .sameQuality, "lean": .sameQuality])
+        XCTAssertNil(error)
+        let changes = await library.changeCount
+        XCTAssertEqual(changes, 1, "One Photos change, so iOS asks once")
+        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["a-small", "b-small", "lean", "plain"])
+        guard case .shrunkVideos(let results, let skipped)? = model.guide?.kind else { return XCTFail("No guide") }
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(skipped, 1)
+        XCTAssertTrue(results.allSatisfy(\.keptEverything))
+        XCTAssertEqual(model.guide?.expectedBytes, 540_000_000)
+        XCTAssertNil(model.videoBatchProgress)
+    }
+
     // MARK: Duplicates + junk (Build Plan step 7)
 
     private func junkLibrary() -> (MockPhotoLibrary, MockPhotoAnalysis) {

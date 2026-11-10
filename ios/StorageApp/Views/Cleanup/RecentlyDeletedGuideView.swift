@@ -119,7 +119,7 @@ struct RecentlyDeletedGuideView: View {
     private var swap: Swap {
         switch guide.kind {
         case .convertedLivePhotos: .stills
-        case .shrunkVideo: .video
+        case .shrunkVideo, .shrunkVideos: .video
         case .photoCleanup(_, let stills): stills.isEmpty ? .none : .stills
         case .resavedScreenshots: .screenshots
         case .deleted, .keptBurstPicks: .none
@@ -366,6 +366,8 @@ private struct DonePage: View {
                         burstProof(receipt)
                     case .shrunkVideo(let result):
                         videoProof(result)
+                    case .shrunkVideos(let results, let skipped):
+                        videosProof(results, skipped: skipped)
                     case .photoCleanup(let receipt, let stills):
                         if let receipt { deletedProof(receipt) }
                         if !stills.isEmpty { stillsProof(stills) }
@@ -393,6 +395,7 @@ private struct DonePage: View {
         case .convertedLivePhotos: "same photos, minus the video"
         case .keptBurstPicks: "best shots kept"
         case .shrunkVideo: "same memory, smaller file"
+        case .shrunkVideos: "one tap, every video checked"
         case .photoCleanup: "one tap, every photo checked"
         case .resavedScreenshots: "same screenshots, smaller files"
         }
@@ -405,6 +408,7 @@ private struct DonePage: View {
         case .keptBurstPicks(let receipt):
             "Kept \(receipt.keepers.count == 1 ? "1 shot" : "\(receipt.keepers.count) shots"), moved \(guide.count) to Recently Deleted"
         case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank your video" : "Shrank your video"
+        case .shrunkVideos: guide.count == 1 ? "Shrank 1 video" : "Shrank \(guide.count) videos"
         case .photoCleanup(let receipt, let stills):
             Self.cleanupTitle(removed: receipt?.deleted.count ?? 0, stills: stills.count)
         case .resavedScreenshots: "Re-saved \(guide.count == 1 ? "1 screenshot" : "\(guide.count) screenshots")"
@@ -511,6 +515,47 @@ private struct DonePage: View {
                 .tracking(1.4)
                 .foregroundStyle(.secondary)
             SizeText(bytes: result.originalBytes, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
+        }
+    }
+
+    @ViewBuilder
+    private func videosProof(_ results: [VideoReplacement], skipped: Int) -> some View {
+        let before = results.reduce(Int64(0)) { $0 + $1.originalBytes }
+        let after = results.reduce(Int64(0)) { $0 + $1.newBytes }
+        HStack(alignment: .firstTextBaseline) {
+            Text(results.count == 1 ? "1 video" : "\(results.count) videos")
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Text("\(ByteFormatter.string(before, precision: .twoDecimals)) → \(ByteFormatter.string(after, precision: .twoDecimals))")
+                .font(.metric(.title3))
+                .monospacedDigit()
+        }
+        DashedRule()
+        SafetyLine(done: results.allSatisfy(\.isSmaller), text: "Each one smaller, \(ByteFormatter.string(max(before - after, 0), precision: .twoDecimals)) in all", progress: progress, start: 0.26)
+        SafetyLine(done: results.allSatisfy(\.rightLength), text: "Full length, nothing cut", progress: progress, start: 0.34)
+        SafetyLine(done: results.allSatisfy(\.keptDate), text: "Dates kept", progress: progress, start: 0.42)
+        SafetyLine(done: results.allSatisfy(\.keptLocation), text: "Locations kept", progress: progress, start: 0.5)
+        SafetyLine(done: results.allSatisfy(\.keptFavorite), text: "Favorites kept", progress: progress, start: 0.58)
+        SafetyLine(done: results.allSatisfy { $0.keptAlbum && $0.originalGone }, text: "Swapped in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.66)
+        if !results.allSatisfy(\.keptEverything) {
+            Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Theme.tomato)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if skipped > 0 {
+            Text("\(skipped == 1 ? "1 video was" : "\(skipped) videos were") already efficient, so \(skipped == 1 ? "it was" : "they were") left alone.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        DashedRule()
+        VStack(alignment: .leading, spacing: 2) {
+            Text("ORIGINALS IN RECENTLY DELETED")
+                .font(.caption2.weight(.bold))
+                .tracking(1.4)
+                .foregroundStyle(.secondary)
+            SizeText(bytes: before, style: .largeTitle, unitStyle: .title3, precision: .twoDecimals)
         }
     }
 

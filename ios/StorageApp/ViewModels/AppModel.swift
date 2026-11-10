@@ -15,6 +15,9 @@ struct CleanupGuide: Identifiable, Equatable {
         case convertedLivePhotos([StillConversion])
         case keptBurstPicks(BurstReceipt)
         case shrunkVideo(VideoReplacement)
+        /// "Shrink all at once": the videos swapped, and how many were left alone
+        /// because their copy wouldn't have been smaller.
+        case shrunkVideos([VideoReplacement], skipped: Int)
         /// One-tap Photo Cleanup: what was removed, and the Live Photos made into stills.
         case photoCleanup(DeletionReceipt?, [StillConversion])
         /// PNG screenshots replaced by smaller HEIC copies; the PNGs are in Recently Deleted.
@@ -37,14 +40,17 @@ struct CleanupGuide: Identifiable, Equatable {
         case .convertedLivePhotos: count == 1 ? "1 Live Photo \u{2192} still" : "\(count) Live Photos \u{2192} stills"
         case .keptBurstPicks(let receipt): receipt.keepers.count == 1 ? "Best shot of 1 burst" : "Best shot of \(receipt.keepers.count) bursts"
         case .shrunkVideo(let result): result.wasTrimmed ? "Trimmed and shrank a video" : "Shrank a video"
+        case .shrunkVideos: count == 1 ? "Shrank 1 video" : "Shrank \(count) videos"
         case .photoCleanup: count == 1 ? "Photo Cleanup: 1 photo" : "Photo Cleanup: \(count) photos"
         case .resavedScreenshots: count == 1 ? "Re-saved 1 screenshot" : "Re-saved \(count) screenshots"
         }
     }
 
     var resultSource: FreedSource {
-        if case .shrunkVideo = kind { return .videos }
-        return .photos
+        switch kind {
+        case .shrunkVideo, .shrunkVideos: return .videos
+        default: return .photos
+        }
     }
 }
 
@@ -586,6 +592,51 @@ final class AppModel {
 
     func discard(_ prepared: PreparedVideo) async {
         await photoChanges.discard(prepared)
+    }
+
+    /// Where "shrink all at once" is: how many copies are made out of how many.
+    private(set) var videoBatchProgress: (done: Int, total: Int)?
+
+    /// "Shrink all at once": makes a smaller full-length copy of each approved
+    /// video at its quality, one at a time, then swaps every copy that came out
+    /// clearly smaller in one Photos change (one iOS prompt), then opens the
+    /// guide. Videos whose copy wouldn't save space are left alone. Returns nil
+    /// on success, or why nothing changed.
+    @discardableResult
+    func shrinkVideos(_ qualities: [MediaItem.ID: VideoQuality]) async -> PhotoChangeError? {
+        let videos = shrinkableVideos.filter { qualities[$0.id] != nil }
+        guard !videos.isEmpty else { return .unsafe(SafetyCheck(approved: [], outsideTestAlbum: [], inOtherAlbums: [])) }
+        videoBatchProgress = (0, videos.count)
+        defer { videoBatchProgress = nil }
+        return await change(Set(videos.map(\.id))) { changes in
+            var prepared: [PreparedVideo] = []
+            var skipped = 0
+            do {
+                for (index, item) in videos.enumerated() {
+                    self.videoBatchProgress = (index, videos.count)
+                    try Task.checkCancellation()
+                    let edit = VideoEdit(quality: qualities[item.id] ?? .sameQuality, trim: .full(item.duration ?? 0))
+                    do {
+                        prepared.append(try await changes.prepareVideo(item.id, edit: edit))
+                    } catch PhotoChangeError.videoNotSmaller {
+                        skipped += 1
+                    } catch PhotoChangeError.videoUnsupported {
+                        skipped += 1
+                    }
+                }
+                self.videoBatchProgress = (videos.count, videos.count)
+                guard !prepared.isEmpty else { throw PhotoChangeError.videoNotSmaller }
+                let results = try await changes.replaceVideos(with: prepared)
+                return CleanupGuide(
+                    kind: .shrunkVideos(results, skipped: skipped),
+                    removedIDs: results.map(\.originalID),
+                    expectedBytes: results.reduce(Int64(0)) { $0 + $1.originalBytes }
+                )
+            } catch {
+                for copy in prepared { await changes.discard(copy) }
+                throw error
+            }
+        }
     }
 
     private func change(

@@ -168,6 +168,69 @@ public enum VideoShrink {
     }
 }
 
+/// How "shrink all at once" picks a quality for each video.
+public enum BatchVideoQuality: String, CaseIterable, Hashable, Sendable, Identifiable {
+    /// Each video gets the quality `VideoShrink.smartPick` suggests.
+    case smart
+    case sameQuality
+    case smaller
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .smart: "Smart"
+        case .sameQuality: "Same quality"
+        case .smaller: "Smaller files"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .smart: "Smaller files for screen recordings, saved clips and older 4K. Your camera videos keep their look."
+        case .sameQuality: "Every video keeps its resolution and look, in a more efficient file."
+        case .smaller: "Every video drops one size step. Still looks great on a phone, saves the most."
+        }
+    }
+}
+
+/// The quality chosen for one video in a batch, and why, in a few words.
+public struct SmartPick: Hashable, Sendable {
+    public let quality: VideoQuality
+    public let reason: String
+}
+
+extension VideoShrink {
+    /// Videos with a 4K picture older than this get the smaller option from Smart.
+    static let older4KAge: TimeInterval = 365 * 24 * 3600
+
+    /// Which quality a video needs. Screen recordings, clips saved from other
+    /// apps and 4K videos over a year old rarely need full quality, so they get
+    /// `.smaller`. Everything else, which is mostly recent camera video, keeps its look.
+    public static func smartPick(for item: MediaItem, now: Date = Date()) -> SmartPick {
+        let name = item.filename.uppercased()
+        if name.hasPrefix("RPREPLAY") || name.contains("SCREEN RECORDING") {
+            return SmartPick(quality: .smaller, reason: "screen recording")
+        }
+        if !(name.hasPrefix("IMG_") || name.hasPrefix("VID_")) {
+            return SmartPick(quality: .smaller, reason: "saved from an app")
+        }
+        if min(item.pixelWidth, item.pixelHeight) >= 2000, now.timeIntervalSince(item.creationDate) > older4KAge {
+            return SmartPick(quality: .smaller, reason: "older 4K, 1080p is plenty")
+        }
+        return SmartPick(quality: .sameQuality, reason: "camera video, keeps its look")
+    }
+
+    /// The quality a batch setting gives one video.
+    public static func pick(_ setting: BatchVideoQuality, for item: MediaItem, now: Date = Date()) -> SmartPick {
+        switch setting {
+        case .smart: smartPick(for: item, now: now)
+        case .sameQuality: SmartPick(quality: .sameQuality, reason: "keeps its look")
+        case .smaller: SmartPick(quality: .smaller, reason: "smaller file")
+        }
+    }
+}
+
 /// A smaller copy of one video, made in the app's own temporary folder. Nothing
 /// in Photos has changed yet; the person sees the real sizes and decides.
 public struct PreparedVideo: Hashable, Sendable, Identifiable {
