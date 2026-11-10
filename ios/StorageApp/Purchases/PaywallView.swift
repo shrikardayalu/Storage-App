@@ -72,30 +72,16 @@ struct PaywallView: View {
     @State private var boughtTick = 0
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    header
-                    features
-                    VStack(spacing: 12) {
-                        ForEach(Plan.paywallPlans) { plan in
-                            PlanOption(plan: plan, price: purchases.displayPrice(plan), annualPerWeek: purchases.annualPerWeek,
-                                       savingsPercent: purchases.annualSavingsPercent, isSelected: plan == selected) {
-                                selected = plan
-                            }
-                        }
-                    }
-                    .opacity(sketchStep(progress, start: 0.55, length: 0.2))
-                    .offset(y: 16 * (1 - sketchStep(progress, start: 0.55, length: 0.2)))
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 52)
-                .padding(.bottom, 20)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-
+        // One fixed composition: pitch, benefits, plans and buy all fit without scrolling.
+        VStack(alignment: .leading, spacing: 10) {
+            header
+            features
+            planPicker
             footer
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 40)
+        .padding(.bottom, 6)
         .overlay(alignment: .topTrailing) {
             CloseButton(action: onClose)
                 .disabled(purchases.isPurchasing)
@@ -118,45 +104,39 @@ struct PaywallView: View {
 
     @ViewBuilder
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             if let bytes = context.proBytes, bytes > 0 {
                 Text(eyebrow)
-                    .font(.hand(20))
+                    .font(.hand(16))
                     .foregroundStyle(Theme.accent)
                     .handwritten(progress, start: 0, length: 0.15)
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Text(ByteFormatter.string(bytes, precision: .twoDecimals))
-                        .font(.display(58))
-                        .monospacedDigit()
-                        .boiling()
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                }
-                .overlay(alignment: .bottomLeading) {
-                    InkUnderline(progress: progress, start: 0.12)
-                        .frame(height: 12)
-                        .offset(y: 10)
-                }
-                Text(context.freedBytes == nil ? "more you can get back with Pro." : "more waiting for Pro.")
-                    .font(.display(24))
+                Text(ByteFormatter.string(bytes, precision: .twoDecimals))
+                    .font(.display(42))
+                    .monospacedDigit()
                     .boiling()
-                    .padding(.top, 6)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .overlay(alignment: .bottomLeading) {
+                        InkUnderline(progress: progress, start: 0.12)
+                            .frame(height: 10)
+                            .offset(y: 8)
+                    }
+                Text(context.freedBytes == nil ? "more you can get back with Pro." : "more waiting for Pro.")
+                    .font(.display(20))
+                    .boiling()
+                    .padding(.top, 2)
             } else {
-                HStack(alignment: .top) {
+                HStack(alignment: .top, spacing: 10) {
                     Text("Shrink it.\nDon't delete it.")
-                        .font(.display(40))
+                        .font(.display(32))
                         .boiling()
                     Spacer(minLength: 0)
-                    IllustrationView(.compress, size: 76)
+                    IllustrationView(.compress, size: 56)
                         .rotationEffect(.degrees(-8))
                         .boilingShape(seed: 3)
                         .stamped(progress, at: 0.1)
                 }
             }
-            Text("Pro shrinks big videos, turns Live Photos into stills, and clears duplicates and junk in one tap, so you get the space back and keep every memory.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
         }
     }
 
@@ -166,12 +146,14 @@ struct PaywallView: View {
     }
 
     private var features: some View {
-        VStack(alignment: .leading, spacing: 13) {
+        VStack(alignment: .leading, spacing: 11) {
             ForEach(Array(Plan.proFeatures.enumerated()), id: \.element.text) { index, feature in
                 HStack(spacing: 12) {
-                    InkCheck(isOn: progress > 0.25 + Double(index) * 0.07, size: 24)
+                    InkCheck(isOn: progress > 0.22 + Double(index) * 0.05, size: 22)
                     Text(feature.text)
                         .font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
             }
             DashedRule().padding(.vertical, 2)
@@ -181,13 +163,34 @@ struct PaywallView: View {
                 Text("Deleting, duplicates and junk stay free.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            // Grows the receipt into leftover height so plans stay tight underneath.
+            Spacer(minLength: 0)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .onReceipt(padding: 16)
+    }
+
+    private var planPicker: some View {
+        VStack(spacing: 8) {
+            ForEach(Array(Plan.paywallPlans.enumerated()), id: \.element.id) { index, plan in
+                PlanOption(plan: plan, price: purchases.displayPrice(plan), annualPerWeek: purchases.annualPerWeek,
+                           savingsPercent: purchases.annualSavingsPercent, isSelected: plan == selected) {
+                    selected = plan
+                }
+                // Outline then ink-wash, same sticker draw-in as the rest of the app.
+                .inkedIn(progress, start: 0.52 + CGFloat(index) * 0.14, length: 0.28,
+                         seed: 40 &+ UInt64(index) &* 7)
             }
         }
-        .onReceipt(padding: 18)
+        // Room for the annual "save %" stamp that sits above the card.
+        .padding(.top, 12)
     }
 
     private var footer: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             Button(action: buy) {
                 if purchases.isPurchasing {
                     ProgressView()
@@ -197,20 +200,19 @@ struct PaywallView: View {
             }
             .buttonStyle(.sticker)
             .disabled(purchases.isPurchasing)
+            .inkedIn(progress, start: 0.78, length: 0.2, seed: 61)
 
             Text(termsLine)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+                .settlesIn(progress, start: 0.9, length: 0.1)
 
             LegalLinks(onRestore: restore)
                 .disabled(purchases.isPurchasing)
+                .settlesIn(progress, start: 0.92, length: 0.08)
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-        .background(Theme.background.opacity(0.96))
     }
 
     private var termsLine: String {
@@ -334,12 +336,12 @@ private struct PlanOption: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .sticker(fill: isSelected ? Theme.mintSoft : Theme.surface, padding: 16)
+        .sticker(fill: isSelected ? Theme.mintSoft : Theme.surface, padding: 12)
         .overlay(alignment: .topTrailing) {
             if plan == .annual {
                 RubberStamp(top: "save", main: "\(savingsPercent)%", color: Theme.tomato, angle: 8)
-                    .scaleEffect(0.72)
-                    .offset(x: 8, y: -20)
+                    .scaleEffect(0.62)
+                    .offset(x: 6, y: -14)
                     .boilingShape(0.35, seed: 9)
             }
         }
