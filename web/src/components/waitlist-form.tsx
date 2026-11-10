@@ -27,7 +27,7 @@ export function WaitlistForm({
       <p
         role="status"
         className={`flex items-center gap-3 rounded-full py-3 pr-5 pl-3 font-semibold ${
-          dark ? "bg-paper text-ink" : "bg-ink text-paper"
+          dark ? "bg-on-band text-band" : "bg-ink text-paper"
         }`}
       >
         <span aria-hidden="true" className="grid size-8 place-items-center rounded-full bg-mint text-ink">
@@ -55,7 +55,7 @@ export function WaitlistForm({
           aria-describedby={`${id}-msg`}
           className={`min-w-0 flex-1 rounded-full px-5 py-3 text-base focus:outline-none ${
             dark
-              ? "bg-paper/15 text-paper placeholder:text-paper/50"
+              ? "bg-on-band/15 text-on-band placeholder:text-on-band/50"
               : "bg-paper-deep text-ink placeholder:text-ink-faint"
           }`}
         />
@@ -73,7 +73,7 @@ export function WaitlistForm({
           type="submit"
           disabled={pending}
           className={`btn-ink shrink-0 px-5 py-3 text-sm whitespace-nowrap disabled:opacity-60 ${
-            dark ? "bg-paper text-ink" : ""
+            dark ? "bg-on-band text-band" : ""
           }`}
         >
           {pending ? "Joining…" : buttonLabel}
@@ -83,7 +83,7 @@ export function WaitlistForm({
         id={`${id}-msg`}
         aria-live="polite"
         className={`mt-2.5 pl-4 text-sm ${
-          state.status === "error" ? "font-medium text-tomato" : dark ? "text-paper/70" : "text-ink-faint"
+          state.status === "error" ? "font-medium text-tomato" : dark ? "text-on-band/70" : "text-ink-faint"
         }`}
       >
         {state.status === "error" ? state.message : "One email when we launch. Free to start. No spam."}

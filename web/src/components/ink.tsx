@@ -33,20 +33,23 @@ export function Illustration({
   style?: CSSProperties;
   priority?: boolean;
 }) {
+  // Plain <img>: these are tiny vector files, so next/image adds nothing.
+  // Light and dark files are both in the markup; globals.css hides the unused one.
+  const shared = {
+    "aria-hidden": true as const,
+    width: size,
+    height: size,
+    loading: priority ? ("eager" as const) : ("lazy" as const),
+    decoding: "async" as const,
+    style,
+  };
   return (
-    // Plain <img>: these are tiny vector files, so next/image adds nothing.
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/illustrations/${name}.svg`}
-      alt=""
-      aria-hidden="true"
-      width={size}
-      height={size}
-      loading={priority ? "eager" : "lazy"}
-      decoding="async"
-      className={className}
-      style={style}
-    />
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/illustrations/${name}.svg`} alt="" className={`ill-light ${className ?? ""}`} {...shared} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/illustrations/${name}-dark.svg`} alt="" className={`ill-dark ${className ?? ""}`} {...shared} />
+    </>
   );
 }
 

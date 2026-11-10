@@ -11,6 +11,8 @@ struct SettingsView: View {
     @State private var showingPaywall = false
     @AppStorage(RecentlyDeletedGuideView.showStepsKey) private var showGuideSteps = true
 
+    @AppStorage(AppearanceSetting.storageKey) private var appearanceRaw = AppearanceSetting.system.rawValue
+
     var body: some View {
         Form {
             Section {
@@ -47,6 +49,20 @@ struct SettingsView: View {
                 Text("Photos")
             } footer: {
                 Text(photoFooter)
+            }
+
+            Section {
+                Picker("Appearance", selection: $appearanceRaw) {
+                    ForEach(AppearanceSetting.allCases) { option in
+                        Text(option.title).tag(option.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("Appearance")
+            } header: {
+                Text("Appearance")
+            } footer: {
+                Text("System matches your iPhone. Light and Dark stay put whatever your iPhone is set to.")
             }
 
             Section {

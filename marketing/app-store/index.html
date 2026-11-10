@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SimpleShrink App Store screenshots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Schibsted+Grotesk:wght@700;900&display=block" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F4F1EA; --paper: #FFFDF8; --ink: #1A1A17; --mint: #5ED49B;
+    --mint-soft: #CDEFDC; --accent: #1C7D50; --tomato: #EF6A4C;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #d9d5cc; }
+  /* Overview: every shot side by side, scaled down. ?shot=N shows one at full size. */
+  body.overview { display: flex; gap: 60px; padding: 60px; zoom: 0.22; width: max-content; }
+  body.single .shot { display: none; }
+  body.single .shot.on { display: block; }
+
+  .shot {
+    width: 1320px; height: 2868px; position: relative; overflow: hidden; flex: none;
+    background: var(--cream); color: var(--ink);
+    font-family: "Schibsted Grotesk", system-ui, sans-serif;
+  }
+  .shot.mint { background: var(--mint); }
+  .shot.soft { background: var(--mint-soft); }
+  .shot.dark { background: var(--ink); color: var(--cream); }
+
+  h1 {
+    position: absolute; left: 0; right: 0; top: 150px; margin: 0; z-index: 3;
+    text-align: center; font-weight: 900; font-size: 172px; line-height: 0.93;
+    letter-spacing: -0.045em;
+  }
+  h1 .hand {
+    display: inline-block; font-family: "Gochi Hand", cursive; font-weight: 400;
+    letter-spacing: -0.01em; font-size: 1.22em; line-height: 0.7;
+    color: var(--accent); transform: rotate(-4deg); margin: 0.04em 0.06em 0.1em;
+  }
+  .mint h1 .hand { color: var(--paper); }
+  .dark h1 .hand { color: var(--mint); }
+
+  .note {
+    position: absolute; z-index: 4; font-family: "Gochi Hand", cursive;
+    font-size: 74px; line-height: 0.95; color: var(--accent); text-align: center;
+  }
+  .mint .note { color: var(--ink); }
+  .dark .note { color: var(--mint); }
+
+  .phone {
+    position: absolute; left: 50%; z-index: 2; padding: 24px;
+    background: var(--ink); border-radius: 168px;
+    box-shadow: -22px 26px 0 var(--mint);
+  }
+  .mint .phone { box-shadow: -22px 26px 0 var(--ink); background: #0d0d0b; }
+  .soft .phone { box-shadow: -22px 26px 0 var(--mint); }
+  .phone img { display: block; width: 100%; border-radius: 146px; }
+
+  .blob { position: absolute; border-radius: 50%; z-index: 0; }
+  .art { position: absolute; z-index: 3; }
+  svg.doodle { position: absolute; z-index: 4; overflow: visible; fill: none;
+    stroke: var(--ink); stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+  .dark svg.doodle { stroke: var(--cream); }
+  svg.doodle.green { stroke: var(--accent); }
+  .dark svg.doodle.green, svg.doodle.mintline { stroke: var(--mint); }
+  svg.doodle.white { stroke: var(--paper); }
+
+  /* Shot 6 */
+  .promises { position: absolute; left: 150px; right: 110px; top: 1790px; z-index: 3;
+    font-family: "Gochi Hand", cursive; font-size: 118px; line-height: 1; color: var(--cream); }
+  .promises div { display: flex; align-items: center; gap: 44px; margin-bottom: 62px; }
+  .promises svg { flex: none; width: 120px; height: 120px; position: static; }
+  .brand { position: absolute; left: 0; right: 0; bottom: 150px; z-index: 3; display: flex;
+    justify-content: center; align-items: center; gap: 36px; font-weight: 900;
+    font-size: 96px; letter-spacing: -0.04em; }
+  .brand img { width: 150px; height: 150px; border-radius: 34px; }
+</style>
+</head>
+<body>
+
+<!-- 1. Hero -->
+<section class="shot" id="s1">
+  <h1>Full iPhone?<br><span class="hand">shrink it,</span><br>don&rsquo;t delete.</h1>
+  <div class="blob" style="width:1500px;height:1500px;left:-90px;top:1120px;background:var(--mint-soft)"></div>
+  <!-- sparks around the headline -->
+  <svg class="doodle" style="left:60px;top:40px" width="120" height="120" viewBox="0 0 120 120"><path d="M60 8 Q63 60 58 112"/><path d="M8 62 Q60 56 112 60"/></svg>
+  <svg class="doodle green" style="right:84px;top:372px" width="150" height="150" viewBox="0 0 150 150"><path d="M20 118 Q46 92 62 70"/><path d="M82 126 Q84 96 90 66"/><path d="M132 112 Q118 92 112 62" /></svg>
+  <svg class="doodle" style="left:70px;top:700px" width="90" height="90" viewBox="0 0 90 90"><path d="M45 8 Q47 45 44 82"/><path d="M8 46 Q45 42 82 45"/></svg>
+  <!-- arrow from headline into the phone -->
+  <svg class="doodle green" style="right:120px;top:730px" width="230" height="300" viewBox="0 0 230 300"><path d="M176 10 Q230 130 96 262"/><path d="M92 176 Q88 226 94 266 Q138 262 178 248"/></svg>
+  <div class="phone" style="width:1060px;margin-left:-530px;top:1010px"><img src="screens/onboarding-light.png" alt=""></div>
+</section>
+
+<!-- 2. Find what's taking space -->
+<section class="shot mint" id="s2">
+  <h1>See what&rsquo;s<br><span class="hand">eating</span><br>your space</h1>
+  <svg class="doodle white" style="left:380px;top:478px" width="560" height="60" viewBox="0 0 660 60" preserveAspectRatio="none"><path d="M10 24 Q170 2 340 20 T650 16"/></svg>
+  <img class="art" src="art/ill-stack-large.svg" style="width:270px;left:-30px;top:700px;transform:rotate(-9deg)" alt="">
+  <img class="art" src="art/ill-trash.svg" style="width:220px;right:10px;top:700px;transform:rotate(8deg)" alt="">
+  <div class="phone" style="width:1060px;margin-left:-530px;top:980px"><img src="screens/reveal-light.png" alt=""></div>
+</section>
+
+<!-- 3. Shrink videos (Pro) -->
+<section class="shot" id="s3">
+  <h1 style="font-size:160px">Shrink videos,<br><span class="hand">keep</span><br>every one</h1>
+  <div class="blob" style="width:1700px;height:1700px;left:-190px;top:1500px;background:var(--mint)"></div>
+  <img class="art" src="art/ill-video.svg" style="width:300px;left:40px;top:720px;transform:rotate(-8deg)" alt="">
+  <img class="art" src="art/ill-compress.svg" style="width:300px;right:30px;top:730px;transform:rotate(7deg)" alt="">
+  <svg class="doodle green" style="left:356px;top:850px" width="600" height="110" viewBox="0 0 600 110"><path d="M10 60 Q150 20 290 58 T580 50"/><path d="M528 14 Q560 34 584 50 Q556 74 530 100"/></svg>
+  <div class="phone" style="width:1180px;margin-left:-590px;top:1180px;box-shadow:-22px 26px 0 var(--ink)"><img src="screens/paywall-light.png" alt=""></div>
+</section>
+
+<!-- 4. Guides for other apps: phone hangs from the top -->
+<section class="shot soft" id="s4">
+  <div class="phone" style="width:1240px;margin-left:-620px;top:-1420px"><img src="screens/home-light.png" alt=""></div>
+  <h1 style="top:1440px">Clean up<br><span class="hand">other</span><br>apps too</h1>
+  <svg class="doodle green" style="left:130px;top:1330px" width="200" height="230" viewBox="0 0 200 230"><path d="M150 220 Q20 170 60 22"/><path d="M14 78 Q40 46 60 18 Q92 44 122 62"/></svg>
+  <img class="art" src="art/ill-empty-box.svg" style="width:420px;left:60px;top:2260px;transform:rotate(-7deg)" alt="">
+  <img class="art" src="art/ill-umbrella.svg" style="width:400px;left:460px;top:2330px" alt="">
+  <img class="art" src="art/ill-reset.svg" style="width:380px;right:50px;top:2240px;transform:rotate(9deg)" alt="">
+  <div class="note" style="left:0;right:0;top:2060px">step-by-step guides, no guesswork</div>
+</section>
+
+<!-- 5. Measured results -->
+<section class="shot" id="s5">
+  <h1>See what<br><span class="hand">really</span><br>came back</h1>
+  <div class="blob" style="width:1500px;height:1500px;left:-90px;top:1180px;background:var(--mint-soft)"></div>
+  <img class="art" src="art/ill-piggy.svg" style="width:300px;left:10px;top:650px;transform:rotate(-8deg)" alt="">
+  <img class="art" src="art/ill-phone-sparkle.svg" style="width:270px;right:30px;top:660px;transform:rotate(8deg)" alt="">
+  <div class="phone" style="width:1060px;margin-left:-530px;top:1000px"><img src="screens/results-light.png" alt=""></div>
+</section>
+
+<!-- 6. Privacy -->
+<section class="shot dark" id="s6">
+  <h1>Your photos<br><span class="hand">never</span> leave<br>your iPhone</h1>
+  <div class="blob" style="width:820px;height:820px;left:250px;top:830px;background:#24493A"></div>
+  <img class="art" src="art/ill-lock-dark.svg" style="width:760px;left:280px;top:860px" alt="">
+  <svg class="doodle mintline" style="left:150px;top:900px" width="140" height="140" viewBox="0 0 140 140"><path d="M70 10 Q73 70 68 130"/><path d="M10 72 Q70 66 130 70"/></svg>
+  <svg class="doodle mintline" style="right:150px;top:1440px" width="110" height="110" viewBox="0 0 110 110"><path d="M55 8 Q57 55 53 102"/><path d="M8 56 Q55 52 102 55"/></svg>
+  <div class="promises">
+    <div><svg class="doodle mintline" viewBox="0 0 120 120"><path d="M14 66 Q36 86 48 104 Q70 50 110 16"/></svg>No account</div>
+    <div><svg class="doodle mintline" viewBox="0 0 120 120"><path d="M14 66 Q36 86 48 104 Q70 50 110 16"/></svg>No uploads, ever</div>
+    <div><svg class="doodle mintline" viewBox="0 0 120 120"><path d="M14 66 Q36 86 48 104 Q70 50 110 16"/></svg>No data collected</div>
+  </div>
+  <div class="brand"><img src="art/icon.png" alt="">SimpleShrink</div>
+</section>
+
+<script>
+  const n = new URLSearchParams(location.search).get("shot");
+  if (n) { document.body.className = "single"; document.getElementById("s" + n).classList.add("on"); }
+  else document.body.className = "overview";
+</script>
+</body>
+</html>

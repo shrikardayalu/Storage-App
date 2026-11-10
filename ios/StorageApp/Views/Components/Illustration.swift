@@ -42,32 +42,103 @@ enum Illustration: String, CaseIterable {
 }
 
 /// Shows an illustration at a fixed size. Decorative by default, so VoiceOver skips it.
-struct IllustrationView: View {
+/// It's finished unless `drawn(_:start:length:)` says otherwise.
+struct IllustrationView: View, Animatable {
     let illustration: Illustration
     var size: CGFloat = 56
+    /// The drawing this illustration is part of, 0 to 1, and its slot in it.
+    private var progress: CGFloat = 1
+    private var start: CGFloat = 0
+    private var length: CGFloat = 1
 
     init(_ illustration: Illustration, size: CGFloat = 56) {
         self.illustration = illustration
         self.size = size
     }
 
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    /// Has the illustration draw itself between `start` and `start + length` of
+    /// a drawing: the line art first, stroke by stroke, then the fills blot in.
+    func drawn(_ progress: CGFloat, start: CGFloat = 0, length: CGFloat = 1) -> IllustrationView {
+        var copy = self
+        copy.progress = progress
+        copy.start = start
+        copy.length = length
+        return copy
+    }
+
     var body: some View {
         let layers = IllustrationLayer.parsed(illustration.rawValue)
+        let local = min(1, max(0, (progress - start) / max(length, 0.001)))
         Canvas { context, canvasSize in
             let scale = min(canvasSize.width, canvasSize.height) / IllustrationLayer.canvas
             context.scaleBy(x: scale, y: scale)
+            guard local > 0 else { return }
+            let strokeCount = layers.filter(\.isStroke).count
+            let fillCount = layers.count - strokeCount
+            var strokeIndex = 0
+            var fillIndex = 0
             for layer in layers {
                 switch layer.kind {
                 case .fill:
-                    context.fill(layer.path, with: .color(layer.role.color))
+                    let step = local >= 1 ? 1 : IllustrationLayer.fillStep(fillIndex, of: fillCount, at: local)
+                    fillIndex += 1
+                    guard step > 0 else { continue }
+                    context.fill(IllustrationLayer.blot(layer.path, step: step), with: .color(layer.role.color))
                 case .stroke(let width):
-                    context.stroke(layer.path, with: .color(layer.role.color),
+                    let step = local >= 1 ? 1 : IllustrationLayer.strokeStep(strokeIndex, of: strokeCount, at: local)
+                    strokeIndex += 1
+                    guard step > 0 else { continue }
+                    context.stroke(step >= 1 ? layer.path : layer.path.trimmedPath(from: 0, to: step),
+                                   with: .color(layer.role.color),
                                    style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
                 }
             }
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+}
+
+// How an illustration draws itself: the strokes go down one after another over
+// the first part, like line art, then the fills blot in under them.
+extension IllustrationLayer {
+    /// Share of the drawing spent on line art.
+    private static let strokeSpan: CGFloat = 0.72
+    /// When the fills start, and how long each takes to blot in.
+    private static let fillStart: CGFloat = 0.42
+    private static let fillLength: CGFloat = 0.22
+
+    /// How much of stroke `index` (of `count`, bottom first) is drawn at `local`.
+    static func strokeStep(_ index: Int, of count: Int, at local: CGFloat) -> CGFloat {
+        guard count > 1 else { return sketchStep(local, start: 0, length: strokeSpan) }
+        // Each stroke overlaps the next, so the pen never seems to stop.
+        let length = min(strokeSpan, max(0.2, strokeSpan / CGFloat(count) * 2))
+        let start = (strokeSpan - length) * CGFloat(index) / CGFloat(count - 1)
+        return sketchStep(local, start: start, length: length)
+    }
+
+    /// How far fill `index` (of `count`, bottom first) has blotted in at `local`.
+    static func fillStep(_ index: Int, of count: Int, at local: CGFloat) -> CGFloat {
+        guard count > 1 else { return sketchStep(local, start: fillStart, length: fillLength) }
+        let start = fillStart + (1 - fillStart - fillLength) * CGFloat(index) / CGFloat(count - 1)
+        return sketchStep(local, start: start, length: fillLength)
+    }
+
+    /// A fill partway in: it spreads out from its middle, like `DrawnFill`.
+    static func blot(_ path: Path, step: CGFloat) -> Path {
+        guard step < 1 else { return path }
+        let bounds = path.boundingRect
+        let scale = 0.6 + 0.4 * step
+        return path.applying(
+            CGAffineTransform(translationX: bounds.midX, y: bounds.midY)
+                .scaledBy(x: scale, y: scale)
+                .translatedBy(x: -bounds.midX, y: -bounds.midY)
+        )
     }
 }
 
@@ -97,6 +168,10 @@ enum IllustrationLayer {
         let kind: Kind
         let role: Role
         let path: Path
+
+        var isStroke: Bool {
+            if case .stroke = kind { true } else { false }
+        }
     }
 
     /// Parsed once per illustration, then reused.

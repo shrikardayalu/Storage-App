@@ -73,18 +73,16 @@ struct ResultsView: View {
     }
 
     private func totalCard(_ freed: FreedLedger) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(freed.total > 0 ? "measured, not guessed" : "nothing measured yet")
-                .font(.hand(21))
-                .foregroundStyle(Theme.accent)
-                .handwritten(progress, start: 0, length: 0.2)
-            Text("YOU'VE FREED")
-                .font(.caption2.weight(.bold))
-                .tracking(1.8)
-                .foregroundStyle(.secondary)
-            SizeText(bytes: freed.total, style: .largeTitle, unitStyle: .title2, precision: .twoDecimals)
-                .accessibilityLabel("You've freed \(ByteFormatter.accessibilityString(freed.total, precision: .twoDecimals))")
-            DrawnStroke(path: Sketch.scribble(width: 200, at: CGPoint(x: 6, y: 10), seed: 1400), design: CGSize(width: 220, height: 20), progress: progress, start: 0.3, length: 0.3)
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("YOU'VE FREED")
+                    .font(.caption2.weight(.bold))
+                    .tracking(1.8)
+                    .foregroundStyle(.secondary)
+                SizeText(bytes: freed.total, style: .largeTitle, unitStyle: .title2, precision: .twoDecimals)
+                    .accessibilityLabel("You've freed \(ByteFormatter.accessibilityString(freed.total, precision: .twoDecimals))")
+            }
+            DrawnStroke(path: Sketch.scribble(width: 200, at: CGPoint(x: 6, y: 10), seed: 1400), design: CGSize(width: 220, height: 20), progress: progress, start: 0, length: 0.35)
                 .stroke(freed.total > 0 ? Theme.mint : Theme.ink.opacity(0.2), style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 .frame(width: 220, height: 20)
                 .accessibilityHidden(true)

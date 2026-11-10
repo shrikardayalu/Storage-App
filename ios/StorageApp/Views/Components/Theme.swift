@@ -2,6 +2,33 @@ import StorageCore
 import SwiftUI
 import UIKit
 
+/// The person's choice of light or dark, kept across launches. `system` follows
+/// the iPhone's own setting; the other two override it for this app only.
+enum AppearanceSetting: String, CaseIterable, Identifiable {
+    case system, light, dark
+
+    static let storageKey = "appearanceSetting"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    /// `nil` hands control back to the iPhone's setting.
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
 /// Colors, type, and shared styles. Clean system UI first, with a few
 /// hand-printed touches: ink outlines, mint fills, and offset "sticker" shadows.
 enum Theme {

@@ -11,6 +11,9 @@ const display = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["lat
 const body = Hanken_Grotesk({ variable: "--font-hanken", subsets: ["latin"] });
 const hand = Gochi_Hand({ variable: "--font-gochi", subsets: ["latin"], weight: "400" });
 
+// Runs before first paint: opts into scroll-reveal and applies the saved (or system) theme.
+const THEME_SCRIPT = `document.documentElement.classList.add('js');try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`;
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
@@ -50,8 +53,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        {/* Opt into scroll-reveal before first paint; without JS, content just shows. */}
-        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+        {/* Without JS, content just shows and the system theme applies via CSS. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">
         <a

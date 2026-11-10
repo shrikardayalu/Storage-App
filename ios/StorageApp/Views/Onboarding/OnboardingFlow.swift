@@ -27,6 +27,10 @@ struct OnboardingFlow: View {
     // The hero phone's story so far.
     @State private var drawProgress: CGFloat = 0
     @State private var filled = false
+    /// The photos spilling out of a nearly full phone have been drawn on.
+    @State private var spilled = false
+    /// The padlock has been drawn on for the scan.
+    @State private var locked = false
     @State private var stamped = false
     @State private var drained = false
     @State private var stampTick = 0
@@ -42,8 +46,8 @@ struct OnboardingFlow: View {
                 HeroPhone(
                     drawProgress: drawProgress,
                     level: heroLevel,
-                    spills: step == .hook && filled && usedFraction >= 0.7,
-                    locked: step == .scan,
+                    spill: step == .hook && spilled && usedFraction >= 0.7 ? 1 : 0,
+                    lock: step == .scan && locked ? 1 : 0,
                     stamped: stamped && (step == .hook || step == .pain)
                 )
                 .frame(width: hero.width, height: hero.height)
@@ -62,6 +66,7 @@ struct OnboardingFlow: View {
         .onAppear(perform: begin)
         .onChange(of: step) { _, new in
             if new == .picks { drain() }
+            drawLock(new == .scan)
         }
     }
 
@@ -124,14 +129,16 @@ struct OnboardingFlow: View {
         return CGFloat(max(0.04, usedFraction - Double(suggestions.totalBytes) / Double(total)))
     }
 
-    /// The hook draws the phone in, fills it, then stamps it. Later steps
-    /// (screenshot routes) start with the phone already drawn.
+    /// The hook draws the phone in, fills it, draws the photos spilling out of
+    /// it, then stamps it. Later steps (screenshot routes) start with all of
+    /// that already drawn.
     private func begin() {
         step = startAt
         if let sampleSuggestions { suggestions = sampleSuggestions }
         guard startAt == .hook, !reduceMotion else {
             drawProgress = 1
             filled = true
+            spilled = true
             stamped = usedFraction >= 0.8
             if startAt == .picks { drain() }
             return
@@ -141,10 +148,32 @@ struct OnboardingFlow: View {
             withAnimation(.easeInOut(duration: 1.1)) { drawProgress = 1 }
             try? await Task.sleep(for: .milliseconds(750))
             withAnimation(.easeInOut(duration: 1.3)) { filled = true }
+            // The photos start spilling over as the tank nears the top. Linear,
+            // because each stroke already speeds up and slows down on its own.
+            try? await Task.sleep(for: .milliseconds(700))
+            withAnimation(.linear(duration: 1.1)) { spilled = true }
             guard usedFraction >= 0.8 else { return }
-            try? await Task.sleep(for: .milliseconds(1400))
+            try? await Task.sleep(for: .milliseconds(700))
             withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) { stamped = true }
             stampTick += 1
+        }
+    }
+
+    /// The padlock is drawn on once the phone has settled above the scan, and
+    /// rubbed out when the scan is over.
+    private func drawLock(_ on: Bool) {
+        guard on else {
+            withAnimation(.easeOut(duration: 0.25)) { locked = false }
+            return
+        }
+        guard !reduceMotion else {
+            locked = true
+            return
+        }
+        Task {
+            try? await Task.sleep(for: .milliseconds(380))
+            guard step == .scan else { return }
+            withAnimation(.linear(duration: 0.8)) { locked = true }
         }
     }
 
@@ -331,11 +360,11 @@ private struct HookPage: View {
             Text("Find what's taking the space, and get it back without losing a single memory.")
                 .font(.body)
                 .foregroundStyle(.secondary)
-                .opacity(sketchStep(progress, start: 0.7, length: 0.2))
+                .settlesIn(progress, start: 0.66, length: 0.18)
         } actions: {
             Button("Let's get it back", action: onNext)
                 .buttonStyle(.sticker)
-                .opacity(sketchStep(progress, start: 0.8, length: 0.2))
+                .inkedIn(progress, start: 0.7, length: 0.3, radius: 16, seed: 41)
         }
         .drawing($progress, duration: 2.6)
         .task { await model.refreshDeviceStorage() }
@@ -357,6 +386,7 @@ private struct PainPage: View {
     let top: CGFloat
     let onNext: () -> Void
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var shown = 0
     @State private var progress: CGFloat = 0
 
@@ -404,15 +434,16 @@ private struct PainPage: View {
                     .handwritten(progress, start: 0.3, length: 0.4)
             }
         } actions: {
+            // Drawn in once the last alert has landed.
             Button("Make it stop", action: onNext)
                 .buttonStyle(.sticker)
-                .opacity(shown >= Self.alerts.count ? 1 : 0.001)
+                .inkedIn(progress, start: 0, length: 0.42, radius: 16, seed: 43)
             Text(scanNote)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-                .opacity(shown >= Self.alerts.count ? 1 : 0.001)
+                .settlesIn(progress, start: 0.28, length: 0.25)
         }
         .task { await play() }
         .task { await model.refreshPhotoAccess() }
@@ -441,9 +472,15 @@ private struct PainPage: View {
         try? await Task.sleep(for: .milliseconds(380))
         for index in Self.alerts.indices {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.68)) { shown = index + 1 }
-            try? await Task.sleep(for: .milliseconds(620))
+            // A shorter beat after the last one, so the button isn't kept waiting.
+            try? await Task.sleep(for: .milliseconds(index == Self.alerts.count - 1 ? 320 : 620))
         }
-        withAnimation(.linear(duration: 1.2)) { progress = 1 }
+        // The button is drawn, then the note under it and the handwritten line.
+        guard !reduceMotion else {
+            progress = 1
+            return
+        }
+        withAnimation(.linear(duration: 1.4)) { progress = 1 }
     }
 }
 
@@ -472,6 +509,8 @@ private struct AlertCard: View {
             }
         }
         .sticker(radius: 20, padding: 12)
+        // One flat layer, so the ink shadow doesn't show through the card as it drops in.
+        .compositingGroup()
         .accessibilityElement(children: .combine)
     }
 }
@@ -538,9 +577,11 @@ private struct ScanPage: View {
             }
             Spacer(minLength: 12)
             if phase == .done {
+                // Draws itself in rather than fading; the transition would only fade it.
                 Button("Show me what to do") { onDone(found) }
                     .buttonStyle(.sticker)
-                    .transition(.opacity)
+                    .inksIn(duration: 0.7, radius: 16, seed: 45)
+                    .transition(.identity)
             }
         }
         .padding(.horizontal, 24)
@@ -769,6 +810,8 @@ private struct BloatSummary: View {
 // MARK: - 4. Which ones do you want to try?
 
 /// The scan's suggestions, biggest first, as ticks. The top one starts ticked.
+/// The options draw themselves in from the top: each one's outline, then the
+/// card, then its illustration, with the button last.
 private struct PicksPage: View {
     let top: CGFloat
     let suggestions: [Suggestion]
@@ -776,13 +819,26 @@ private struct PicksPage: View {
     let onNext: () -> Void
     @State private var progress: CGFloat = 0
 
+    /// When the first option starts, and how long each takes, as shares of the page's drawing.
+    private static let firstRow: CGFloat = 0.14
+    private static let rowLength: CGFloat = 0.4
+
+    /// When option `index` starts drawing. Each starts a little after the one
+    /// above; with a long list they start closer together, so the last is
+    /// still finished by the end.
+    private func rowStart(_ index: Int) -> CGFloat {
+        let room = 1 - Self.firstRow - Self.rowLength
+        let gap = min(0.11, room / CGFloat(max(suggestions.count - 1, 1)))
+        return Self.firstRow + CGFloat(index) * gap
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Color.clear.frame(height: top)
             Text("here's what would help most")
                 .font(.hand(20))
                 .foregroundStyle(Theme.accent)
-                .handwritten(progress, start: 0, length: 0.25)
+                .handwritten(progress, start: 0, length: 0.2)
             Text("Which ones do you\nwant to try?")
                 .font(.display(34))
                 .boiling()
@@ -792,17 +848,20 @@ private struct PicksPage: View {
             ScrollView {
                 VStack(spacing: 10) {
                     ForEach(Array(suggestions.enumerated()), id: \.element.id) { index, suggestion in
-                        let shown = sketchStep(progress, start: 0.15 + CGFloat(index) * 0.08, length: 0.2)
+                        // The row gets the raw progress and its slot: it has to
+                        // work its own drawing out frame by frame (see SketchIn.swift).
                         PickRow(
                             suggestion: suggestion,
                             isBest: index == 0,
                             isOn: picks.contains(suggestion.method),
-                            tilt: index.isMultiple(of: 2) ? -1 : 1
+                            tilt: index.isMultiple(of: 2) ? -1 : 1,
+                            drawing: progress,
+                            drawStart: rowStart(index),
+                            drawLength: Self.rowLength,
+                            seed: UInt64(index)
                         ) {
                             toggle(suggestion.method)
                         }
-                        .opacity(shown)
-                        .offset(y: 18 * (1 - shown))
                     }
                 }
                 // Room for the tilt and the "best bet" note.
@@ -820,10 +879,11 @@ private struct PicksPage: View {
                 .buttonStyle(.sticker)
                 .disabled(picks.isEmpty)
                 .opacity(picks.isEmpty ? 0.5 : 1)
+                .inkedIn(progress, start: 0.66, length: 0.34, radius: 16, seed: 47)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
-        .drawing($progress, duration: 1.4)
+        .drawing($progress, duration: 2.2)
         .sensoryFeedback(.selection, trigger: picks)
         .onAppear {
             if picks.isEmpty, let first = suggestions.first { picks = [first.method] }
@@ -851,18 +911,27 @@ private struct PicksPage: View {
     }
 }
 
-/// One suggestion: what it is, what it could free, and a tick.
+/// One suggestion: what it is, what it could free, and a tick. It draws itself
+/// in during its slot of the page's drawing: a pen goes round the card, the
+/// card is inked in behind the line, and the illustration is drawn stroke by
+/// stroke as the ink reaches it. "Best bet" is stamped on once the card is there.
 private struct PickRow: View {
     let suggestion: Suggestion
     let isBest: Bool
     let isOn: Bool
     var tilt: Double = 0
+    /// The page's drawing so far, 0 to 1, and this row's slot in it.
+    var drawing: CGFloat = 1
+    var drawStart: CGFloat = 0
+    var drawLength: CGFloat = 1
+    var seed: UInt64 = 0
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 IllustrationView(suggestion.method.illustration, size: 40)
+                    .drawn(drawing, start: drawStart + drawLength * 0.42, length: drawLength * 0.58)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(suggestion.method.title)
                         .font(.headline)
@@ -887,6 +956,8 @@ private struct PickRow: View {
         }
         .buttonStyle(.plain)
         .sticker(fill: isOn ? Theme.mintSoft : Theme.surface, radius: 18, padding: 12)
+        // Before the tilt, so the pen's outline sits on the card whichever way it leans.
+        .inkedIn(drawing, start: drawStart, length: drawLength, radius: 18, seed: 60 + seed)
         .overlay(alignment: .topTrailing) {
             if isBest {
                 // A solid chip, so it reads over the card's edge in both themes.
@@ -897,7 +968,9 @@ private struct PickRow: View {
                     .padding(.vertical, 3)
                     .background(Theme.tomato, in: Capsule())
                     .foregroundStyle(.white)
+                    .compositingGroup()
                     .rotationEffect(.degrees(-4))
+                    .stamped(drawing, at: drawStart + drawLength * 0.92)
                     .offset(x: -12, y: -10)
                     .accessibilityHidden(true)
             }

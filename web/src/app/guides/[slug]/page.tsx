@@ -211,14 +211,14 @@ export default async function GuidePage({ params }: PageProps<"/guides/[slug]">)
         )}
 
         {/* ── End CTA ──────────────────────────────────────────── */}
-        <section id="get-app" className="bg-ink text-paper">
+        <section id="get-app" className="bg-band text-on-band">
           <div className="relative mx-auto max-w-6xl overflow-hidden px-5 py-20 sm:px-8">
             <div className="relative z-10 max-w-xl">
               <p className="font-hand text-2xl text-mint">the faster way</p>
               <h2 className="mt-2 font-display text-[clamp(2rem,4.5vw,3.3rem)] leading-[1] font-extrabold">
                 {cta.title}
               </h2>
-              <p className="mt-4 text-lg text-paper/70">{cta.body}</p>
+              <p className="mt-4 text-lg text-on-band/70">{cta.body}</p>
               <div className="mt-8">
                 <AppCta campaign={`${cta.campaign}-end`} tone="dark" />
               </div>

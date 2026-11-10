@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { siteConfig } from "@/lib/site";
 
 const nav = [
@@ -13,8 +14,8 @@ const nav = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-hairline bg-paper/75 backdrop-blur-xl backdrop-saturate-150">
-      <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8">
-        <Link href="/" className="group flex items-center gap-2.5 font-display text-[1.05rem] font-bold">
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-5 md:gap-6 sm:px-8">
+        <Link href="/" className="group flex items-center gap-2.5 whitespace-nowrap font-display text-[1.05rem] font-bold">
           <Image
             src="/logo.png"
             alt=""
@@ -39,7 +40,9 @@ export function SiteHeader() {
           ))}
         </ul>
 
-        <a href="#get-app" className="btn-ink ml-auto px-4 py-2 text-sm md:ml-2">
+        <ThemeToggle className="ml-auto md:ml-0" />
+
+        <a href="#get-app" className="btn-ink px-4 py-2 text-sm whitespace-nowrap">
           {siteConfig.appStoreUrl ? "Get the app" : "Get early access"}
         </a>
       </nav>

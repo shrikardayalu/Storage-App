@@ -13,12 +13,12 @@ export function SiteFooter() {
   const year = new Date(guides[0]?.updated ?? "2026-01-01").getFullYear();
 
   return (
-    <footer className="relative mt-auto overflow-hidden border-t-2 border-ink bg-ink text-paper">
+    <footer className="relative mt-auto overflow-hidden border-t-2 border-ink bg-band text-on-band">
       <div className="mx-auto max-w-6xl px-5 pt-16 pb-10 sm:px-8">
         <div className="grid gap-12 md:grid-cols-[1.2fr_2fr]">
           <div>
             <p className="font-display text-2xl font-bold">{siteConfig.name}</p>
-            <p className="mt-3 max-w-xs text-paper/65">{siteConfig.description}</p>
+            <p className="mt-3 max-w-xs text-on-band/65">{siteConfig.description}</p>
             <p className="font-hand mt-6 text-xl text-mint">made for people with full phones ♥</p>
           </div>
 
@@ -29,10 +29,10 @@ export function SiteFooter() {
               return (
                 <div key={topic.id}>
                   <p className="text-sm font-semibold tracking-wide text-mint uppercase">{topic.name}</p>
-                  <ul className="mt-4 space-y-2.5 text-[0.95rem] text-paper/75">
+                  <ul className="mt-4 space-y-2.5 text-[0.95rem] text-on-band/75">
                     {inTopic.map((g) => (
                       <li key={g.slug}>
-                        <Link href={`/guides/${g.slug}`} className="transition-colors hover:text-paper">
+                        <Link href={`/guides/${g.slug}`} className="transition-colors hover:text-on-band">
                           {g.title}
                         </Link>
                       </li>
@@ -43,39 +43,39 @@ export function SiteFooter() {
             })}
             <div>
               <p className="text-sm font-semibold tracking-wide text-mint uppercase">{siteConfig.name}</p>
-              <ul className="mt-4 space-y-2.5 text-[0.95rem] text-paper/75">
+              <ul className="mt-4 space-y-2.5 text-[0.95rem] text-on-band/75">
                 <li>
-                  <Link href="/guides" className="hover:text-paper">
+                  <Link href="/guides" className="hover:text-on-band">
                     All guides
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:text-paper">
+                  <Link href="/pricing" className="hover:text-on-band">
                     Pricing
                   </Link>
                 </li>
                 <li>
-                  <Link href="/about" className="hover:text-paper">
+                  <Link href="/about" className="hover:text-on-band">
                     About
                   </Link>
                 </li>
                 <li>
-                  <Link href="/support" className="hover:text-paper">
+                  <Link href="/support" className="hover:text-on-band">
                     Support
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="hover:text-paper">
+                  <Link href="/privacy" className="hover:text-on-band">
                     Privacy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="hover:text-paper">
+                  <Link href="/terms" className="hover:text-on-band">
                     Terms
                   </Link>
                 </li>
                 <li>
-                  <a href="/guides/feed.xml" className="hover:text-paper">
+                  <a href="/guides/feed.xml" className="hover:text-on-band">
                     RSS
                   </a>
                 </li>
@@ -84,7 +84,7 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col gap-2 border-t border-paper/15 pt-6 text-sm text-paper/50 sm:flex-row sm:justify-between">
+        <div className="mt-16 flex flex-col gap-2 border-t border-on-band/15 pt-6 text-sm text-on-band/50 sm:flex-row sm:justify-between">
           <p>
             © {year} {siteConfig.name}. Not affiliated with Apple Inc.
           </p>

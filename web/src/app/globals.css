@@ -18,9 +18,55 @@
   --mint-deep: #1c7d50;
   --tomato: #ef6a4c;
   --hairline: rgb(26 26 23 / 0.1);
+  /* Inverse bands (footer, closing CTA): dark in light mode, a lifted charcoal in dark mode. */
+  --band: #1a1a17;
+  --on-band: #f4f1ea;
+  --grain: 0.35;
+  color-scheme: light;
+}
+
+/* Dark palette, matching Theme.swift in the iOS app. A visitor's saved choice
+   sets data-theme on <html> before first paint; with no choice and no
+   JavaScript the system preference applies. */
+:root[data-theme="dark"] {
+  --paper: #121211;
+  --paper-deep: #2a2a27;
+  --surface: #1d1d1b;
+  --ink: #efeadf;
+  --ink-soft: #b9b5a9;
+  --ink-faint: #8e8b81;
+  --mint-soft: #24493a;
+  --mint-deep: #6fe0a8;
+  --tomato: #f07b5e;
+  --hairline: rgb(239 234 223 / 0.12);
+  --band: #262623;
+  --on-band: #efeadf;
+  --grain: 0;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --paper: #121211;
+    --paper-deep: #2a2a27;
+    --surface: #1d1d1b;
+    --ink: #efeadf;
+    --ink-soft: #b9b5a9;
+    --ink-faint: #8e8b81;
+    --mint-soft: #24493a;
+    --mint-deep: #6fe0a8;
+    --tomato: #f07b5e;
+    --hairline: rgb(239 234 223 / 0.12);
+    --band: #262623;
+    --on-band: #efeadf;
+    --grain: 0;
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
+  --color-band: var(--band);
+  --color-on-band: var(--on-band);
   --color-paper: var(--paper);
   --color-paper-deep: var(--paper-deep);
   --color-surface: var(--surface);
@@ -77,8 +123,44 @@ body::before {
   inset: 0;
   z-index: 100;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: var(--grain);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Illustrations ship a light and a dark file; hide the one the theme doesn't use.
+   Only the unused file is hidden, so each image keeps its own responsive classes. */
+:root[data-theme="light"] .ill-dark,
+:root[data-theme="dark"] .ill-light {
+  display: none !important;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .ill-dark {
+    display: none !important;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .ill-light {
+    display: none !important;
+  }
+}
+
+/* Theme toggle: the sun shows in dark mode, the moon in light mode. */
+.theme-toggle .icon-sun {
+  display: none;
+}
+:root[data-theme="dark"] .theme-toggle .icon-sun {
+  display: block;
+}
+:root[data-theme="dark"] .theme-toggle .icon-moon {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-toggle .icon-sun {
+    display: block;
+  }
+  :root:not([data-theme]) .theme-toggle .icon-moon {
+    display: none;
+  }
 }
 
 @layer components {

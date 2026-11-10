@@ -207,7 +207,7 @@ export default function Home() {
         </section>
 
         {/* ── Marquee ──────────────────────────────────────────── */}
-        <div className="-rotate-1 border-y-2 border-ink bg-ink py-4 text-paper" aria-hidden="true">
+        <div className="-rotate-1 border-y-2 border-ink bg-band py-4 text-on-band" aria-hidden="true">
           <div className="marquee flex w-max gap-10 whitespace-nowrap">
             {[...marquee, ...marquee].map((item, i) => (
               <span key={i} className="font-hand flex items-center gap-10 text-2xl">
@@ -297,20 +297,20 @@ export default function Home() {
               <MethodCard key={method.title} method={method} index={i} />
             ))}
             <div
-              className="sticker flex flex-col justify-between bg-ink p-7 text-paper"
+              className="sticker flex flex-col justify-between bg-band p-7 text-on-band"
               data-reveal
               style={{ "--reveal-delay": 200 } as CSSProperties}
             >
               <div>
                 <p className="font-hand text-xl text-mint">…and the real junk</p>
                 <h3 className="mt-3 font-display text-2xl font-bold">Then, and only then, delete.</h3>
-                <p className="mt-3 text-paper/70">
+                <p className="mt-3 text-on-band/70">
                   Accidental recordings, pocket photos, and screenshots you&apos;ll never need again, gathered in
                   one place. You approve every one.
                 </p>
               </div>
               <div className="mt-6 flex items-center justify-between">
-                <a href="#get-app" className="btn-ink bg-paper px-5 py-2.5 text-sm text-ink">
+                <a href="#get-app" className="btn-ink bg-on-band px-5 py-2.5 text-sm text-band">
                   {siteConfig.appStoreUrl ? "Get the app" : "Get early access"}
                 </a>
                 <Illustration name="ill-trash" size={64} className="rounded-2xl bg-mint-soft p-1.5" />

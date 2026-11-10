@@ -6,6 +6,7 @@ struct StorageAppEntry: App {
     @State private var model = AppModel.live()
     @State private var purchases = PurchaseStore()
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AppearanceSetting.storageKey) private var appearanceRaw = AppearanceSetting.system.rawValue
 
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,7 @@ struct StorageAppEntry: App {
                 .environment(model)
                 .environment(purchases)
                 .tint(Theme.accent)
+                .preferredColorScheme((AppearanceSetting(rawValue: appearanceRaw) ?? .system).colorScheme)
                 .task { await purchases.start() }
         }
         // Reads device storage on launch and each time the app returns to the foreground.

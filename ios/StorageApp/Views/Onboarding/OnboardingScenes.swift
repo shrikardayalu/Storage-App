@@ -50,8 +50,9 @@ struct InkScene: View {
     }
 }
 
-/// A small photo print: frame, sun and hills.
-private func photoMarks(_ rect: CGRect, start: CGFloat, seed: UInt64) -> [SceneMark] {
+/// A small photo print: the frame is traced, the paper blots in, then the
+/// hills and the sun. It takes `pace` of the scene's drawing, from `start`.
+private func photoMarks(_ rect: CGRect, start: CGFloat, pace: CGFloat, seed: UInt64) -> [SceneMark] {
     let hills = Sketch.curve([
         CGPoint(x: rect.minX + 3, y: rect.maxY - 4),
         CGPoint(x: rect.minX + rect.width * 0.32, y: rect.minY + rect.height * 0.5),
@@ -61,11 +62,14 @@ private func photoMarks(_ rect: CGRect, start: CGFloat, seed: UInt64) -> [SceneM
     ], wobble: 0.7, seed: seed + 1)
     let sunSide = rect.width * 0.2
     let sun = CGRect(x: rect.maxX - sunSide - rect.width * 0.14, y: rect.minY + rect.height * 0.14, width: sunSide, height: sunSide)
+    // Listed back to front; the times are what make it read as drawn.
     return [
-        .fill(Sketch.box(rect, radius: 4, wobble: 0.8, seed: seed), start, color: Theme.illustrationPaper),
-        .stroke(Sketch.box(rect, radius: 4, wobble: 0.8, seed: seed + 2), start, 0.08, width: 2),
-        .fill(Sketch.box(sun, radius: sunSide / 2, wobble: 0.4, seed: seed + 3), start + 0.05, color: Theme.mint),
-        .stroke(hills, start + 0.04, 0.08, width: 1.8),
+        SceneMark(kind: .fill(Sketch.box(rect, radius: 4, wobble: 0.8, seed: seed)),
+                  start: start + pace * 0.3, length: pace * 0.25, color: Theme.illustrationPaper),
+        .stroke(Sketch.box(rect, radius: 4, wobble: 0.8, seed: seed + 2), start, pace * 0.5, width: 2),
+        SceneMark(kind: .fill(Sketch.box(sun, radius: sunSide / 2, wobble: 0.4, seed: seed + 3)),
+                  start: start + pace * 0.8, length: pace * 0.2, color: Theme.mint),
+        .stroke(hills, start + pace * 0.45, pace * 0.4, width: 1.8),
     ]
 }
 
@@ -79,8 +83,11 @@ struct HeroPhone: View {
     var drawProgress: CGFloat
     /// Tank fill, 0 to 1. Animate changes to see it rise or drain.
     var level: CGFloat
-    var spills: Bool
-    var locked: Bool
+    /// Photos spilling over the top, 0 to 1. Animate it and they draw
+    /// themselves on one by one; back to 0 and they're rubbed out again.
+    var spill: CGFloat
+    /// The padlock over the front, drawn on from 0 to 1.
+    var lock: CGFloat
     var stamped: Bool
 
     static let design = CGSize(width: 220, height: 260)
@@ -91,12 +98,8 @@ struct HeroPhone: View {
         ZStack {
             TankLevel(level: level, tank: Self.tank, design: Self.design)
             InkScene(design: Self.design, progress: drawProgress, marks: Self.phoneMarks)
-            InkScene(design: Self.design, progress: 1, marks: Self.spillMarks)
-                .scaleEffect(spills ? 1 : 0.7)
-                .opacity(spills ? 1 : 0)
-            InkScene(design: Self.design, progress: 1, marks: Self.lockMarks)
-                .scaleEffect(locked ? 1 : 1.8, anchor: UnitPoint(x: 0.68, y: 0.78))
-                .opacity(locked ? 1 : 0)
+            InkScene(design: Self.design, progress: spill, marks: Self.spillMarks)
+            InkScene(design: Self.design, progress: lock, marks: Self.lockMarks)
         }
         .aspectRatio(Self.design, contentMode: .fit)
         .overlay {
@@ -137,11 +140,13 @@ struct HeroPhone: View {
             CGRect(x: 6, y: 112, width: 34, height: 27),
         ]
         var marks: [SceneMark] = []
+        // One print after another, each still being finished as the next starts.
         for (index, rect) in spill.enumerated() {
-            marks += photoMarks(rect, start: 0, seed: 330 + UInt64(index) * 10)
+            marks += photoMarks(rect, start: CGFloat(index) * 0.18, pace: 0.4, seed: 330 + UInt64(index) * 10)
         }
-        marks.append(.stroke(Sketch.curve([CGPoint(x: 18, y: 80), CGPoint(x: 12, y: 90), CGPoint(x: 12, y: 98)], wobble: 0.5, seed: 390), 0, 0.01, width: 1.6))
-        marks.append(.stroke(Sketch.curve([CGPoint(x: 206, y: 104), CGPoint(x: 210, y: 112), CGPoint(x: 208, y: 120)], wobble: 0.5, seed: 392), 0, 0.01, width: 1.6))
+        // Then the little falling lines beside them.
+        marks.append(.stroke(Sketch.curve([CGPoint(x: 18, y: 80), CGPoint(x: 12, y: 90), CGPoint(x: 12, y: 98)], wobble: 0.5, seed: 390), 0.8, 0.14, width: 1.6))
+        marks.append(.stroke(Sketch.curve([CGPoint(x: 206, y: 104), CGPoint(x: 210, y: 112), CGPoint(x: 208, y: 120)], wobble: 0.5, seed: 392), 0.86, 0.14, width: 1.6))
         return marks
     }
 
@@ -155,11 +160,12 @@ struct HeroPhone: View {
             CGPoint(x: body.maxX - 12, y: body.minY - 14),
             CGPoint(x: body.maxX - 12, y: body.minY + 2),
         ], wobble: 0.6, seed: 430)
+        // Shackle, then the body's outline, its mint fill, and the keyhole last.
         return [
-            .stroke(shackle, 0, 0.01, width: 4.4),
-            .fill(Sketch.box(body, radius: 9, wobble: 0.9, seed: 432), 0, color: Theme.mint),
-            .stroke(Sketch.box(body, radius: 9, wobble: 1, seed: 433), 0, 0.01, width: 2.8),
-            .stroke(Sketch.line(CGPoint(x: body.midX, y: body.midY - 7), CGPoint(x: body.midX, y: body.midY + 8), wobble: 0.3, seed: 435), 0, 0.01, width: 3.6),
+            .stroke(shackle, 0, 0.35, width: 4.4),
+            SceneMark(kind: .fill(Sketch.box(body, radius: 9, wobble: 0.9, seed: 432)), start: 0.6, length: 0.2, color: Theme.mint),
+            .stroke(Sketch.box(body, radius: 9, wobble: 1, seed: 433), 0.25, 0.5, width: 2.8),
+            .stroke(Sketch.line(CGPoint(x: body.midX, y: body.midY - 7), CGPoint(x: body.midX, y: body.midY + 8), wobble: 0.3, seed: 435), 0.8, 0.2, width: 3.6),
         ]
     }
 }
