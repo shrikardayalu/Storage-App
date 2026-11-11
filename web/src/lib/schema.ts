@@ -1,6 +1,7 @@
 // schema.org builders. Entities share stable @ids so Google and answer
 // engines can join the Organization, WebSite, app, and articles into one graph.
 
+import type { CompareArticle } from "@/lib/compare-articles";
 import type { FaqItem, GuideMeta } from "@/lib/guides";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
@@ -76,25 +77,62 @@ export function breadcrumbSchema(crumbs: { name: string; path: string }[]) {
   };
 }
 
-export function articleSchema(guide: GuideMeta) {
-  const url = absoluteUrl(`/guides/${guide.slug}`);
+type ArticleFields = {
+  path: string;
+  title: string;
+  description: string;
+  summary: string;
+  published: string;
+  updated: string;
+  keyword: string;
+};
+
+function article(fields: ArticleFields) {
+  const url = absoluteUrl(fields.path);
   return {
     "@type": "Article",
     "@id": `${url}#article`,
-    headline: guide.title,
-    description: guide.description,
-    abstract: stripMarkdown(guide.quickAnswer),
+    headline: fields.title,
+    description: fields.description,
+    abstract: stripMarkdown(fields.summary),
     url,
     mainEntityOfPage: url,
-    image: absoluteUrl(`/guides/${guide.slug}/opengraph-image`),
-    datePublished: guide.published,
-    dateModified: guide.updated,
+    image: absoluteUrl(`${fields.path}/opengraph-image`),
+    datePublished: fields.published,
+    dateModified: fields.updated,
     inLanguage: "en",
-    keywords: guide.primaryKeyword,
+    keywords: fields.keyword,
     author: { "@id": ORG_ID },
     publisher: { "@id": ORG_ID },
     isPartOf: { "@id": SITE_ID },
     about: { "@id": APP_ID },
+  };
+}
+
+export function articleSchema(guide: GuideMeta) {
+  return article({
+    path: `/guides/${guide.slug}`,
+    title: guide.title,
+    description: guide.description,
+    summary: guide.quickAnswer,
+    published: guide.published,
+    updated: guide.updated,
+    keyword: guide.primaryKeyword,
+  });
+}
+
+export function compareSchema(a: CompareArticle) {
+  return {
+    ...article({
+      path: `/compare/${a.competitor.slug}`,
+      title: a.title,
+      description: a.description,
+      summary: a.verdict,
+      published: a.published,
+      updated: a.updated,
+      keyword: a.primaryKeyword,
+    }),
+    mentions: { "@type": "MobileApplication", name: a.competitor.name, operatingSystem: "iOS" },
   };
 }
 

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getAllCompareArticles } from "@/lib/compare-articles";
 import { getAllGuides } from "@/lib/guides";
 import { absoluteUrl } from "@/lib/site";
 
@@ -13,6 +14,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: absoluteUrl(`/guides/${guide.slug}`),
       lastModified: guide.updated,
     })),
+    ...getAllCompareArticles()
+      .filter((a) => a.competitor.ready)
+      .map((a) => ({ url: absoluteUrl(`/compare/${a.competitor.slug}`), lastModified: a.updated })),
     { url: absoluteUrl("/pricing") },
     { url: absoluteUrl("/about") },
     { url: absoluteUrl("/support") },

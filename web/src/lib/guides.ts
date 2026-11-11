@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { Marked, type Tokens } from "marked";
+import { competitors } from "@/lib/comparisons";
 import { siteConfig } from "@/lib/site";
 import { getTopic, topics, type TopicId } from "@/lib/topics";
 
@@ -16,7 +17,7 @@ const GUIDES_DIR = path.join(process.cwd(), "content", "guides");
 export const CTA_MARKER = "<!-- cta -->";
 
 /** Site routes that are not guides; internal links may point at these. */
-const STATIC_ROUTES = new Set(["/", "/guides", "/about", "/privacy"]);
+const STATIC_ROUTES = new Set(["/", "/guides", "/about", "/privacy", "/pricing"]);
 
 export type FaqItem = { q: string; a: string };
 
@@ -144,16 +145,21 @@ function readRawGuides(): RawGuide[] {
     .filter((guide): guide is RawGuide => guide !== null);
 }
 
+/** True if a root-relative link points at a page that will exist. */
+export function isKnownRoute(href: string, guideSlugs: Set<string> = new Set(load().raw.map((g) => g.meta.slug))) {
+  const pathname = href.split(/[?#]/)[0].replace(/\/$/, "") || "/";
+  if (STATIC_ROUTES.has(pathname)) return true;
+  const guide = pathname.match(/^\/guides\/([a-z0-9-]+)$/);
+  if (guide) return guideSlugs.has(guide[1]);
+  const compare = pathname.match(/^\/compare\/([a-z0-9-]+)$/);
+  return Boolean(compare && competitors.some((c) => c.slug === compare[1] && c.ready));
+}
+
 /** Cross-guide checks: unique keywords, and every internal link resolves. */
 function validate(guides: RawGuide[]) {
   const slugs = new Set(guides.map((g) => g.meta.slug));
   const keywords = new Map<string, string>();
-  const known = (href: string) => {
-    const pathname = href.split(/[?#]/)[0].replace(/\/$/, "") || "/";
-    if (STATIC_ROUTES.has(pathname)) return true;
-    const match = pathname.match(/^\/guides\/([a-z0-9-]+)$/);
-    return Boolean(match && slugs.has(match[1]));
-  };
+  const known = (href: string) => isKnownRoute(href, slugs);
 
   for (const { meta, body } of guides) {
     const file = `${meta.slug}.md`;
@@ -245,13 +251,9 @@ export function getGuide(slug: string): Guide | null {
   const raw = load().bySlug.get(slug);
   if (!raw) return null;
 
-  const toc: TocEntry[] = [];
-  const body = createRenderer(toc).parse(raw.body, { async: false });
-
   return {
     ...raw.meta,
-    segments: body.split(CTA_MARKER),
-    toc,
+    ...renderArticle(raw.body),
     quickAnswerHtml: markdownToHtml(raw.meta.quickAnswer),
     faqHtml: raw.meta.faq.map((f) => ({ q: f.q, a: markdownToHtml(f.a) })),
   };
@@ -261,6 +263,13 @@ export function getGuide(slug: string): Guide | null {
 export function guideHref(slug: string) {
   if (!load().bySlug.has(slug)) throw new Error(`guideHref: no guide with slug "${slug}"`);
   return `/guides/${slug}`;
+}
+
+/** Renders an article body: HTML split at each CTA marker, plus its `##` table of contents. */
+export function renderArticle(markdown: string) {
+  const toc: TocEntry[] = [];
+  const body = createRenderer(toc).parse(markdown, { async: false });
+  return { segments: body.split(CTA_MARKER), toc };
 }
 
 /** Renders a short trusted Markdown snippet (FAQ answers and the like). */

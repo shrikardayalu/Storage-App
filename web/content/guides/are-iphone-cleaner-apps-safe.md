@@ -65,6 +65,8 @@ You can review and cancel subscriptions anytime in **Settings → [your name] �
 3. **Check what it asks for.** A photo cleaner needs photo access. It doesn't need your location or contacts.
 4. **Prefer apps that show you exactly what they'll delete** and leave the final decision to you.
 
+Weighing up a specific app? We've compared {app} side by side with [Cleanup](/compare/cleanup), [Clever Cleaner](/compare/clever-cleaner), [CleanMy®Phone](/compare/cleanmy-phone), [Cleaner Kit](/compare/cleaner-kit), [Swipewipe](/compare/swipewipe), and [Slidebox](/compare/slidebox), including what each one's privacy label says.
+
 ## The safe default
 
 You can do everything a cleaner app does with built-in tools. It just takes longer. Our guide on [what to delete when your iPhone storage is full](/guides/iphone-storage-full) walks through it. A good cleaner app just makes those same steps faster.

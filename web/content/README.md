@@ -39,6 +39,14 @@ Standard Markdown (GitHub-flavored: tables, lists, links).
 - Link internally with root-relative paths: `[how to compress videos](/guides/compress-videos-iphone)`. Aim for 2–4 contextual links out of every guide, and add a link **into** each new guide from at least one existing guide.
 - Link out to Apple Support when it's the authority for a claim.
 
+## Comparisons
+
+Comparison articles live in `compare/<slug>.md`, one per competitor in `src/lib/comparisons.ts`, and render at `/compare/<slug>`. Set `ready: true` for the competitor to publish it (sitemap, `/llms.txt`, indexing); the build fails if a ready competitor has no article.
+
+Frontmatter: `title`, `seoTitle`, `description`, `primaryKeyword`, `published`, `updated`, `verdict` (the "short version" box), `ctaTitle`, `ctaBody`, `faq`, and `sources` (a list of `label` + https `url`, required: every competitor fact must trace to one). Besides `{app}`, use `{weekly}` and `{annual}` for our prices so they follow `src/lib/pricing.ts`.
+
+Competitor prices, ratings and privacy labels drift. Re-check them against the App Store listing and bump `updated` (shown as "Facts checked") at least every quarter. Lifetime is never mentioned for us (see `src/lib/pricing.ts`).
+
 ## Quality bar
 
 Every guide answers a real search query, verified on a current iPhone:
