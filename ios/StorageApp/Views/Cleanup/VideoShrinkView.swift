@@ -4,41 +4,48 @@ import Observation
 import StorageCore
 import SwiftUI
 
-/// Step 6: the videos in the test album that can be made smaller, biggest first.
-/// Every video is ticked, so one tap shrinks them all at the quality Smart
-/// picks for each; tapping a video opens it to trim or pick a quality by hand.
+/// Step 6: the videos in the library that can be made smaller, biggest first.
+/// It opens on All, where one tap shrinks every video at the quality Smart
+/// picks for each. Select, in the top bar, starts with nothing ticked so the
+/// person chooses which ones. Tapping a video opens it to trim or pick a
+/// quality by hand; pressing and holding plays it.
 struct VideosView: View {
     @Environment(AppModel.self) private var model
     @State private var check: SafetyCheck?
     @State private var error: PhotoChangeError?
     @State private var progress: CGFloat = 0
+    /// The videos ticked in Select. All ignores it.
     @State private var chosen: Set<MediaItem.ID> = []
+    @State private var scope: PickScope = .all
     @State private var setting: BatchVideoQuality = .smart
     @State private var confirming = false
-    @State private var didLoad = false
+    /// The video opened to trim or pick a quality.
+    @State private var opened: MediaItem?
+    @State private var preview: MediaPreview?
 
     private var videos: [MediaItem] { model.shrinkableVideos }
-    private var leftAlone: Int {
-        (model.albumScan?.items.filter { $0.category == .video }.count ?? 0) - videos.count
-    }
-    private var bestSaving: Int64 {
-        videos.reduce(0) { $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .smaller, trim: .full($1.duration ?? 0))) }
-    }
-    /// Items the safety check refused, such as ones also in another album.
+    private var leftAlone: Int { model.videosLeftAlone }
+    private var bestSaving: Int64 { model.videoSaving }
+    /// Items the safety check refused, such as ones that are gone since the scan.
     private var blocked: Set<MediaItem.ID> {
         guard let check else { return [] }
-        return check.outsideTestAlbum.union(check.inOtherAlbums)
+        return check.missing
     }
     private var approved: [MediaItem] {
-        videos.filter { chosen.contains($0.id) && !blocked.contains($0.id) }
+        let blocked = blocked
+        return videos.filter { (scope == .all || chosen.contains($0.id)) && !blocked.contains($0.id) }
     }
     private func pick(_ item: MediaItem) -> SmartPick { VideoShrink.pick(setting, for: item) }
     private func saving(_ item: MediaItem) -> Int64 {
         VideoShrink.estimatedSaving(for: item, edit: VideoEdit(quality: pick(item).quality, trim: .full(item.duration ?? 0)))
     }
-    private var batchSaving: Int64 { approved.reduce(0) { $0 + saving($1) } }
 
     var body: some View {
+        // Worked out once per redraw: a library can hold thousands of videos.
+        content(approved)
+    }
+
+    private func content(_ approved: [MediaItem]) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -62,7 +69,7 @@ struct VideosView: View {
                 }
                 .padding(.top, 8)
                 if !videos.isEmpty { qualityPicker }
-                list
+                list(approvedCount: approved.count)
                 if leftAlone > 0 {
                     Text("\(leftAlone == 1 ? "1 video is" : "\(leftAlone) videos are") left alone: slo-mo, Cinematic and ProRes stay editable, and very small videos aren't worth it.")
                         .font(.caption)
@@ -82,8 +89,11 @@ struct VideosView: View {
         .background(PaperBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .scopePicker($scope, label: "Which videos to shrink", isShown: !videos.isEmpty, isDisabled: model.isChanging)
+        .navigationDestination(item: $opened) { VideoShrinkView(item: $0) }
+        .mediaPreview($preview)
         .safeAreaInset(edge: .bottom) {
-            if !videos.isEmpty { actionBar }
+            if !videos.isEmpty { actionBar(approved) }
         }
         .drawing($progress, duration: 1.6)
         .overlay {
@@ -93,35 +103,26 @@ struct VideosView: View {
                     : "Swapping in your smaller videos…")
             }
         }
-        .confirmationDialog("Shrink \(countText)?", isPresented: $confirming, titleVisibility: .visible) {
-            Button(buttonTitle) { Task { await shrinkAll() } }
+        .confirmationDialog("Shrink \(approved.count == 1 ? "1 video" : "\(approved.count) videos")?", isPresented: $confirming, titleVisibility: .visible) {
+            Button(Self.buttonTitle(approved.count)) { Task { await shrink(approved) } }
         } message: {
             Text("SimpleShrink makes a smaller copy of each one first and only swaps the ones that come out clearly smaller. Copies keep their date, location and favorite. The originals go to Recently Deleted, where you can recover them for 30 days. Keep the app open while it works.")
         }
         .task(id: videos.map(\.id)) {
-            if !didLoad {
-                didLoad = true
-                chosen = Set(videos.map(\.id))
-            } else {
-                chosen.formIntersection(videos.map(\.id))
-            }
+            chosen.formIntersection(videos.map(\.id))
             await runCheck()
         }
     }
 
-    private var countText: String {
-        approved.count == 1 ? "1 video" : "\(approved.count) videos"
-    }
-
-    private var buttonTitle: String {
-        approved.count == 1 ? "Shrink 1 Video" : "Shrink \(approved.count) Videos"
+    private static func buttonTitle(_ count: Int) -> String {
+        count == 1 ? "Shrink 1 Video" : "Shrink \(count) Videos"
     }
 
     // MARK: Sections
 
     private var qualityPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Shrink all at once")
+            Text(scope == .all ? "Shrink all at once" : "Shrink the ones you pick")
                 .font(.headline)
             HStack(spacing: 8) {
                 ForEach(BatchVideoQuality.allCases) { option in
@@ -154,72 +155,85 @@ struct VideosView: View {
     }
 
     @ViewBuilder
-    private var list: some View {
+    private func list(approvedCount: Int) -> some View {
+        let lastID = videos.last?.id
         if videos.isEmpty {
             EmptyStateView(
                 illustration: .compress,
                 title: "No videos to shrink",
-                message: "Nothing in \u{201C}\(TestMode.albumName)\u{201D} is a video that can be made smaller."
+                message: "Nothing in your library is a video that can be made smaller."
             )
         } else {
-            VStack(alignment: .leading, spacing: 0) {
+            // Lazy: a library can hold hundreds of these.
+            LazyVStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text("\(videos.count) \(videos.count == 1 ? "video" : "videos")")
                         .font(.headline)
                     Spacer()
-                    Button(chosen.count == videos.count ? "None" : "All") {
-                        chosen = chosen.count == videos.count ? [] : Set(videos.map(\.id))
+                    if scope == .select {
+                        Text("\(approvedCount) picked")
+                            .font(.hand(16))
+                            .foregroundStyle(Theme.accent)
+                        if !chosen.isEmpty {
+                            Button("Clear") { chosen = [] }
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.leading, 6)
+                        }
                     }
-                    .font(.subheadline.weight(.semibold))
                 }
                 .padding(.bottom, 4)
-                Text("Tap a video to trim it or pick its quality yourself.")
+                Text(scope == .all
+                     ? "Every video is included. Switch to Select at the top to choose which ones. Tap a video to trim it or pick its quality yourself, or press and hold to play it."
+                     : "Tick the videos to shrink. Tap a video to trim it or pick its quality yourself, or press and hold to play it.")
+                    .fixedSize(horizontal: false, vertical: true)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.bottom, 6)
                 ForEach(videos) { item in
                     let blockedReason = blockedReason(item)
                     HStack(spacing: 10) {
-                        Button {
-                            if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
-                        } label: {
-                            InkCheck(isOn: chosen.contains(item.id) && blockedReason == nil, size: 24)
-                                .opacity(blockedReason == nil ? 1 : 0.3)
-                                .frame(width: 32, height: 52)
-                                .contentShape(Rectangle())
+                        if scope == .select {
+                            Button {
+                                if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
+                            } label: {
+                                InkCheck(isOn: chosen.contains(item.id) && blockedReason == nil, size: 24)
+                                    .opacity(blockedReason == nil ? 1 : 0.3)
+                                    .frame(width: 32, height: 52)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(blockedReason != nil)
+                            .accessibilityLabel("Include \(item.filename)")
+                            .accessibilityValue(chosen.contains(item.id) ? "Picked" : "Not picked")
                         }
-                        .buttonStyle(.plain)
-                        .disabled(blockedReason != nil)
-                        .accessibilityLabel("Include \(item.filename)")
-                        .accessibilityValue(chosen.contains(item.id) ? "Picked" : "Not picked")
-                        NavigationLink {
-                            VideoShrinkView(item: item)
-                        } label: {
-                            VideoRow(item: item, pick: pick(item), saving: saving(item), blockedReason: blockedReason)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(blockedReason != nil || check == nil)
+                        VideoRow(item: item, pick: pick(item), saving: saving(item), blockedReason: blockedReason)
+                            .tapAndHold(isEnabled: blockedReason == nil) {
+                                if check != nil { opened = item }
+                            } hold: {
+                                preview = MediaPreview(item)
+                            }
                     }
-                    if item.id != videos.last?.id { Divider() }
+                    if item.id != lastID { Divider() }
                 }
             }
             .card(padding: 14)
         }
     }
 
-    private var actionBar: some View {
-        VStack(spacing: 6) {
+    private func actionBar(_ approved: [MediaItem]) -> some View {
+        let batchSaving = approved.reduce(Int64(0)) { $0 + saving($1) }
+        return VStack(spacing: 6) {
             Button {
                 confirming = true
             } label: {
                 Text(approved.isEmpty
                      ? "Pick Videos"
-                     : "\(buttonTitle), Save ~\(ByteFormatter.string(batchSaving, precision: .twoDecimals))")
+                     : "\(Self.buttonTitle(approved.count)), Save ~\(ByteFormatter.string(batchSaving, precision: .twoDecimals))")
             }
             .buttonStyle(.sticker)
             .disabled(approved.isEmpty || check == nil || model.isChanging)
             Text(check == nil
-                 ? (error == nil ? "Checking the test album…" : "Fix the problem above to continue.")
+                 ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.")
                  : "One tap: copies first, then one swap. Originals go to Recently Deleted.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -232,8 +246,7 @@ struct VideosView: View {
 
     private func blockedReason(_ item: MediaItem) -> String? {
         guard let check else { return nil }
-        if check.inOtherAlbums.contains(item.id) { return "also in another album, so it's left alone" }
-        if check.outsideTestAlbum.contains(item.id) { return "not in the test album any more" }
+        if check.missing.contains(item.id) { return "not in your library any more" }
         return nil
     }
 
@@ -253,7 +266,7 @@ struct VideosView: View {
         }
     }
 
-    private func shrinkAll() async {
+    private func shrink(_ approved: [MediaItem]) async {
         let qualities = Dictionary(uniqueKeysWithValues: approved.map { ($0.id, pick($0).quality) })
         guard !qualities.isEmpty else { return }
         error = nil
@@ -314,7 +327,6 @@ private struct VideoRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 8)
-        .contentShape(Rectangle())
         .opacity(blockedReason == nil ? 1 : 0.6)
         .accessibilityElement(children: .combine)
     }
@@ -386,7 +398,7 @@ struct VideoShrinkView: View {
         .confirmationDialog("Replace with the smaller video?", isPresented: $confirming, titleVisibility: .visible) {
             Button("Replace Video") { Task { await replace() } }
         } message: {
-            Text("The smaller copy goes in your library and the test album with the same date, location and favorite. The original goes to Recently Deleted, where you can recover it for 30 days.")
+            Text("The smaller copy goes in your library with the same date, location and favorite. The original goes to Recently Deleted, where you can recover it for 30 days.")
         }
         .task {
             await player.load(item.id)

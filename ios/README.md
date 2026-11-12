@@ -2,7 +2,7 @@
 
 Native iPhone app, built with Swift and SwiftUI for iOS 17 and later.
 
-**The app runs in Test Mode and only reads.** It measures the phone's real free space (Build Plan step 1) and scans one Photos album, **"Storage App Test"** (step 2). It never deletes, edits, or adds photos, and makes no network requests. With "selected photos" access, iOS hides albums, so the scan reads exactly the photos the person picked.
+The app measures the phone's real free space and scans the photo library: the whole library with full Photos access, or only the picked photos with limited access. It changes only the items the person approves on a review screen (changes need full access), and makes no network requests.
 
 ## Project layout
 
@@ -23,9 +23,9 @@ ios/
 │   ├── Services/               VolumeStorageService (free space), StorageHistoryStore (JSON)
 │   ├── Photos/                 The only Photos code: read-only album scan, thumbnails, picker
 │   ├── Views/
-│   │   ├── Home/               iPhone storage, test album summary, groups
+│   │   ├── Home/               iPhone storage, library summary, groups
 │   │   ├── Library/            Scan results, biggest first, filtered by group
-│   │   ├── Settings/           Test Mode, Photos access, debug readings, version
+│   │   ├── Settings/           Photos access, debug readings, version
 │   │   └── Components/         Theme, illustrations, shared views
 │   └── Resources/Assets.xcassets   App icon, accent and launch colors, illustrations
 ├── StorageAppTests/            App-level tests for AppModel (need Xcode)
@@ -78,7 +78,7 @@ Use any simulator name that `xcrun simctl list devices available` shows.
 3. If Xcode reports the bundle ID is taken, change `PRODUCT_BUNDLE_IDENTIFIER` in `project.yml` (for example to `com.yourname.storageapp`) and regenerate. You can also set `DEVELOPMENT_TEAM` there so regeneration keeps it.
 4. Pick your iPhone as the run destination and press **⌘R**. The first time, trust the developer certificate on the phone under Settings → General → VPN & Device Management.
 
-Test Mode is safe on a personal phone: the app only reads, and with full access it reads only the "Storage App Test" album.
+On a personal phone the app scans your real library. Scanning only reads; nothing changes until you approve it on a review screen, and deleted items wait 30 days in Recently Deleted.
 
 ## Tests
 

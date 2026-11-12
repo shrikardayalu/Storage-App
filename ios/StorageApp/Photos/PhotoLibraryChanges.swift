@@ -6,19 +6,23 @@ import Photos
 import StorageCore
 import UniformTypeIdentifiers
 
-/// The only code in the app that changes the photo library, and it can only
-/// reach the "Storage App Test" album. `Tools/check-no-device-access.sh`
-/// enforces that change APIs appear nowhere else, and that this file never
-/// fetches assets library-wide or by ID: every asset it changes comes out of
-/// the album's own fetch result.
+/// The only code in the app that changes the photo library.
+/// `Tools/check-no-device-access.sh` enforces that change APIs appear nowhere
+/// else, and that this file never fetches assets library-wide: every asset it
+/// changes is looked up by the ID of an item the person approved.
 ///
 /// Every change runs the same gate first, fresh, right before changing anything:
-/// 1. Full Photos access (limited access hides albums, so membership can't be confirmed).
-/// 2. Exactly one user album with the test album's name.
-/// 3. Every approved item is in that album, and in no other album the person made.
+/// 1. Full Photos access (with limited access the app can't see albums, so a
+///    copy couldn't be put back where its original was).
+/// 2. Every approved item is still in the library.
 /// If any item fails, nothing changes. iOS then shows its own confirmation, and
-/// afterwards the album is re-read to confirm only the approved items changed.
-struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
+/// afterwards the library is re-read to confirm only the approved items changed.
+///
+/// Copies that replace an original (a still, a re-saved screenshot, a smaller
+/// video) are written to the app's own temporary folder first, one at a time,
+/// so a big cleanup never holds a library's worth of photos in memory. Each
+/// copy keeps its original's date, location, favorite and albums.
+struct PhotoKitChanges: PhotoChangeService {
     func check(_ approved: Set<MediaItem.ID>) async throws -> SafetyCheck {
         try await Task.detached(priority: .userInitiated) {
             try Gate.open(approved).check
@@ -26,7 +30,9 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
     }
 
     func delete(_ approved: Set<MediaItem.ID>) async throws -> DeletionReceipt {
-        let gate = try await Task.detached(priority: .userInitiated) { try Gate.open(approved) }.value
+        let (gate, countBefore) = try await Task.detached(priority: .userInitiated) {
+            (try Gate.open(approved), PhotoLibrary.count())
+        }.value
         let toDelete = gate.approvedAssets
         let bytes = toDelete.reduce(Int64(0)) { $0 + Self.bytes(of: $1) }
 
@@ -34,11 +40,18 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             PHAssetChangeRequest.deleteAssets(toDelete as NSArray)
         }
 
-        let after = try TestAlbum.memberIDs(of: gate.album)
-        let receipt = DeletionReceipt.audit(approved: approved, before: gate.memberIDs, after: after, deletedBytes: bytes)
+        let receipt = await Task.detached(priority: .userInitiated) {
+            DeletionReceipt.audit(
+                approved: approved,
+                stillPresent: Set(PhotoLibrary.assets(withIDs: approved).map(\.localIdentifier)),
+                countBefore: countBefore,
+                countAfter: PhotoLibrary.count(),
+                deletedBytes: bytes
+            )
+        }.value
         guard receipt.onlyApprovedRemoved else {
             throw PhotoChangeError.verificationFailed(
-                "The album changed in an unexpected way: it went from \(receipt.albumCountBefore) to \(receipt.albumCountAfter) items. Scan again to see what's there."
+                "The library changed in an unexpected way: it went from \(receipt.countBefore) to \(receipt.countAfter) items. Scan again to see what's there."
             )
         }
         return receipt
@@ -50,55 +63,61 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         let notLive = originals.filter { !$0.mediaSubtypes.contains(.photoLive) || $0.burstIdentifier != nil }.count
         guard notLive == 0 else { throw PhotoChangeError.notLivePhoto(count: notLive) }
 
-        // Read every still image before changing anything, so a failed read changes nothing.
-        var stills: [(original: PHAsset, data: Data, filename: String)] = []
-        for asset in originals {
-            stills.append(try await Self.stillImage(of: asset))
-        }
-
-        let album = gate.album
+        // Write every still to a file before changing anything, so a failed read changes nothing.
+        // The Live versions wait in Recently Deleted until it's emptied, so the
+        // stills need room of their own: on a nearly full phone, only as many
+        // as fit are converted now, and the rest stay as they are for next time.
+        var stills: [Copy] = []
+        var converting: [PHAsset] = []
         let created = Box<[String: String]>([:]) // original ID -> new still's ID
-        try await Self.perform {
-            var placeholders: [PHObjectPlaceholder] = []
-            for still in stills {
-                let request = PHAssetCreationRequest.forAsset()
-                let options = PHAssetResourceCreationOptions()
-                options.originalFilename = still.filename
-                request.addResource(with: .photo, data: still.data, options: options)
-                // The details people care about. EXIF inside the image data is kept as is.
-                request.creationDate = still.original.creationDate
-                request.location = still.original.location
-                request.isFavorite = still.original.isFavorite
-                request.isHidden = still.original.isHidden
-                if let placeholder = request.placeholderForCreatedAsset {
-                    placeholders.append(placeholder)
-                    created.value[still.original.localIdentifier] = placeholder.localIdentifier
-                }
+        let albums = Self.albums(of: originals)
+        let budget = Self.copyBudget()
+        var planned: Int64 = 0
+        do {
+            for asset in originals {
+                try Task.checkCancellation()
+                let size = Self.stillBytes(of: asset)
+                if let budget, planned + size > budget { continue }
+                planned += size
+                stills.append(try await Self.stillFile(of: asset))
+                converting.append(asset)
             }
-            PHAssetCollectionChangeRequest(for: album)?.addAssets(placeholders as NSArray)
-            // In the same change, so declining iOS's prompt leaves no copies behind.
-            PHAssetChangeRequest.deleteAssets(originals as NSArray)
+            guard !stills.isEmpty else { throw PhotoChangeError.notEnoughSpace }
+            let copies = stills
+            let replaced = converting
+            try await Self.perform {
+                var placeholders: [(originalID: String, placeholder: PHObjectPlaceholder)] = []
+                for still in copies {
+                    let request = Self.creationRequest(.photo, for: still)
+                    if let placeholder = request.placeholderForCreatedAsset {
+                        placeholders.append((still.original.localIdentifier, placeholder))
+                        created.value[still.original.localIdentifier] = placeholder.localIdentifier
+                    }
+                }
+                Self.add(placeholders, toAlbumsIn: albums)
+                // In the same change, so declining iOS's prompt leaves no copies behind.
+                PHAssetChangeRequest.deleteAssets(replaced as NSArray)
+            }
+        } catch {
+            stills.forEach { VideoExporter.remove($0.url) }
+            throw error
         }
 
-        // Re-read the album and compare each still with its original.
-        let members = TestAlbum.assets(in: album)
-        var byID: [String: PHAsset] = [:]
-        members.enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
-
+        // Re-read each still and compare it with its original.
+        let after = Self.reread(new: Set(created.value.values), originals: Set(converting.map(\.localIdentifier)))
         var results: [StillConversion] = []
-        for original in originals {
+        for original in converting {
             guard let stillID = created.value[original.localIdentifier] else { continue }
-            let still = byID[stillID]
+            let still = after.new[stillID]
             results.append(StillConversion(
                 originalID: original.localIdentifier,
                 stillID: stillID,
-                original: Self.details(of: original, inAlbum: true),
-                still: still.map { Self.details(of: $0, inAlbum: true) } ?? Self.missing,
+                original: Self.details(of: original, inAlbums: true),
+                still: still.map { Self.details(of: $0, inAlbums: Self.isIn(albums[original.localIdentifier], $0)) } ?? Self.missing,
                 savedBytes: Self.pairedVideoBytes(of: original)
             ))
         }
-        let originalsLeft = originals.filter { byID[$0.localIdentifier] != nil }.count
-        guard results.count == originals.count, originalsLeft == 0 else {
+        guard results.count == converting.count, after.originalsLeft.isEmpty else {
             throw PhotoChangeError.verificationFailed("Some photos didn't convert. Scan again to see what's there.")
         }
         return results
@@ -110,66 +129,62 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         let notPNG = originals.filter { !Self.isPNGScreenshot($0) }.count
         guard notPNG == 0 else { throw PhotoChangeError.notResavable(count: notPNG) }
 
-        // Encode every copy before changing anything, so a failed read changes
-        // nothing, and keep only the ones that come out clearly smaller.
-        var copies: [(original: PHAsset, data: Data, filename: String, originalBytes: Int64)] = []
+        // Encode every copy to a file before changing anything, so a failed
+        // read changes nothing, and keep only the ones that come out clearly smaller.
+        var copies: [(copy: Copy, originalBytes: Int64, newBytes: Int64)] = []
         var skipped = Set<String>()
-        for asset in originals {
-            let source = try await Self.stillImage(of: asset)
-            let originalBytes = Self.bytes(of: asset)
-            let heic = try Self.heicCopy(of: source.data)
-            if ScreenshotResave.isWorthReplacing(originalBytes: originalBytes, newBytes: Int64(heic.count)) {
-                let name = (source.filename as NSString).deletingPathExtension + ".HEIC"
-                copies.append((asset, heic, name, originalBytes))
-            } else {
-                skipped.insert(asset.localIdentifier)
-            }
-        }
-        guard !copies.isEmpty else { throw PhotoChangeError.screenshotsNotSmaller }
-
-        let album = gate.album
         let created = Box<[String: String]>([:]) // original ID -> copy's ID
-        try await Self.perform {
-            var placeholders: [PHObjectPlaceholder] = []
-            for copy in copies {
-                let request = PHAssetCreationRequest.forAsset()
-                let options = PHAssetResourceCreationOptions()
-                options.originalFilename = copy.filename
-                request.addResource(with: .photo, data: copy.data, options: options)
-                request.creationDate = copy.original.creationDate
-                request.location = copy.original.location
-                request.isFavorite = copy.original.isFavorite
-                request.isHidden = copy.original.isHidden
-                if let placeholder = request.placeholderForCreatedAsset {
-                    placeholders.append(placeholder)
-                    created.value[copy.original.localIdentifier] = placeholder.localIdentifier
+        let albums = Self.albums(of: originals)
+        do {
+            for asset in originals {
+                try Task.checkCancellation()
+                let originalBytes = Self.bytes(of: asset)
+                if let (copy, newBytes) = try await Self.heicFile(of: asset, originalBytes: originalBytes) {
+                    copies.append((copy, originalBytes, newBytes))
+                } else {
+                    skipped.insert(asset.localIdentifier)
                 }
             }
-            PHAssetCollectionChangeRequest(for: album)?.addAssets(placeholders as NSArray)
-            // In the same change, so declining iOS's prompt leaves no copies behind.
-            PHAssetChangeRequest.deleteAssets(copies.map(\.original) as NSArray)
+            guard !copies.isEmpty else { throw PhotoChangeError.screenshotsNotSmaller }
+
+            let ready = copies.map(\.copy)
+            try await Self.perform {
+                var placeholders: [(originalID: String, placeholder: PHObjectPlaceholder)] = []
+                for copy in ready {
+                    let request = Self.creationRequest(.photo, for: copy)
+                    if let placeholder = request.placeholderForCreatedAsset {
+                        placeholders.append((copy.original.localIdentifier, placeholder))
+                        created.value[copy.original.localIdentifier] = placeholder.localIdentifier
+                    }
+                }
+                Self.add(placeholders, toAlbumsIn: albums)
+                // In the same change, so declining iOS's prompt leaves no copies behind.
+                PHAssetChangeRequest.deleteAssets(ready.map(\.original) as NSArray)
+            }
+        } catch {
+            copies.forEach { VideoExporter.remove($0.copy.url) }
+            throw error
         }
 
-        // Re-read the album and compare each copy with its original.
-        var byID: [String: PHAsset] = [:]
-        TestAlbum.assets(in: album).enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
+        // Re-read each copy and compare it with its original.
+        let after = Self.reread(new: Set(created.value.values), originals: Set(copies.map(\.copy.original.localIdentifier)))
         var resaved: [ResavedScreenshot] = []
-        for copy in copies {
-            guard let newID = created.value[copy.original.localIdentifier] else { continue }
-            let new = byID[newID]
+        for entry in copies {
+            let original = entry.copy.original
+            guard let newID = created.value[original.localIdentifier] else { continue }
+            let new = after.new[newID]
             let newBytes = new.map(Self.bytes(of:)) ?? 0
             resaved.append(ResavedScreenshot(
-                originalID: copy.original.localIdentifier,
+                originalID: original.localIdentifier,
                 newID: newID,
-                original: Self.details(of: copy.original, inAlbum: true),
-                new: new.map { Self.details(of: $0, inAlbum: true) } ?? Self.missing,
-                originalBytes: copy.originalBytes,
+                original: Self.details(of: original, inAlbums: true),
+                new: new.map { Self.details(of: $0, inAlbums: Self.isIn(albums[original.localIdentifier], $0)) } ?? Self.missing,
+                originalBytes: entry.originalBytes,
                 // Photos can take a moment to report a new file's size; the encoded size stands in until then.
-                newBytes: newBytes > 0 ? newBytes : Int64(copy.data.count)
+                newBytes: newBytes > 0 ? newBytes : entry.newBytes
             ))
         }
-        let originalsLeft = copies.filter { byID[$0.original.localIdentifier] != nil }.count
-        guard resaved.count == copies.count, originalsLeft == 0 else {
+        guard resaved.count == copies.count, after.originalsLeft.isEmpty else {
             throw PhotoChangeError.verificationFailed("Some screenshots didn't re-save. Scan again to see what's there.")
         }
         return ScreenshotResaveReceipt(resaved: resaved, skipped: skipped)
@@ -180,9 +195,8 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized else {
                 throw PhotoChangeError.needsFullAccess
             }
-            let album = try TestAlbum.resolve()
-            let before = TestAlbum.burstMembers(of: album)
-            // Worked out from the album as it is now, and refused unless it matches the review.
+            let before = PhotoLibrary.burstMembers(with: PhotoLibrary.assets(withIDs: keep))
+            // Worked out from the bursts as they are now, and refused unless it matches the review.
             let plan = try BurstPlan.make(keep: keep, expectedRemove: remove, members: before)
             return (try Gate.open(plan.remove), plan, before)
         }.value
@@ -193,7 +207,9 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             PHAssetChangeRequest.deleteAssets(toDelete as NSArray)
         }
 
-        let after = TestAlbum.burstMembers(of: gate.album)
+        let after = await Task.detached(priority: .userInitiated) {
+            PhotoLibrary.burstMembers(with: PhotoLibrary.assets(withIDs: keep))
+        }.value
         let receipt = BurstReceipt.audit(plan: plan, before: before, after: after, removedBytes: bytes)
         guard receipt.isExact else {
             throw PhotoChangeError.verificationFailed(
@@ -224,56 +240,12 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
     }
 
     func replaceVideo(with prepared: PreparedVideo) async throws -> VideoReplacement {
-        let gate = try await Task.detached(priority: .userInitiated) { try Gate.open([prepared.originalID]) }.value
-        guard let original = gate.approvedAssets.first, original.mediaType == .video,
-              Self.version(of: original) == prepared.sourceVersion else {
-            throw PhotoChangeError.videoUnsupported("The video changed since the smaller copy was made. Make it again.")
-        }
-        guard FileManager.default.fileExists(atPath: prepared.fileURL.path) else {
-            throw PhotoChangeError.videoUnsupported("The smaller copy is gone. Make it again.")
-        }
-        let before = Self.videoDetails(of: original, bytes: prepared.originalBytes)
-        let name = PHAssetResource.assetResources(for: original).first { $0.type == .video }?.originalFilename ?? "Video.MOV"
-
-        let album = gate.album
-        let created = Box<String?>(nil)
-        try await Self.perform {
-            let request = PHAssetCreationRequest.forAsset()
-            let options = PHAssetResourceCreationOptions()
-            options.originalFilename = (name as NSString).deletingPathExtension + ".MOV"
-            // Photos takes the copy over, so it isn't left in the temporary folder.
-            options.shouldMoveFile = true
-            request.addResource(with: .video, fileURL: prepared.fileURL, options: options)
-            request.creationDate = original.creationDate
-            request.location = original.location
-            request.isFavorite = original.isFavorite
-            request.isHidden = original.isHidden
-            if let placeholder = request.placeholderForCreatedAsset {
-                created.value = placeholder.localIdentifier
-                PHAssetCollectionChangeRequest(for: album)?.addAssets([placeholder] as NSArray)
-            }
-            // In the same change, so declining iOS's prompt leaves no copy behind.
-            PHAssetChangeRequest.deleteAssets([original] as NSArray)
-        }
-
-        // Re-read the album and compare the copy with the original.
-        var byID: [String: PHAsset] = [:]
-        TestAlbum.assets(in: album).enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
-        guard let newID = created.value, let copy = byID[newID] else {
+        guard let result = try await replaceVideos(with: [prepared]).first else {
             throw PhotoChangeError.verificationFailed(
-                "The smaller copy didn't show up in the album. If the original is in Recently Deleted, recover it there."
+                "The smaller copy didn't show up in your library. If the original is in Recently Deleted, recover it there."
             )
         }
-        // Photos can take a moment to report a new file's size; the measured copy stands in until then.
-        let copyBytes = Self.bytes(of: copy)
-        return VideoReplacement(
-            originalID: original.localIdentifier,
-            newID: newID,
-            edit: prepared.edit,
-            original: before,
-            new: Self.videoDetails(of: copy, bytes: copyBytes > 0 ? copyBytes : prepared.newBytes),
-            originalGone: byID[original.localIdentifier] == nil
-        )
+        return result
     }
 
     func replaceVideos(with prepared: [PreparedVideo]) async throws -> [VideoReplacement] {
@@ -293,45 +265,47 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         for copy in prepared {
             guard let original = byOriginal[copy.originalID], original.mediaType == .video,
                   Self.version(of: original) == copy.sourceVersion else {
-                throw PhotoChangeError.videoUnsupported("A video changed since the smaller copies were made. Make them again.")
+                throw PhotoChangeError.videoUnsupported(
+                    prepared.count == 1
+                        ? "The video changed since the smaller copy was made. Make it again."
+                        : "A video changed since the smaller copies were made. Make them again."
+                )
             }
             guard FileManager.default.fileExists(atPath: copy.fileURL.path) else {
-                throw PhotoChangeError.videoUnsupported("A smaller copy is gone. Make them again.")
+                throw PhotoChangeError.videoUnsupported(
+                    prepared.count == 1 ? "The smaller copy is gone. Make it again." : "A smaller copy is gone. Make them again."
+                )
             }
             let name = PHAssetResource.assetResources(for: original).first { $0.type == .video }?.originalFilename ?? "Video.MOV"
-            swaps.append(Swap(prepared: copy, original: original, before: Self.videoDetails(of: original, bytes: copy.originalBytes), name: name))
+            swaps.append(Swap(prepared: copy, original: original, before: Self.videoDetails(of: original, bytes: copy.originalBytes, inAlbums: true), name: name))
         }
 
-        let album = gate.album
+        let albums = Self.albums(of: swaps.map(\.original))
         let created = Box<[String: String]>([:])
         try await Self.perform {
-            var placeholders: [PHObjectPlaceholder] = []
+            var placeholders: [(originalID: String, placeholder: PHObjectPlaceholder)] = []
             for swap in swaps {
-                let request = PHAssetCreationRequest.forAsset()
-                let options = PHAssetResourceCreationOptions()
-                options.originalFilename = (swap.name as NSString).deletingPathExtension + ".MOV"
-                options.shouldMoveFile = true
-                request.addResource(with: .video, fileURL: swap.prepared.fileURL, options: options)
-                request.creationDate = swap.original.creationDate
-                request.location = swap.original.location
-                request.isFavorite = swap.original.isFavorite
-                request.isHidden = swap.original.isHidden
+                let copy = Copy(
+                    original: swap.original, url: swap.prepared.fileURL,
+                    filename: (swap.name as NSString).deletingPathExtension + ".MOV"
+                )
+                let request = Self.creationRequest(.video, for: copy)
                 if let placeholder = request.placeholderForCreatedAsset {
                     created.value[swap.prepared.originalID] = placeholder.localIdentifier
-                    placeholders.append(placeholder)
+                    placeholders.append((swap.prepared.originalID, placeholder))
                 }
             }
-            PHAssetCollectionChangeRequest(for: album)?.addAssets(placeholders as NSArray)
+            Self.add(placeholders, toAlbumsIn: albums)
             // In the same change, so declining iOS's prompt leaves no copies behind.
             PHAssetChangeRequest.deleteAssets(swaps.map(\.original) as NSArray)
         }
 
-        var inAlbum: [String: PHAsset] = [:]
-        TestAlbum.assets(in: album).enumerateObjects { asset, _, _ in inAlbum[asset.localIdentifier] = asset }
+        // Re-read each copy and compare it with its original.
+        let after = Self.reread(new: Set(created.value.values), originals: ids)
         return try swaps.map { swap in
-            guard let newID = created.value[swap.prepared.originalID], let copy = inAlbum[newID] else {
+            guard let newID = created.value[swap.prepared.originalID], let copy = after.new[newID] else {
                 throw PhotoChangeError.verificationFailed(
-                    "A smaller copy didn't show up in the album. If its original is in Recently Deleted, recover it there."
+                    "A smaller copy didn't show up in your library. If its original is in Recently Deleted, recover it there."
                 )
             }
             let copyBytes = Self.bytes(of: copy)
@@ -340,8 +314,12 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
                 newID: newID,
                 edit: swap.prepared.edit,
                 original: swap.before,
-                new: Self.videoDetails(of: copy, bytes: copyBytes > 0 ? copyBytes : swap.prepared.newBytes),
-                originalGone: inAlbum[swap.original.localIdentifier] == nil
+                // Photos can take a moment to report a new file's size; the measured copy stands in until then.
+                new: Self.videoDetails(
+                    of: copy, bytes: copyBytes > 0 ? copyBytes : swap.prepared.newBytes,
+                    inAlbums: Self.isIn(albums[swap.original.localIdentifier], copy)
+                ),
+                originalGone: !after.originalsLeft.contains(swap.original.localIdentifier)
             )
         }
     }
@@ -354,9 +332,7 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
 
     /// Everything a change needs, read fresh, and only if the safety check passed.
     private struct Gate {
-        let album: PHAssetCollection
-        let memberIDs: Set<String>
-        /// The approved assets, taken from the album's own fetch result.
+        /// The approved assets, each looked up by its own ID.
         let approvedAssets: [PHAsset]
         let check: SafetyCheck
 
@@ -364,38 +340,150 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized else {
                 throw PhotoChangeError.needsFullAccess
             }
-            let album = try TestAlbum.resolve()
-            let members = TestAlbum.assets(in: album)
-
-            var memberIDs = Set<String>()
-            var approvedAssets: [PHAsset] = []
-            members.enumerateObjects { asset, _, _ in
-                memberIDs.insert(asset.localIdentifier)
-                if approved.contains(asset.localIdentifier) {
-                    approvedAssets.append(asset)
-                }
-            }
-
-            // Any other album the person made that also holds an approved item.
-            var inOtherAlbums = Set<String>()
-            for asset in approvedAssets {
-                let albums = PHAssetCollection.fetchAssetCollectionsContaining(asset, with: .album, options: nil)
-                albums.enumerateObjects { collection, _, stop in
-                    if collection.localIdentifier != album.localIdentifier {
-                        inOtherAlbums.insert(asset.localIdentifier)
-                        stop.pointee = true
-                    }
-                }
-            }
-
-            let check = SafetyCheck.evaluate(approved: approved, testAlbumMembers: memberIDs, otherAlbumMembers: inOtherAlbums)
+            let approvedAssets = PhotoLibrary.assets(withIDs: approved)
+            let found = Set(approvedAssets.map(\.localIdentifier))
+            let check = SafetyCheck.evaluate(approved: approved, found: found)
             guard check.isSafe else { throw PhotoChangeError.unsafe(check) }
             // Belt and braces: the assets to change are exactly the approved ones.
-            guard Set(approvedAssets.map(\.localIdentifier)) == approved else {
+            guard found == approved, approvedAssets.count == approved.count else {
                 throw PhotoChangeError.unsafe(check)
             }
-            return Gate(album: album, memberIDs: memberIDs, approvedAssets: approvedAssets, check: check)
+            return Gate(approvedAssets: approvedAssets, check: check)
         }
+    }
+
+    // MARK: - Copies
+
+    /// A file in the app's own temporary folder, waiting to replace `original`.
+    private struct Copy {
+        let original: PHAsset
+        let url: URL
+        /// The name Photos should give the new item.
+        let filename: String
+    }
+
+    /// A new item made from `copy`'s file, with the details people care about
+    /// taken from its original. Must be called inside a change block.
+    private static func creationRequest(_ type: PHAssetResourceType, for copy: Copy) -> PHAssetCreationRequest {
+        let request = PHAssetCreationRequest.forAsset()
+        let options = PHAssetResourceCreationOptions()
+        options.originalFilename = copy.filename
+        // Photos takes the file over, so it isn't left in the temporary folder.
+        options.shouldMoveFile = true
+        request.addResource(with: type, fileURL: copy.url, options: options)
+        // EXIF inside the file is kept as is.
+        request.creationDate = copy.original.creationDate
+        request.location = copy.original.location
+        request.isFavorite = copy.original.isFavorite
+        request.isHidden = copy.original.isHidden
+        return request
+    }
+
+    /// For each asset, the albums the person made that hold it.
+    private static func albums(of assets: [PHAsset]) -> [String: [PHAssetCollection]] {
+        var albums: [String: [PHAssetCollection]] = [:]
+        for asset in assets {
+            albums[asset.localIdentifier] = PhotoLibrary.userAlbums(containing: asset)
+        }
+        return albums
+    }
+
+    /// Puts each new copy into the albums its original was in. Must be called inside a change block.
+    private static func add(
+        _ placeholders: [(originalID: String, placeholder: PHObjectPlaceholder)],
+        toAlbumsIn albums: [String: [PHAssetCollection]]
+    ) {
+        var perAlbum: [String: (album: PHAssetCollection, items: [PHObjectPlaceholder])] = [:]
+        for entry in placeholders {
+            for album in albums[entry.originalID] ?? [] {
+                perAlbum[album.localIdentifier, default: (album, [])].items.append(entry.placeholder)
+            }
+        }
+        for entry in perAlbum.values {
+            PHAssetCollectionChangeRequest(for: entry.album)?.addAssets(entry.items as NSArray)
+        }
+    }
+
+    /// True when `copy` is in every one of `albums`, the albums its original was in.
+    private static func isIn(_ albums: [PHAssetCollection]?, _ copy: PHAsset) -> Bool {
+        guard let albums, !albums.isEmpty else { return true }
+        let now = Set(PhotoLibrary.userAlbums(containing: copy).map(\.localIdentifier))
+        return now.isSuperset(of: albums.map(\.localIdentifier))
+    }
+
+    /// After a swap: the new copies by ID, and which originals are still in the library.
+    private static func reread(new: Set<String>, originals: Set<String>) -> (new: [String: PHAsset], originalsLeft: Set<String>) {
+        var byID: [String: PHAsset] = [:]
+        for asset in PhotoLibrary.assets(withIDs: new) { byID[asset.localIdentifier] = asset }
+        return (byID, Set(PhotoLibrary.assets(withIDs: originals).map(\.localIdentifier)))
+    }
+
+    private static func copyURL(extension ext: String) throws -> URL {
+        try FileManager.default.createDirectory(at: VideoExporter.folder, withIntermediateDirectories: true)
+        return VideoExporter.folder.appendingPathComponent(UUID().uuidString).appendingPathExtension(ext.isEmpty ? "jpg" : ext)
+    }
+
+    /// A full phone is the likeliest reason a copy can't be written.
+    private static func explained(_ error: Error) -> Error {
+        let error = error as NSError
+        let outOfSpace = (error.domain == NSCocoaErrorDomain && error.code == NSFileWriteOutOfSpaceError)
+            || (error.domain == NSPOSIXErrorDomain && error.code == Int(ENOSPC))
+        return outOfSpace ? PhotoChangeError.notEnoughSpace : error
+    }
+
+    /// How much room new copies may take: half of what's free, so a cleanup
+    /// never fills the phone. Nil when free space can't be read.
+    private static func copyBudget() -> Int64? {
+        let values = try? FileManager.default.temporaryDirectory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        return values?.volumeAvailableCapacityForImportantUsage.map { $0 / 2 }
+    }
+
+    /// The still image a Live Photo keeps: the edited version if there is one, otherwise the original.
+    private static func stillResource(of asset: PHAsset) -> PHAssetResource? {
+        let resources = PHAssetResource.assetResources(for: asset)
+        return resources.first(where: { $0.type == .fullSizePhoto }) ?? resources.first(where: { $0.type == .photo })
+    }
+
+    private static func stillBytes(of asset: PHAsset) -> Int64 {
+        stillResource(of: asset).map(PhotoLibrary.fileSize(of:)) ?? 0
+    }
+
+    /// The photo exactly as Photos shows it, written to a file: the edited
+    /// version if there is one, otherwise the original, with its EXIF untouched.
+    private static func stillFile(of asset: PHAsset) async throws -> Copy {
+        let resources = PHAssetResource.assetResources(for: asset)
+        guard let resource = stillResource(of: asset) else {
+            throw PhotoChangeError.verificationFailed("A Live Photo had no still image to keep. Nothing was changed.")
+        }
+        let name = resources.first { $0.type == .photo }?.originalFilename ?? resource.originalFilename
+        let url = try copyURL(extension: (resource.originalFilename as NSString).pathExtension)
+        let options = PHAssetResourceRequestOptions()
+        // Fetches the full photo from iCloud if only a preview is on the phone.
+        options.isNetworkAccessAllowed = true
+        do {
+            try await PHAssetResourceManager.default().writeData(for: resource, toFile: url, options: options)
+        } catch {
+            VideoExporter.remove(url)
+            throw explained(error)
+        }
+        return Copy(original: asset, url: url, filename: name)
+    }
+
+    /// A smaller HEIC copy of a PNG screenshot, written to a file, with its
+    /// size. Nil when the copy wouldn't be clearly smaller than the PNG.
+    private static func heicFile(of asset: PHAsset, originalBytes: Int64) async throws -> (Copy, Int64)? {
+        let source = try await stillImage(of: asset)
+        let heic = try heicCopy(of: source.data)
+        guard ScreenshotResave.isWorthReplacing(originalBytes: originalBytes, newBytes: Int64(heic.count)) else { return nil }
+        let url = try copyURL(extension: "HEIC")
+        do {
+            try heic.write(to: url)
+        } catch {
+            VideoExporter.remove(url)
+            throw explained(error)
+        }
+        let name = (source.filename as NSString).deletingPathExtension + ".HEIC"
+        return (Copy(original: asset, url: url, filename: name), Int64(heic.count))
     }
 
     // MARK: - Helpers
@@ -412,12 +500,12 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         }
     }
 
-    /// The photo exactly as Photos shows it: the edited version if there is one,
-    /// otherwise the original, with its EXIF untouched.
+    /// One photo's data, in memory: the edited version if there is one, otherwise
+    /// the original. Only for one image at a time.
     private static func stillImage(of asset: PHAsset) async throws -> (original: PHAsset, data: Data, filename: String) {
         let resources = PHAssetResource.assetResources(for: asset)
         guard let resource = resources.first(where: { $0.type == .fullSizePhoto }) ?? resources.first(where: { $0.type == .photo }) else {
-            throw PhotoChangeError.verificationFailed("A Live Photo had no still image to keep. Nothing was changed.")
+            throw PhotoChangeError.verificationFailed("A photo couldn't be read. Nothing was changed.")
         }
         let original = resources.first { $0.type == .photo }?.originalFilename ?? resource.originalFilename
         let options = PHAssetResourceRequestOptions()
@@ -460,7 +548,7 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         return output as Data
     }
 
-    private static func details(of asset: PHAsset, inAlbum: Bool) -> AssetDetails {
+    private static func details(of asset: PHAsset, inAlbums: Bool) -> AssetDetails {
         AssetDetails(
             creationDate: asset.creationDate,
             latitude: asset.location?.coordinate.latitude,
@@ -469,14 +557,14 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             pixelWidth: asset.pixelWidth,
             pixelHeight: asset.pixelHeight,
             isLivePhoto: asset.mediaSubtypes.contains(.photoLive),
-            inTestAlbum: inAlbum
+            inOriginalAlbums: inAlbums
         )
     }
 
-    /// Stands in for a still that wasn't found in the album afterwards, so every check fails.
+    /// Stands in for a copy that wasn't found in the library afterwards, so every check fails.
     private static let missing = AssetDetails(
         creationDate: nil, latitude: nil, longitude: nil, isFavorite: false,
-        pixelWidth: 0, pixelHeight: 0, isLivePhoto: true, inTestAlbum: false
+        pixelWidth: 0, pixelHeight: 0, isLivePhoto: true, inOriginalAlbums: false
     )
 
     /// The video as Photos plays it, including any edits. Downloads it from iCloud if needed.
@@ -502,7 +590,7 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
         "\(asset.duration)-\(bytes(of: asset))"
     }
 
-    private static func videoDetails(of asset: PHAsset, bytes: Int64) -> VideoDetails {
+    private static func videoDetails(of asset: PHAsset, bytes: Int64, inAlbums: Bool) -> VideoDetails {
         VideoDetails(
             creationDate: asset.creationDate,
             latitude: asset.location?.coordinate.latitude,
@@ -511,58 +599,18 @@ struct PhotoKitTestAlbumChanges: TestAlbumChangeService {
             duration: asset.duration,
             bytes: bytes,
             isVideo: asset.mediaType == .video,
-            inTestAlbum: true
+            inOriginalAlbums: inAlbums
         )
     }
 
     private static func bytes(of asset: PHAsset) -> Int64 {
-        PHAssetResource.assetResources(for: asset).reduce(Int64(0)) { $0 + TestAlbum.fileSize(of: $1) }
+        PHAssetResource.assetResources(for: asset).reduce(Int64(0)) { $0 + PhotoLibrary.fileSize(of: $1) }
     }
 
     private static func pairedVideoBytes(of asset: PHAsset) -> Int64 {
         PHAssetResource.assetResources(for: asset)
             .filter { [.pairedVideo, .fullSizePairedVideo, .adjustmentBasePairedVideo].contains($0.type) }
-            .reduce(Int64(0)) { $0 + TestAlbum.fileSize(of: $1) }
-    }
-}
-
-/// Finds the test album. Shared by the scan and by changes, so both always
-/// mean the same album.
-enum TestAlbum {
-    /// The one user-made album named `TestMode.albumName`. Throws if there are none or several.
-    static func resolve() throws -> PHAssetCollection {
-        let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "localizedTitle == %@", TestMode.albumName)
-        let albums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .albumRegular, options: options)
-        guard albums.count > 0, let album = albums.firstObject else { throw PhotoChangeError.albumNotFound(TestMode.albumName) }
-        guard albums.count == 1 else { throw PhotoChangeError.albumAmbiguous(TestMode.albumName) }
-        return album
-    }
-
-    /// Every asset in `album`, including each shot of a burst.
-    static func assets(in album: PHAssetCollection) -> PHFetchResult<PHAsset> {
-        let options = PHFetchOptions()
-        options.includeAllBurstAssets = true
-        return PHAsset.fetchAssets(in: album, options: options)
-    }
-
-    /// Every item in `album` with its burst ID, nil for items not in a burst.
-    static func burstMembers(of album: PHAssetCollection) -> [String: String?] {
-        var members: [String: String?] = [:]
-        assets(in: album).enumerateObjects { asset, _, _ in members[asset.localIdentifier] = .some(asset.burstIdentifier) }
-        return members
-    }
-
-    static func memberIDs(of album: PHAssetCollection) throws -> Set<String> {
-        var ids = Set<String>()
-        assets(in: album).enumerateObjects { asset, _, _ in ids.insert(asset.localIdentifier) }
-        return ids
-    }
-
-    /// PhotoKit has no public size API. `fileSize` is the size the resource
-    /// takes (or would take, if it's only in iCloud); 0 when unavailable.
-    static func fileSize(of resource: PHAssetResource) -> Int64 {
-        (resource.value(forKey: "fileSize") as? NSNumber)?.int64Value ?? 0
+            .reduce(Int64(0)) { $0 + PhotoLibrary.fileSize(of: $1) }
     }
 }
 

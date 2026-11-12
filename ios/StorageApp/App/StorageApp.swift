@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct StorageAppEntry: App {
-    // Reads real device storage and, in Test Mode, only the "Storage App Test" album.
+    // Reads real device storage and the photo library. Changes only what the person approves.
     @State private var model = AppModel.live()
     @State private var purchases = PurchaseStore()
     @Environment(\.scenePhase) private var scenePhase

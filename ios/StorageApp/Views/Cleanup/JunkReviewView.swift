@@ -2,27 +2,33 @@ import StorageCore
 import SwiftUI
 
 /// Step 7: duplicates, near-duplicates, blurry and black shots, receipts,
-/// documents and old screenshots in the test album. Everything is a
+/// documents and old screenshots in the library. Everything is a
 /// suggestion: the person reviews each one, and only what's still ticked when
 /// they confirm goes to Recently Deleted. The best copy of each duplicate stays.
+///
+/// It opens on All, which covers every suggestion except receipts and
+/// documents. Select, in the top bar, starts with nothing ticked so the
+/// person chooses. Pressing and holding a photo shows it big.
 struct JunkReviewView: View {
     @Environment(AppModel.self) private var model
-    /// Single-photo findings that are ticked for removal.
+    @State private var scope: PickScope = .all
+    /// Single-photo findings ticked in Select. All ignores it.
     @State private var ticked: Set<MediaItem.ID> = []
-    /// Duplicate group → the copy to keep.
+    /// Duplicate group → the copy to keep, where it isn't the suggested one.
     @State private var keepers: [DuplicateGroup.ID: MediaItem.ID] = [:]
-    /// Duplicate groups the person chose to leave alone.
-    @State private var skipped: Set<DuplicateGroup.ID> = []
+    /// Duplicate groups ticked in Select. All ignores it.
+    @State private var pickedGroups: Set<DuplicateGroup.ID> = []
+    @State private var preview: MediaPreview?
     @State private var check: SafetyCheck?
     @State private var error: PhotoChangeError?
     @State private var confirming = false
     @State private var loadedReport: JunkReport?
 
     private var report: JunkReport? { model.junkReport }
-    /// Photos the safety check refused, such as ones also in another album.
+    /// Photos the safety check refused, such as ones that are gone since the scan.
     private var blocked: Set<MediaItem.ID> {
         guard let check else { return [] }
-        return check.outsideTestAlbum.union(check.inOtherAlbums)
+        return check.missing
     }
 
     private func keeper(of group: DuplicateGroup) -> MediaItem.ID {
@@ -33,13 +39,26 @@ struct JunkReviewView: View {
         group.items.contains { $0.id != keeper(of: group) && blocked.contains($0.id) }
     }
 
+    private func isIncluded(_ group: DuplicateGroup) -> Bool {
+        scope == .all || pickedGroups.contains(group.id)
+    }
+
     private var activeGroups: [DuplicateGroup] {
-        (report?.duplicates ?? []).filter { !skipped.contains($0.id) && !isBlocked($0) }
+        (report?.duplicates ?? []).filter { isIncluded($0) && !isBlocked($0) }
+    }
+
+    /// The single photos that go: every suggestion in All (receipts and
+    /// documents left alone), the ticked ones in Select.
+    private var singles: Set<MediaItem.ID> {
+        let included = scope == .all
+            ? Set((report?.findings ?? []).filter { $0.reason.startsSelected }.map(\.id))
+            : ticked
+        return included.subtracting(blocked)
     }
 
     /// Exactly what goes when the person confirms.
     private var removeIDs: Set<MediaItem.ID> {
-        var ids = ticked.subtracting(blocked)
+        var ids = singles
         for group in activeGroups {
             ids.formUnion(group.items.map(\.id).filter { $0 != keeper(of: group) })
         }
@@ -49,12 +68,24 @@ struct JunkReviewView: View {
     private var keeperIDs: Set<MediaItem.ID> { Set(activeGroups.map(keeper(of:))) }
 
     private var removeBytes: Int64 {
-        (model.albumScan?.items ?? []).filter { removeIDs.contains($0.id) }.reduce(0) { $0 + $1.currentBytes }
+        // Added up from the report, not by walking the whole library on every redraw.
+        guard let report else { return 0 }
+        let singles = singles
+        var bytes = report.findings.reduce(Int64(0)) { singles.contains($1.id) ? $0 + $1.item.currentBytes : $0 }
+        var counted = singles
+        for group in activeGroups {
+            let keeper = keeper(of: group)
+            for item in group.items where item.id != keeper && counted.insert(item.id).inserted {
+                bytes += item.currentBytes
+            }
+        }
+        return bytes
     }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            // Lazy: a library can hold hundreds of duplicate groups.
+            LazyVStack(alignment: .leading, spacing: 20) {
                 header
                 content
                 if let error {
@@ -70,14 +101,16 @@ struct JunkReviewView: View {
         .background(PaperBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .scopePicker($scope, label: "Which photos to remove", isShown: report?.isEmpty == false, isDisabled: model.isChanging)
         .safeAreaInset(edge: .bottom) {
             if report?.isEmpty == false { actionBar }
         }
+        .mediaPreview($preview)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Removing what you picked…") }
         }
         .confirmationDialog(
-            "Remove \(countText) from \u{201C}\(TestMode.albumName)\u{201D}?",
+            "Remove \(countText) from your library?",
             isPresented: $confirming,
             titleVisibility: .visible
         ) {
@@ -102,19 +135,14 @@ struct JunkReviewView: View {
         removeIDs.count == 1 ? "1 Photo" : "\(removeIDs.count) Photos"
     }
 
-    /// Starts every suggestion fresh for a new report, keeping the person's choices where they still apply.
+    /// Keeps the person's choices where they still apply to a new report.
     private func reset() {
         guard let report, report != loadedReport else { return }
-        let firstLoad = loadedReport == nil
-        let known = Set(loadedReport?.findings.map(\.id) ?? [])
         loadedReport = report
-        let ids = Set(report.findings.map(\.id))
-        ticked = ticked.intersection(ids).union(
-            report.findings.filter { $0.reason.startsSelected && (firstLoad || !known.contains($0.id)) }.map(\.id)
-        )
+        ticked.formIntersection(report.findings.map(\.id))
         let groups = Set(report.duplicates.map(\.id))
         keepers = keepers.filter { groups.contains($0.key) }
-        skipped = skipped.intersection(groups)
+        pickedGroups.formIntersection(groups)
     }
 
     // MARK: Sections
@@ -158,24 +186,39 @@ struct JunkReviewView: View {
             EmptyStateView(
                 illustration: .shieldCheck,
                 title: "Nothing to clean",
-                message: "No duplicates, blurry or black shots, receipts, documents or old screenshots in \u{201C}\(TestMode.albumName)\u{201D}."
+                message: "No duplicates, blurry or black shots, receipts, documents or old screenshots in your library."
             )
         } else if let report {
-            Text("Untick anything you want to keep. Receipts and documents start unticked, in case you still need them.")
+            Text(scope == .all
+                 ? "Everything suggested is included, and the best copy of each duplicate stays. Receipts and documents are left alone, in case you still need them. Switch to Select at the top to choose yourself. Press and hold a photo for a closer look."
+                 : "Tick what to remove, and tap the copy to keep in each duplicate. Press and hold a photo for a closer look.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if !report.duplicates.isEmpty {
                 sectionTitle(JunkReason.duplicate.title, detail: "tap the copy to keep")
                 ForEach(report.duplicates) { group in
+                    let keeper = keeper(of: group)
+                    let pick: (MediaItem.ID) -> Void = { copy in
+                        keepers[group.id] = copy
+                        pickedGroups.insert(group.id)
+                    }
                     DuplicateCard(
                         group: group,
-                        keeper: keeper(of: group),
-                        isOn: !skipped.contains(group.id),
-                        blockedReason: isBlocked(group) ? "a copy is also in another album, so this is left alone" : nil,
-                        pick: { keepers[group.id] = $0 },
+                        keeper: keeper,
+                        showsCheck: scope == .select,
+                        isOn: isIncluded(group),
+                        blockedReason: isBlocked(group) ? "a copy is no longer in your library, so this is left alone" : nil,
+                        pick: pick,
                         toggle: {
-                            if skipped.contains(group.id) { skipped.remove(group.id) } else { skipped.insert(group.id) }
+                            if pickedGroups.contains(group.id) { pickedGroups.remove(group.id) } else { pickedGroups.insert(group.id) }
+                        },
+                        hold: { copy in
+                            preview = MediaPreview(
+                                items: group.items, start: copy,
+                                title: group.isExact ? "\(group.items.count) copies" : "\(group.items.count) near-identical",
+                                keeper: keeper, pick: pick
+                            )
                         }
                     )
                 }
@@ -204,23 +247,37 @@ struct JunkReviewView: View {
     private func findingSection(_ reason: JunkReason, _ findings: [JunkFinding]) -> some View {
         let ids = Set(findings.map(\.id))
         let allTicked = ids.subtracting(blocked).isSubset(of: ticked)
+        let singles = singles
+        // In All, receipts and documents are shown but not removed.
+        let leftAlone = scope == .all && !reason.startsSelected
         return VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
-                sectionTitle(reason.title, detail: Self.detail(reason))
+                sectionTitle(reason.title, detail: leftAlone ? "left alone, Select to pick" : Self.detail(reason))
                 Spacer(minLength: 6)
-                Button(allTicked ? "Untick all" : "Tick all") {
-                    if allTicked { ticked.subtract(ids) } else { ticked.formUnion(ids.subtracting(blocked)) }
+                if scope == .select {
+                    Button(allTicked ? "Untick all" : "Tick all") {
+                        if allTicked { ticked.subtract(ids) } else { ticked.formUnion(ids.subtracting(blocked)) }
+                    }
+                    .font(.footnote.weight(.semibold))
                 }
-                .font(.footnote.weight(.semibold))
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 78), spacing: 10)], spacing: 12) {
                 ForEach(findings) { finding in
+                    let isBlocked = blocked.contains(finding.id)
                     FindingTile(
                         item: finding.item,
-                        isOn: ticked.contains(finding.id) && !blocked.contains(finding.id),
-                        isBlocked: blocked.contains(finding.id)
-                    ) {
-                        if ticked.contains(finding.id) { ticked.remove(finding.id) } else { ticked.insert(finding.id) }
+                        showsCheck: scope == .select,
+                        isOn: singles.contains(finding.id),
+                        isBlocked: isBlocked
+                    )
+                    .tapAndHold(isEnabled: !isBlocked) {
+                        if scope == .select {
+                            if ticked.contains(finding.id) { ticked.remove(finding.id) } else { ticked.insert(finding.id) }
+                        } else {
+                            preview = MediaPreview(finding.item)
+                        }
+                    } hold: {
+                        preview = MediaPreview(finding.item)
                     }
                 }
             }
@@ -244,11 +301,11 @@ struct JunkReviewView: View {
             Button {
                 confirming = true
             } label: {
-                Text(removeIDs.isEmpty ? "Tick photos to remove" : "Remove \(countText)")
+                Text(removeIDs.isEmpty ? (scope == .all ? "Nothing to Remove" : "Tick Photos to Remove") : "Remove \(countText)")
             }
             .buttonStyle(.sticker)
             .disabled(removeIDs.isEmpty || check == nil || model.isChanging || model.isAnalyzing)
-            Text(check == nil ? (error == nil ? "Checking the test album…" : "Fix the problem above to continue.") : "Best copies stay. The rest go to Recently Deleted.")
+            Text(check == nil ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.") : "Best copies stay. The rest go to Recently Deleted.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -289,10 +346,14 @@ struct JunkReviewView: View {
 private struct DuplicateCard: View {
     let group: DuplicateGroup
     let keeper: MediaItem.ID
+    /// Select shows a tick on each group; All includes every one.
+    let showsCheck: Bool
     let isOn: Bool
     let blockedReason: String?
     let pick: (MediaItem.ID) -> Void
     let toggle: () -> Void
+    /// A copy was pressed and held.
+    let hold: (MediaItem.ID) -> Void
 
     private var active: Bool { isOn && blockedReason == nil }
 
@@ -301,8 +362,10 @@ private struct DuplicateCard: View {
             HStack(spacing: 10) {
                 Button(action: toggle) {
                     HStack(spacing: 10) {
-                        InkCheck(isOn: active, size: 24)
-                            .opacity(blockedReason == nil ? 1 : 0.3)
+                        if showsCheck {
+                            InkCheck(isOn: active, size: 24)
+                                .opacity(blockedReason == nil ? 1 : 0.3)
+                        }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(group.isExact ? "\(group.items.count) copies" : "\(group.items.count) near-identical")
                                 .font(.subheadline.weight(.semibold))
@@ -322,6 +385,8 @@ private struct DuplicateCard: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(blockedReason != nil)
+                // All includes every group, so there's nothing to tick.
+                .allowsHitTesting(showsCheck)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(group.isExact ? "\(group.items.count) copies of a photo" : "\(group.items.count) near-identical photos")
                 .accessibilityValue(blockedReason ?? (active ? "Will be cleaned" : "Skipped"))
@@ -354,59 +419,58 @@ private struct DuplicateCard: View {
 
     private func copyButton(_ item: MediaItem) -> some View {
         let isKeeper = item.id == keeper
-        return Button {
-            pick(item.id)
-        } label: {
-            VStack(spacing: 6) {
-                ItemThumbnail(id: item.id, side: 72)
-                    .opacity(active && !isKeeper ? 0.45 : 1)
-                    .overlay {
-                        if active && isKeeper {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(Theme.accent, lineWidth: 3)
-                                .padding(-5)
-                        }
+        return VStack(spacing: 6) {
+            ItemThumbnail(id: item.id, side: 72)
+                .opacity(active && !isKeeper ? 0.45 : 1)
+                .overlay {
+                    if active && isKeeper {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Theme.accent, lineWidth: 3)
+                            .padding(-5)
                     }
-                Text(active ? (isKeeper ? "keep" : "remove") : ByteFormatter.string(item.currentBytes))
-                    .font(.hand(14))
-                    .foregroundStyle(active ? (isKeeper ? Theme.accent : Theme.tomato) : Color.secondary)
-            }
+                }
+            Text(active ? (isKeeper ? "keep" : "remove") : ByteFormatter.string(item.currentBytes))
+                .font(.hand(14))
+                .foregroundStyle(active ? (isKeeper ? Theme.accent : Theme.tomato) : Color.secondary)
         }
-        .buttonStyle(.plain)
-        .disabled(blockedReason != nil)
+        .accessibilityElement(children: .ignore)
+        .tapAndHold(isEnabled: blockedReason == nil) {
+            pick(item.id)
+        } hold: {
+            hold(item.id)
+        }
         .accessibilityLabel("\(item.filename), \(item.pixelWidth) by \(item.pixelHeight)")
         .accessibilityValue(active ? (isKeeper ? "Keep" : "Remove") : "Skipped")
         .accessibilityHint("Keeps this copy and removes the others")
     }
 }
 
-/// One flagged photo with a tick.
+/// One flagged photo, with a tick in Select.
 private struct FindingTile: View {
     let item: MediaItem
+    let showsCheck: Bool
     let isOn: Bool
     let isBlocked: Bool
-    let toggle: () -> Void
 
     var body: some View {
-        Button(action: toggle) {
-            VStack(spacing: 4) {
-                ItemThumbnail(id: item.id, side: 78)
-                    .opacity(isOn ? 1 : 0.55)
-                    .overlay(alignment: .topTrailing) {
+        VStack(spacing: 4) {
+            ItemThumbnail(id: item.id, side: 78)
+                .opacity(isOn ? 1 : 0.55)
+                .overlay(alignment: .topTrailing) {
+                    if showsCheck {
                         InkCheck(isOn: isOn, size: 22)
                             .padding(5)
                             .opacity(isBlocked ? 0.3 : 1)
                     }
-                Text(isBlocked ? "in another album" : ByteFormatter.string(item.currentBytes))
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(isBlocked ? Theme.tomato : .secondary)
-                    .lineLimit(1)
-            }
+                }
+            Text(isBlocked ? "not in your library" : ByteFormatter.string(item.currentBytes))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(isBlocked ? Theme.tomato : .secondary)
+                .lineLimit(1)
         }
-        .buttonStyle(.plain)
-        .disabled(isBlocked)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.filename)
-        .accessibilityValue(isBlocked ? "Also in another album, left alone" : (isOn ? "Will be removed" : "Kept"))
+        .accessibilityValue(isBlocked ? "No longer in your library, left alone" : (isOn ? "Will be removed" : "Kept"))
         .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 }

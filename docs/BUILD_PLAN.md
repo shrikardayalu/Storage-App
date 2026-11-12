@@ -67,7 +67,7 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 
 **Built (2026-10-24).** How it stays safe:
 
-- All Photos changes live in one file, `ios/StorageApp/Photos/TestAlbumChanges.swift`. `Tools/check-no-device-access.sh` fails CI if change APIs show up anywhere else, or if that file fetches photos library-wide or by ID.
+- All Photos changes live in one file, `ios/StorageApp/Photos/PhotoLibraryChanges.swift`. `Tools/check-no-device-access.sh` fails CI if change APIs show up anywhere else, or if that file fetches photos library-wide or by ID.
 - Right before every change, the app re-reads the album and checks that each approved item is in "Storage App Test" and in no other album. If even one fails, nothing changes. It needs full Photos access (limited access hides albums), and exactly one album with that name.
 - iOS shows its own confirmation. Afterwards the app re-reads the album and checks that exactly the approved items left it. The guide shows "48 → 45 items".
 

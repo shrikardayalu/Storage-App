@@ -40,7 +40,7 @@ final class JunkFinderTests: XCTestCase {
     private let receipt = ["COFFEE HOUSE", "Latte 4.50", "Muffin 3.25", "Subtotal 7.75", "Tax 0.62", "TOTAL 8.37"]
     private let letter = ["Dear Sam,", "Thanks for the visit last week.", "The garden looks lovely", "now the roses are out.", "See you soon,", "Alex"]
 
-    /// The planted test album: good photos, a copy, near-duplicates, junk, and things to leave alone.
+    /// A planted library: good photos, a copy, near-duplicates, junk, and things to leave alone.
     private func plantedAlbum() -> (items: [MediaItem], signals: [MediaItem.ID: PhotoSignals]) {
         let items = [
             photo("beach", minutes: 0),

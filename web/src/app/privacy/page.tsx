@@ -49,9 +49,8 @@ export default function PrivacyPage() {
             <ul>
               <li>
                 <strong>Photos and videos.</strong> With your permission, the app reads your photo library to show what
-                takes up space and to find duplicates, blurry shots, screenshots and large videos. While the app is in
-                Test Mode, it reads only an album named &ldquo;Storage App Test&rdquo;. Everything is analysed on your
-                iPhone. Photos, videos and anything learned from them are never uploaded or sent anywhere.
+                takes up space and to find duplicates, blurry shots, screenshots and large videos. If you choose to share
+                only some photos, it reads only those. Everything is analysed on your iPhone. Photos, videos and anything learned from them are never uploaded or sent anywhere.
               </li>
               <li>
                 <strong>Files.</strong> If you use the Files cleanup, the app reads only the one folder you pick in the

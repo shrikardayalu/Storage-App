@@ -1,38 +1,58 @@
 import XCTest
 @testable import StorageCore
 
-/// Step 3's rule: only approved items in the test album are ever changed.
+/// Step 3's rule: only items the person approved, and that are still in the library, are ever changed.
 final class SafeDeleteTests: XCTestCase {
-    func testSafetyCheckPassesOnlyApprovedAlbumItems() {
-        let check = SafetyCheck.evaluate(approved: ["a", "b"], testAlbumMembers: ["a", "b", "c"], otherAlbumMembers: [])
+    func testSafetyCheckPassesApprovedItemsStillInTheLibrary() {
+        let check = SafetyCheck.evaluate(approved: ["a", "b"], found: ["a", "b"])
         XCTAssertTrue(check.isSafe)
         XCTAssertEqual(check.verified, ["a", "b"])
         XCTAssertNil(check.problem)
     }
 
-    func testSafetyCheckBlocksItemsOutsideTheAlbum() {
-        let check = SafetyCheck.evaluate(approved: ["a", "elsewhere"], testAlbumMembers: ["a", "b"], otherAlbumMembers: [])
+    func testSafetyCheckBlocksItemsNoLongerInTheLibrary() {
+        let check = SafetyCheck.evaluate(approved: ["a", "gone"], found: ["a"])
         XCTAssertFalse(check.isSafe)
-        XCTAssertEqual(check.outsideTestAlbum, ["elsewhere"])
+        XCTAssertEqual(check.missing, ["gone"])
+        XCTAssertEqual(check.verified, ["a"])
         XCTAssertNotNil(check.problem)
     }
 
-    func testSafetyCheckBlocksItemsAlsoInAnotherAlbum() {
-        let check = SafetyCheck.evaluate(approved: ["a", "b"], testAlbumMembers: ["a", "b"], otherAlbumMembers: ["b"])
-        XCTAssertFalse(check.isSafe)
-        XCTAssertEqual(check.inOtherAlbums, ["b"])
-        XCTAssertEqual(check.verified, ["a"])
+    func testEmptyApprovalIsNeverSafe() {
+        XCTAssertFalse(SafetyCheck.evaluate(approved: [], found: []).isSafe)
     }
 
-    func testEmptyApprovalIsNeverSafe() {
-        XCTAssertFalse(SafetyCheck.evaluate(approved: [], testAlbumMembers: ["a"], otherAlbumMembers: []).isSafe)
+    func testAuditAllowsItemsAddedMeanwhile() {
+        // A photo taken, or synced from iCloud, during the change isn't a problem.
+        let receipt = DeletionReceipt.audit(approved: ["a"], before: ["a", "b"], after: ["b", "new"], deletedBytes: 10)
+        XCTAssertTrue(receipt.onlyApprovedRemoved)
+        XCTAssertEqual(receipt.deleted, ["a"])
+    }
+
+    func testCountAuditPassesOnlyWhenExactlyTheApprovedLeft() {
+        let good = DeletionReceipt.audit(approved: ["a", "b"], stillPresent: [], countBefore: 10, countAfter: 8, deletedBytes: 10)
+        XCTAssertTrue(good.onlyApprovedRemoved)
+        XCTAssertEqual(good.deleted, ["a", "b"])
+
+        // One approved item is still there.
+        let left = DeletionReceipt.audit(approved: ["a", "b"], stillPresent: ["b"], countBefore: 10, countAfter: 9, deletedBytes: 10)
+        XCTAssertFalse(left.onlyApprovedRemoved)
+        XCTAssertEqual(left.deleted, ["a"])
+
+        // The library shrank by more than what was approved.
+        let extra = DeletionReceipt.audit(approved: ["a", "b"], stillPresent: [], countBefore: 10, countAfter: 7, deletedBytes: 10)
+        XCTAssertFalse(extra.onlyApprovedRemoved)
+
+        // A new photo arrived meanwhile.
+        let added = DeletionReceipt.audit(approved: ["a", "b"], stillPresent: [], countBefore: 10, countAfter: 9, deletedBytes: 10)
+        XCTAssertTrue(added.onlyApprovedRemoved)
     }
 
     func testAuditFlagsAnyExtraRemoval() {
         let good = DeletionReceipt.audit(approved: ["a"], before: ["a", "b", "c"], after: ["b", "c"], deletedBytes: 10)
         XCTAssertTrue(good.onlyApprovedRemoved)
-        XCTAssertEqual(good.albumCountBefore, 3)
-        XCTAssertEqual(good.albumCountAfter, 2)
+        XCTAssertEqual(good.countBefore, 3)
+        XCTAssertEqual(good.countAfter, 2)
 
         let extra = DeletionReceipt.audit(approved: ["a"], before: ["a", "b", "c"], after: ["c"], deletedBytes: 10)
         XCTAssertFalse(extra.onlyApprovedRemoved)
@@ -40,8 +60,7 @@ final class SafeDeleteTests: XCTestCase {
     }
 
     func testMockDeletesOnlyTheApprovedItems() async throws {
-        let outside = makeItem(id: "not-in-album")
-        let library = MockPhotoLibrary(items: sampleItems(), outsideItems: [outside])
+        let library = MockPhotoLibrary(items: sampleItems())
         let receipt = try await library.delete(["p1", "v1"])
 
         XCTAssertTrue(receipt.onlyApprovedRemoved)
@@ -49,15 +68,12 @@ final class SafeDeleteTests: XCTestCase {
         XCTAssertEqual(receipt.deletedBytes, 604_000_000)
         let remaining = await library.items.map(\.id)
         XCTAssertEqual(Set(remaining), ["p2", "raw", "v2", "s1", "s2"])
-        let untouched = await library.outsideItems
-        XCTAssertEqual(untouched, [outside])
     }
 
     func testMockRefusesTheWholeDeleteWhenOneItemFails() async {
-        let outside = makeItem(id: "not-in-album")
-        let library = MockPhotoLibrary(items: sampleItems(), inOtherAlbums: ["p2"], outsideItems: [outside])
+        let library = MockPhotoLibrary(items: sampleItems())
 
-        for approved: Set<String> in [["p1", "not-in-album"], ["p1", "p2"]] {
+        for approved: Set<String> in [["p1", "not-in-library"], ["gone-1", "gone-2"]] {
             do {
                 _ = try await library.delete(approved)
                 XCTFail("Deleted \(approved) despite a failing item")

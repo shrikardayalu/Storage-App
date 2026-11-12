@@ -19,7 +19,7 @@ function apply(theme: Theme) {
 }
 
 /**
- * Light/dark switch. The first visit follows the system setting (the inline
+ * Light/dark switch. The first visit defaults to light mode (the inline
  * script in layout.tsx sets data-theme before paint); a click saves the choice.
  * Icons are swapped in CSS so the server and client markup always match.
  */

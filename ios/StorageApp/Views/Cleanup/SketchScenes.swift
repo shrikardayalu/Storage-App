@@ -125,7 +125,7 @@ enum GuideScenes {
             .stroke(Sketch.loop(around: CGRect(x: 94, y: 44, width: 40, height: 40), turns: 1.05, seed: 504), 0.24, 0.06, width: 2.4),
             .stroke(Sketch.check(in: CGRect(x: 104, y: 56, width: 20, height: 15), seed: 505), 0.3, 0.05, width: 3.2),
             .label("your still", at: CGPoint(x: 72, y: 218), 0.36, size: 17),
-            .label("stays in your album", at: CGPoint(x: 72, y: 240), 0.42, size: 14, color: Theme.accent),
+            .label("stays in your library", at: CGPoint(x: 72, y: 240), 0.42, size: 14, color: Theme.accent),
             .stroke(Sketch.scribble(width: 110, at: CGPoint(x: 18, y: 254), seed: 506), 0.48, 0.06, color: Theme.mint, width: 3.2),
 
             // Divider.

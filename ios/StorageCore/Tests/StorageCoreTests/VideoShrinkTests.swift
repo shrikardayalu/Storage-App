@@ -18,7 +18,7 @@ final class VideoShrinkTests: XCTestCase {
         duration: TimeInterval = 60, bytes: Int64 = 340_000_000, isVideo: Bool = true, inAlbum: Bool = true
     ) -> VideoDetails {
         VideoDetails(creationDate: date, latitude: lat, longitude: lat.map { -$0 }, isFavorite: favorite,
-                     duration: duration, bytes: bytes, isVideo: isVideo, inTestAlbum: inAlbum)
+                     duration: duration, bytes: bytes, isVideo: isVideo, inOriginalAlbums: inAlbum)
     }
 
     // MARK: Trim
@@ -178,10 +178,10 @@ final class VideoShrinkTests: XCTestCase {
         XCTAssertTrue(left.isEmpty)
     }
 
-    func testMockRefusesAVideoInAnotherAlbum() async {
-        let library = MockPhotoLibrary(items: [video(id: "v")], inOtherAlbums: ["v"])
+    func testMockRefusesAVideoThatLeftTheLibrary() async {
+        let library = MockPhotoLibrary(items: [video(id: "v")])
         do {
-            _ = try await library.prepareVideo("v", edit: VideoEdit(quality: .smaller, trim: .full(60)))
+            _ = try await library.prepareVideo("gone", edit: VideoEdit(quality: .smaller, trim: .full(60)))
             XCTFail("Should refuse")
         } catch let error as PhotoChangeError {
             guard case .unsafe = error else { return XCTFail("Wrong error: \(error)") }

@@ -61,11 +61,11 @@ struct ReclaimCheck: Equatable {
     let gainedBytes: Int64
 }
 
-/// Shared app state: real device storage readings, the Test Mode album scan,
+/// Shared app state: real device storage readings, the photo library scan,
 /// selection, changes, and navigation. Views read from it and call its methods;
 /// all device access goes through the injected services, so tests and previews
-/// swap in mocks. The only changes go through `TestAlbumChangeService`, which
-/// can reach nothing outside the test album.
+/// swap in mocks. The only changes go through `PhotoChangeService`, which
+/// changes only the items the person approved on a review screen.
 @MainActor
 @Observable
 final class AppModel {
@@ -126,10 +126,14 @@ final class AppModel {
         try? restartStore.save(restartCoach)
     }
 
-    // MARK: Test album scan
+    // MARK: Library scan
 
-    /// The latest read-only scan of the test album, if one has run.
-    private(set) var albumScan: LibraryScan?
+    /// The latest read-only scan of the photo library, if one has run.
+    private(set) var libraryScan: LibraryScan?
+    /// What each tool works on, sorted and totalled once per scan. Screens read
+    /// these many times per redraw, so they must never be worked out on the spot:
+    /// with a whole library that froze the app.
+    private var lists = LibraryLists()
     private(set) var photoAccess: PhotoAccess = .notDetermined
     private(set) var isScanning = false
     /// Why the last scan didn't finish, shown on the scan card.
@@ -160,10 +164,30 @@ final class AppModel {
 
     // MARK: Duplicates + junk (Build Plan step 7)
 
-    /// Measurements per photo, kept across scans so only new photos are measured again.
+    /// Measurements per photo, kept across scans and launches so only new photos are measured again.
     private var photoSignals: [MediaItem.ID: PhotoSignals] = [:]
+    /// Whether the saved measurements have been read from disk yet.
+    private var loadedSavedSignals = false
+    /// The measuring that's running, if any. The model owns it, so it carries
+    /// on when the screen that asked for it goes away.
+    private var junkTask: Task<Void, Never>?
+    /// True once every photo in the latest scan has been through the junk finder this session.
+    private(set) var junkAnalysisFinished = false
+    /// How many photos are measured between saves and progress steps.
+    static let analysisBatch = 100
     /// What the junk finder suggests; nil until the photos have been measured once.
     private(set) var junkReport: JunkReport?
+    /// One-tap Photo Cleanup for the scanned library, once the photos have been checked.
+    private(set) var photoCleanupPlan: PhotoCleanupPlan?
+    /// Why each Live Photo is better left Live (people, pets, scenery, a
+    /// favorite, not checked yet). Nil until the photos have been checked once.
+    private(set) var liveKeepReasons: [MediaItem.ID: KeepReason]?
+    /// The Live Photos a still would do for. Nil until the photos have been checked once.
+    private(set) var suggestedLivePhotos: [MediaItem]?
+    /// Every junk suggestion as a swipe card, including ones already kept on a swipe.
+    private var allSwipeCandidates: [SwipeCandidate]?
+    /// The swipe feed: every junk suggestion except photos already kept on a swipe.
+    private(set) var swipeCandidates: [SwipeCandidate]?
     private(set) var isAnalyzing = false
     /// Share of photos measured so far, 0 to 1.
     private(set) var analysisProgress: Double = 0
@@ -175,8 +199,11 @@ final class AppModel {
 
     /// Remembers photos kept in Swipe to clean so they aren't offered again.
     func markSwipeKept(_ ids: some Sequence<MediaItem.ID>) {
+        let before = swipeKept.count
         swipeKept.formUnion(ids)
+        guard swipeKept.count != before else { return }
         swipeKeptDefaults?.set(Array(swipeKept), forKey: Self.swipeKeptKey)
+        swipeCandidates = allSwipeCandidates?.filter { !swipeKept.contains($0.id) }
     }
 
     // MARK: Files cleanup (Build Plan step 8)
@@ -227,8 +254,9 @@ final class AppModel {
     private let historyStore: StorageHistoryStore
     private let freedStore: FreedLedgerStore
     private let photoScanner: any PhotoScanService
-    private let photoChanges: any TestAlbumChangeService
+    private let photoChanges: any PhotoChangeService
     private let photoAnalyzer: any PhotoAnalysisService
+    private let signalsStore: PhotoSignalsStore
     private let folderFiles: any FolderFilesService
     private let restartStore: RestartCoachStore
     /// Time since the phone started, including time asleep.
@@ -239,8 +267,9 @@ final class AppModel {
         historyStore: StorageHistoryStore = .inMemory,
         freedStore: FreedLedgerStore = .inMemory,
         photoScanner: any PhotoScanService = MockPhotoScanService(items: []),
-        photoChanges: any TestAlbumChangeService = MockPhotoLibrary(items: []),
+        photoChanges: any PhotoChangeService = MockPhotoLibrary(items: []),
         photoAnalyzer: any PhotoAnalysisService = MockPhotoAnalysis(),
+        signalsStore: PhotoSignalsStore = .inMemory,
         folderFiles: any FolderFilesService = MockFolderFiles(files: []),
         restartStore: RestartCoachStore = .inMemory,
         swipeKeptDefaults: UserDefaults? = nil,
@@ -256,6 +285,7 @@ final class AppModel {
         self.photoScanner = photoScanner
         self.photoChanges = photoChanges
         self.photoAnalyzer = photoAnalyzer
+        self.signalsStore = signalsStore
         self.folderFiles = folderFiles
         self.storageHistory = historyStore.load()
         self.deviceStorage = storageHistory.latest
@@ -274,7 +304,8 @@ final class AppModel {
     }
 
     /// The real configuration: volume readings saved in Application Support,
-    /// a PhotoKit scanner, and PhotoKit changes, both limited to the Test Mode album.
+    /// a PhotoKit scanner of the whole library, and PhotoKit changes that
+    /// touch only what the person approves.
     static func live() -> AppModel {
         // Smaller video copies from an earlier run that were never used.
         VideoExporter.removeLeftovers()
@@ -283,8 +314,11 @@ final class AppModel {
             historyStore: .applicationSupport,
             freedStore: .applicationSupport,
             photoScanner: PhotoKitScanService(),
-            photoChanges: PhotoKitTestAlbumChanges(),
+            photoChanges: PhotoKitChanges(),
             photoAnalyzer: PhotoKitAnalyzer(),
+            // A cache: iOS may clear it when space is short, and it's measured again.
+            signalsStore: PhotoSignalsStore(fileURL: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
+                .appendingPathComponent("photo-signals.bin")),
             folderFiles: PickedFolderFiles(),
             restartStore: .applicationSupport,
             swipeKeptDefaults: .standard,
@@ -314,7 +348,7 @@ final class AppModel {
         }
     }
 
-    // MARK: Test album scan
+    // MARK: Library scan
 
     /// Reads the current Photos permission without prompting.
     func refreshPhotoAccess() async {
@@ -325,14 +359,29 @@ final class AppModel {
     /// Library is filled without a tap. Never shows the permission prompt.
     func scanIfAllowed() async {
         await refreshPhotoAccess()
-        if photoAccess.canRead, albumScan == nil {
-            await scanTestAlbum()
+        guard photoAccess.canRead, libraryScan == nil else { return }
+        // Show what the last launch found straight away, then check it against
+        // the library. Changes never rely on it: each one looks its items up fresh.
+        if let items = await photoScanner.lastScan(), !items.isEmpty, libraryScan == nil, !isScanning {
+            let (scan, lists) = await Task.detached(priority: .userInitiated) { Self.organize(items) }.value
+            if libraryScan == nil {
+                libraryScan = scan
+                self.lists = lists
+            }
         }
+        await scanLibrary()
     }
 
-    /// Scans only the Test Mode album, asking for Photos access first if needed.
+    /// Sorts and totals a scan's items. Slow on a big library, so call it off the main thread.
+    private nonisolated static func organize(_ items: [MediaItem]) -> (LibraryScan, LibraryLists) {
+        let scan = LibraryScan(items: items)
+        return (scan, LibraryLists(scan))
+    }
+
+    /// Scans the photo library, asking for Photos access first if needed. With
+    /// limited access it sees only the photos the person picked.
     /// Read-only: nothing in Photos changes.
-    func scanTestAlbum() async {
+    func scanLibrary() async {
         guard !isScanning else { return }
         isScanning = true
         defer { isScanning = false }
@@ -341,11 +390,20 @@ final class AppModel {
             photoAccess = await photoScanner.requestAccess()
         }
         do {
-            let scan = LibraryScan(items: try await photoScanner.scanAlbum(named: TestMode.albumName))
-            albumScan = scan
-            selection.prune(keeping: Set(scan.items.map(\.id)))
+            let items = try await photoScanner.scanLibrary()
+            // Sorting and totalling a big library is kept off the main thread.
+            let previous = libraryScan?.items
+            let organized = await Task.detached(priority: .userInitiated) { () -> (LibraryScan, LibraryLists)? in
+                let (scan, lists) = Self.organize(items)
+                // Nothing changed since the last scan: keep it, so no screen has to start over.
+                return scan.items == previous ? nil : (scan, lists)
+            }.value
             scanError = nil
-            if junkReport != nil { updateJunkReport() }
+            guard let (scan, lists) = organized else { return }
+            libraryScan = scan
+            self.lists = lists
+            selection.prune(keeping: lists.ids)
+            if junkReport != nil { await updateJunkReport() }
         } catch let error as PhotoScanError {
             scanError = error
         } catch {
@@ -356,9 +414,18 @@ final class AppModel {
     // MARK: Selection
 
     func toggleSelection(_ id: MediaItem.ID) {
-        // Only items the latest scan found in the test album can be picked.
-        guard albumScan?.items.contains(where: { $0.id == id }) == true else { return }
+        // Only items the latest scan found can be picked.
+        guard lists.ids.contains(id) else { return }
         selection.toggle(id)
+    }
+
+    /// Picks or unpicks many items in one go.
+    func setSelected(_ selected: Bool, _ ids: some Sequence<MediaItem.ID>) {
+        if selected {
+            selection.select(ids.filter(lists.ids.contains))
+        } else {
+            selection.deselect(ids)
+        }
     }
 
     func clearSelection() {
@@ -367,78 +434,139 @@ final class AppModel {
 
     /// The picked items, biggest first.
     var selectedItems: [MediaItem] {
-        albumScan?.items.filter { selection.contains($0.id) } ?? []
+        libraryScan?.items.filter { selection.contains($0.id) } ?? []
     }
 
-    var convertibleLivePhotos: [MediaItem] {
-        albumScan?.items.filter(\.isConvertibleLivePhoto) ?? []
-    }
+    var convertibleLivePhotos: [MediaItem] { lists.convertibleLivePhotos }
 
     /// Screenshots still saved as PNG, biggest first.
-    var resavableScreenshots: [MediaItem] {
-        (albumScan?.items.filter(ScreenshotResave.isResavable) ?? []).sorted { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
-    }
+    var resavableScreenshots: [MediaItem] { lists.resavableScreenshots }
 
     /// What re-saving every PNG screenshot could save, estimated.
-    var screenshotSaving: Int64 {
-        resavableScreenshots.reduce(Int64(0)) { $0 + ScreenshotResave.estimatedSaving(for: $1) }
-    }
+    var screenshotSaving: Int64 { lists.screenshotSaving }
 
-    /// Bursts in the test album that still have more than one shot.
-    var bursts: [Burst] {
-        Burst.all(in: albumScan?.items ?? [])
-    }
+    /// Bursts that still have more than one shot.
+    var bursts: [Burst] { lists.bursts }
 
-    /// Videos in the test album that can be compressed or trimmed, biggest first.
-    var shrinkableVideos: [MediaItem] {
-        (albumScan?.items.filter(\.isShrinkableVideo) ?? []).sorted { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
-    }
+    /// Videos that can be compressed or trimmed, biggest first.
+    var shrinkableVideos: [MediaItem] { lists.shrinkableVideos }
 
-    /// What Live Photos to stills could save, if all were converted.
+    /// Videos the shrink tool leaves alone: slo-mo, Cinematic, ProRes and very small ones.
+    var videosLeftAlone: Int { lists.videoCount - lists.shrinkableVideos.count }
+
+    /// What Live Photos to stills could save: the suggested ones once the
+    /// photos have been checked, every Live Photo before that.
     var livePhotoSaving: Int64 {
-        convertibleLivePhotos.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
+        suggestedLivePhotos.map { $0.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes } } ?? lists.livePhotoSaving
     }
 
     /// What keeping the suggested shot of each burst could save.
-    var burstSaving: Int64 {
-        bursts.reduce(Int64(0)) { $0 + $1.savedBytes(keeping: $1.suggestedKeeper) }
-    }
+    var burstSaving: Int64 { lists.burstSaving }
 
     /// What shrinking every video with the smaller option, untrimmed, could save.
-    var videoSaving: Int64 {
-        shrinkableVideos.reduce(Int64(0)) {
-            $0 + VideoShrink.estimatedSaving(for: $1, edit: VideoEdit(quality: .smaller, trim: .full($1.duration ?? 0)))
-        }
-    }
+    var videoSaving: Int64 { lists.videoSaving }
 
     // MARK: Duplicates + junk
 
-    /// Measures any photos not measured yet, then updates the junk report. Read-only.
+    /// Measures any photos not measured yet, then updates the junk report, and
+    /// returns when that's done. Read-only. If it's already running, this
+    /// waits for the run in progress.
     func findJunk() async {
-        guard !isAnalyzing, let scan = albumScan else { return }
-        isAnalyzing = true
-        defer { isAnalyzing = false }
-        let ids = Set(scan.items.map(\.id))
-        photoSignals = photoSignals.filter { ids.contains($0.key) }
-        let unmeasured = scan.items.filter { photoSignals[$0.id] == nil }
-        analysisProgress = 0
-        if !unmeasured.isEmpty {
-            let found = await photoAnalyzer.analyze(unmeasured) { [weak self] value in
-                Task { @MainActor in self?.analysisProgress = value }
-            }
-            photoSignals.merge(found) { _, new in new }
-        }
-        analysisProgress = 1
-        updateJunkReport()
+        startFindingJunk()
+        await junkTask?.value
     }
 
-    private func updateJunkReport() {
-        junkReport = JunkFinder.find(in: albumScan?.items ?? [], signals: photoSignals, now: Date())
+    /// Starts `findJunk` without waiting for it. A whole library takes a
+    /// while the first time; measurements are saved as they're made, so a run
+    /// that's cut short picks up where it stopped.
+    func startFindingJunk() {
+        guard junkTask == nil, libraryScan != nil else { return }
+        isAnalyzing = true
+        analysisProgress = 0
+        junkTask = Task { [weak self] in
+            await self?.measurePhotos()
+            self?.junkTask = nil
+            self?.isAnalyzing = false
+        }
+    }
+
+    private func measurePhotos() async {
+        guard let scan = libraryScan else { return }
+        let store = signalsStore
+        if !loadedSavedSignals {
+            loadedSavedSignals = true
+            let saved = await Task.detached(priority: .userInitiated) { store.load() }.value
+            photoSignals.merge(saved) { current, _ in current }
+        }
+        let ids = lists.ids
+        let savedCount = photoSignals.count
+        photoSignals = photoSignals.filter { ids.contains($0.key) }
+        let dropped = savedCount - photoSignals.count
+
+        // Videos and burst shots aren't measured; they have their own tools.
+        // Measurements from an older version of the app are made again.
+        let unmeasured = scan.items.filter {
+            $0.category != .video && $0.burstID == nil && (photoSignals[$0.id]?.version ?? 0) < PhotoSignals.currentVersion
+        }
+        let outdated = unmeasured.contains { photoSignals[$0.id] != nil }
+        var done = 0
+        var lastReport = Date()
+        while done < unmeasured.count, !Task.isCancelled {
+            let batch = Array(unmeasured[done..<min(done + Self.analysisBatch, unmeasured.count)])
+            let base = done
+            let total = unmeasured.count
+            let found = await photoAnalyzer.analyze(batch) { [weak self] value in
+                Task { @MainActor in
+                    guard let self, self.isAnalyzing else { return }
+                    self.analysisProgress = max(self.analysisProgress, (Double(base) + value * Double(batch.count)) / Double(total))
+                }
+            }
+            photoSignals.merge(found) { _, new in new }
+            done += batch.count
+            if !found.isEmpty {
+                await Task.detached(priority: .utility) { store.append(found) }.value
+            }
+            // A first look at what's been found so far, while a big library is still being measured.
+            if done < unmeasured.count, Date().timeIntervalSince(lastReport) > 10 {
+                await updateJunkReport()
+                lastReport = Date()
+            }
+        }
+        // Photos that are gone pile up in the saved file, and so do
+        // measurements that were made again; tidy it now and then.
+        if dropped > max(500, photoSignals.count / 5) || (outdated && !Task.isCancelled) {
+            let current = photoSignals
+            await Task.detached(priority: .utility) { store.rewrite(current) }.value
+        }
+        analysisProgress = 1
+        await updateJunkReport()
+        junkAnalysisFinished = !Task.isCancelled && libraryScan?.date == scan.date
+    }
+
+    /// Works the report out off the main thread: comparing every photo with
+    /// every other takes a moment on a big library.
+    private func updateJunkReport() async {
+        let items = libraryScan?.items ?? []
+        let signals = photoSignals
+        let livePhotos = lists.convertibleLivePhotos
+        let (report, plan, candidates, keepLive, suggested) = await Task.detached(priority: .userInitiated) {
+            let report = JunkFinder.find(in: items, signals: signals, now: Date())
+            // Only Live Photos that don't need to be Live are made into stills.
+            let keepLive = LiveStills.keepReasons(for: livePhotos, signals: signals)
+            let suggested = livePhotos.filter { keepLive[$0.id] == nil }
+            return (report, PhotoCleanupPlan(report: report, livePhotos: suggested), SwipeCandidate.all(from: report), keepLive, suggested)
+        }.value
+        junkReport = report
+        photoCleanupPlan = plan
+        liveKeepReasons = keepLive
+        suggestedLivePhotos = suggested
+        allSwipeCandidates = candidates
+        swipeCandidates = candidates.filter { !swipeKept.contains($0.id) }
     }
 
     /// Removes the approved duplicates and junk, keeping the picked copy of each
     /// duplicate, then opens the Recently Deleted guide. Refuses if a removal
-    /// would take every copy, or if a kept copy has left the album. Returns nil
+    /// would take every copy, or if a kept copy has left the library. Returns nil
     /// on success, or why nothing changed.
     @discardableResult
     func removeJunk(_ remove: Set<MediaItem.ID>, keeping keepers: Set<MediaItem.ID>) async -> PhotoChangeError? {
@@ -483,11 +611,11 @@ final class AppModel {
         } catch {
             return .verificationFailed(error.localizedDescription)
         }
-        // A kept copy that left the album means removing the others could lose the photo.
+        // A kept copy that left the library means removing the others could lose the photo.
         if !keepers.isEmpty {
             switch await albumCheck(keepers) {
-            case .success(let check) where !check.outsideTestAlbum.isEmpty:
-                return .junkChanged("A copy you chose to keep is no longer in \u{201C}\(TestMode.albumName)\u{201D}.")
+            case .success(let check) where !check.missing.isEmpty:
+                return .junkChanged("A copy you chose to keep is no longer in your library.")
             case .failure(let error):
                 return error
             case .success:
@@ -497,7 +625,7 @@ final class AppModel {
         return nil
     }
 
-    // MARK: Changes (test album only)
+    // MARK: Changes (approved items only)
 
     /// Like `safetyCheck`, but a failed check comes back as its result, so a
     /// screen can mark the items it can't touch instead of only showing an error.
@@ -508,7 +636,7 @@ final class AppModel {
         }
     }
 
-    /// Checks the approved items against the album without changing anything.
+    /// Checks the approved items against the library without changing anything.
     func safetyCheck(_ approved: Set<MediaItem.ID>) async -> Result<SafetyCheck, PhotoChangeError> {
         do {
             return .success(try await photoChanges.check(approved))
@@ -605,12 +733,13 @@ final class AppModel {
     @discardableResult
     func shrinkVideos(_ qualities: [MediaItem.ID: VideoQuality]) async -> PhotoChangeError? {
         let videos = shrinkableVideos.filter { qualities[$0.id] != nil }
-        guard !videos.isEmpty else { return .unsafe(SafetyCheck(approved: [], outsideTestAlbum: [], inOtherAlbums: [])) }
+        guard !videos.isEmpty else { return .unsafe(SafetyCheck(approved: [])) }
         videoBatchProgress = (0, videos.count)
         defer { videoBatchProgress = nil }
         return await change(Set(videos.map(\.id))) { changes in
             var prepared: [PreparedVideo] = []
             var skipped = 0
+            var failure: PhotoChangeError?
             do {
                 for (index, item) in videos.enumerated() {
                     self.videoBatchProgress = (index, videos.count)
@@ -622,10 +751,16 @@ final class AppModel {
                         skipped += 1
                     } catch PhotoChangeError.videoUnsupported {
                         skipped += 1
+                    } catch let error as PhotoChangeError {
+                        // One video that can't be copied (no space left, or it couldn't
+                        // be fetched from iCloud) doesn't stop the ones already made.
+                        guard case .exportFailed = error else { throw error }
+                        failure = error
+                        skipped += 1
                     }
                 }
                 self.videoBatchProgress = (videos.count, videos.count)
-                guard !prepared.isEmpty else { throw PhotoChangeError.videoNotSmaller }
+                guard !prepared.isEmpty else { throw failure ?? PhotoChangeError.videoNotSmaller }
                 let results = try await changes.replaceVideos(with: prepared)
                 return CleanupGuide(
                     kind: .shrunkVideos(results, skipped: skipped),
@@ -641,9 +776,9 @@ final class AppModel {
 
     private func change(
         _ approved: Set<MediaItem.ID>,
-        _ work: (any TestAlbumChangeService) async throws -> CleanupGuide
+        _ work: (any PhotoChangeService) async throws -> CleanupGuide
     ) async -> PhotoChangeError? {
-        guard !approved.isEmpty else { return .unsafe(SafetyCheck(approved: [], outsideTestAlbum: [], inOtherAlbums: [])) }
+        guard !approved.isEmpty else { return .unsafe(SafetyCheck(approved: [])) }
         guard !isChanging else { return .cancelled }
         isChanging = true
         defer { isChanging = false }
@@ -668,8 +803,8 @@ final class AppModel {
             } else {
                 self.guide = guide
             }
-            // Re-read the album so the Library shows what's really there now.
-            await scanTestAlbum()
+            // Re-read the library so the Library tab shows what's really there now.
+            await scanLibrary()
             return nil
         } catch let error as PhotoChangeError {
             return error
@@ -867,7 +1002,7 @@ extension AppModel {
             availableBytes: 2_290_000_000,
             availableForImportantUsageBytes: 9_100_000_000
         )
-        model.albumScan = LibraryScan(items: items)
+        (model.libraryScan, model.lists) = organize(items)
         model.photoAccess = .granted
         return model
     }
@@ -898,5 +1033,50 @@ extension AppModel {
         showingSampleResults = true
         freed = ledger
         deviceStorage = reading(50)
+    }
+}
+
+/// What each tool works on in one scan, sorted and totalled once.
+struct LibraryLists: Sendable {
+    var ids: Set<MediaItem.ID> = []
+    var convertibleLivePhotos: [MediaItem] = []
+    var resavableScreenshots: [MediaItem] = []
+    var bursts: [Burst] = []
+    var shrinkableVideos: [MediaItem] = []
+    var videoCount = 0
+    var livePhotoSaving: Int64 = 0
+    var screenshotSaving: Int64 = 0
+    var burstSaving: Int64 = 0
+    var videoSaving: Int64 = 0
+
+    init() {}
+
+    init(_ scan: LibraryScan) {
+        var burstShots: [MediaItem] = []
+        ids.reserveCapacity(scan.items.count)
+        for item in scan.items {
+            ids.insert(item.id)
+            if item.isConvertibleLivePhoto {
+                convertibleLivePhotos.append(item)
+                livePhotoSaving += item.livePhotoVideoBytes
+            }
+            if ScreenshotResave.isResavable(item) {
+                resavableScreenshots.append(item)
+                screenshotSaving += ScreenshotResave.estimatedSaving(for: item)
+            }
+            if item.burstID != nil { burstShots.append(item) }
+            if item.category == .video {
+                videoCount += 1
+                if item.isShrinkableVideo {
+                    shrinkableVideos.append(item)
+                    videoSaving += VideoShrink.estimatedSaving(for: item, edit: VideoEdit(quality: .smaller, trim: .full(item.duration ?? 0)))
+                }
+            }
+        }
+        // Biggest first, with the ID as a tie-breaker so the order is stable.
+        resavableScreenshots.sort { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
+        shrinkableVideos.sort { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
+        bursts = Burst.all(in: burstShots)
+        burstSaving = bursts.reduce(Int64(0)) { $0 + $1.savedBytes(keeping: $1.suggestedKeeper) }
     }
 }

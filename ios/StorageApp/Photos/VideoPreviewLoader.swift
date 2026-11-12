@@ -5,9 +5,7 @@ import Photos
 enum VideoPreviewLoader {
     /// The video as Photos plays it, edits included. Downloads it from iCloud if needed.
     static func playerItem(for localIdentifier: String) async -> AVPlayerItem? {
-        guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [localIdentifier], options: nil).firstObject else {
-            return nil
-        }
+        guard let asset = PhotoLibrary.asset(localIdentifier) else { return nil }
         let options = PHVideoRequestOptions()
         options.version = .current
         options.deliveryMode = .automatic

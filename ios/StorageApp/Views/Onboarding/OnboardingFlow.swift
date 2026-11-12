@@ -452,7 +452,7 @@ private struct PainPage: View {
 
     /// The Photos permission, explained before iOS asks for it.
     private var scanNote: String {
-        let scan = "Next, a quick scan of your \u{201C}\(TestMode.albumName)\u{201D} album. Nothing leaves your iPhone, and nothing is deleted unless you say so."
+        let scan = "Next, a quick scan of your photos and videos. Nothing leaves your iPhone, and nothing is deleted unless you say so."
         guard model.photoAccess == .notDetermined else { return scan }
         return scan + " iOS will ask for Photos access: choose \u{201C}Allow Full Access\u{201D}."
     }
@@ -562,7 +562,7 @@ private struct ScanPage: View {
                 notice(
                     illustration: .lock,
                     title: "Photos access is off",
-                    message: "SimpleShrink needs to see your \u{201C}\(TestMode.albumName)\u{201D} album to find space. You can turn access on in Settings.",
+                    message: "SimpleShrink needs to see your photos to find space. You can turn access on in Settings.",
                     primary: ("Open Settings", openSettings)
                 )
             case .problem(let message):
@@ -571,7 +571,7 @@ private struct ScanPage: View {
                 notice(
                     illustration: .emptyBox,
                     title: "Nothing to scan yet",
-                    message: "Your \u{201C}\(TestMode.albumName)\u{201D} album is empty. Add some photos and videos to it, then scan from Home.",
+                    message: "SimpleShrink can't see any photos or videos yet. If you chose only some photos, pick more in Settings, then scan from Home.",
                     primary: nil
                 )
             }
@@ -614,13 +614,13 @@ private struct ScanPage: View {
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                 }
-                Text(TestMode.albumName.uppercased())
+                Text("YOUR PHOTO LIBRARY")
                     .font(.caption.weight(.heavy).monospaced())
                     .tracking(1)
                     .foregroundStyle(.secondary)
                 DashedRule()
                 if phase == .reading {
-                    ReadingIndicator(text: "reading your album")
+                    ReadingIndicator(text: "reading your library")
                         .padding(.vertical, 18)
                 }
                 ForEach(Array(lines.prefix(shown))) { line in
@@ -679,6 +679,9 @@ private struct ScanPage: View {
 
     // MARK: Running the scan
 
+    /// How long the scan page waits for duplicates and blurry shots before moving on.
+    private static let analysisPatience: TimeInterval = 20
+
     private func scan() async {
         phase = .reading
         lines = []
@@ -687,7 +690,7 @@ private struct ScanPage: View {
         found = []
         let started = Date()
 
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         // The app may already be scanning from launch; wait for that one instead.
         while model.isScanning { try? await Task.sleep(for: .milliseconds(100)) }
 
@@ -696,9 +699,9 @@ private struct ScanPage: View {
             phase = .problem(error.errorDescription ?? "Something went wrong while scanning.")
             return
         }
-        guard let scan = model.albumScan, scan.total.count > 0 else { phase = .empty; return }
+        guard let scan = model.libraryScan, scan.total.count > 0 else { phase = .empty; return }
 
-        // A beat of "reading" even on a tiny album, so the receipt has somewhere to come from.
+        // A beat of "reading" even on a tiny library, so the receipt has somewhere to come from.
         let minimum = 1.2 - Date().timeIntervalSince(started)
         if minimum > 0 { try? await Task.sleep(for: .seconds(minimum)) }
 
@@ -707,14 +710,19 @@ private struct ScanPage: View {
             return Line(id: group.rawValue, title: group.title, detail: "\(total.count)", bytes: total.bytes)
         }
         phase = .printing
-        // Measure for duplicates and junk while the lines print.
-        async let analysis: Void = model.findJunk()
+        // Measure for duplicates and junk while the lines print. A big library
+        // takes minutes the first time, so this waits a little and moves on;
+        // the model keeps measuring in the background and saves as it goes.
+        model.startFindingJunk()
         for index in lines.indices {
             try? await Task.sleep(for: .milliseconds(420))
             shown = index + 1
             printTick += 1
         }
-        await analysis
+        let patience = Date().addingTimeInterval(Self.analysisPatience)
+        while model.isAnalyzing, Date() < patience {
+            try? await Task.sleep(for: .milliseconds(200))
+        }
 
         lines.append(Line(id: "total", title: "Total", detail: "\(scan.total.count)", bytes: scan.total.bytes, isTotal: true))
         try? await Task.sleep(for: .milliseconds(500))
@@ -895,7 +903,7 @@ private struct PicksPage: View {
     }
 
     private var footer: String {
-        let source = "estimated from your \u{201C}\(TestMode.albumName)\u{201D} album."
+        let source = "estimated from your scan."
         guard pickedBytes > 0 else { return "Sizes " + source }
         return "Up to \(ByteFormatter.string(pickedBytes, precision: .twoDecimals)) back, " + source
     }

@@ -68,7 +68,7 @@ public struct ResavedScreenshot: Hashable, Sendable, Identifiable {
             keptDate = original.creationDate == nil && new.creationDate == nil
         }
         keptFavorite = original.isFavorite == new.isFavorite
-        keptAlbum = new.inTestAlbum
+        keptAlbum = new.inOriginalAlbums
         isSameSize = original.pixelWidth == new.pixelWidth && original.pixelHeight == new.pixelHeight
     }
 }

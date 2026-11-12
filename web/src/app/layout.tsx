@@ -11,8 +11,8 @@ const display = Schibsted_Grotesk({ variable: "--font-schibsted", subsets: ["lat
 const body = Hanken_Grotesk({ variable: "--font-hanken", subsets: ["latin"] });
 const hand = Gochi_Hand({ variable: "--font-gochi", subsets: ["latin"], weight: "400" });
 
-// Runs before first paint: opts into scroll-reveal and applies the saved (or system) theme.
-const THEME_SCRIPT = `document.documentElement.classList.add('js');try{var t=localStorage.getItem('theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.theme=t}catch(e){}`;
+// Runs before first paint: applies a saved theme, defaulting to light even if storage is blocked.
+const THEME_SCRIPT = `document.documentElement.classList.add('js');var t='light';try{var s=localStorage.getItem('theme');if(s==='light'||s==='dark')t=s}catch(e){}document.documentElement.dataset.theme=t`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -48,12 +48,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      data-theme="light"
       data-scroll-behavior="smooth"
       className={`${display.variable} ${body.variable} ${hand.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
-        {/* Without JS, content just shows and the system theme applies via CSS. */}
+        {/* Without JS, content stays visible in the default light theme. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col">

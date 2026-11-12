@@ -55,7 +55,7 @@ struct SwipeCleanView: View {
                     illustration: .shieldCheck,
                     title: queue.isEmpty ? "Nothing to swipe" : "All caught up",
                     message: queue.isEmpty
-                        ? "No likely deletes in \u{201C}\(TestMode.albumName)\u{201D} right now."
+                        ? "No likely deletes in your library right now."
                         : (toDelete.isEmpty ? "You kept everything. Nothing will be deleted." : "Delete what you swiped left on below, or undo any of it first.")
                 )
                 .padding(.horizontal, 20)
@@ -83,7 +83,7 @@ struct SwipeCleanView: View {
             if model.isChanging { WorkingOverlay(message: "Deleting what you swiped away…") }
         }
         .confirmationDialog(
-            "Delete \(countText) from \u{201C}\(TestMode.albumName)\u{201D}?",
+            "Delete \(countText) from your library?",
             isPresented: $confirming,
             titleVisibility: .visible
         ) {
@@ -96,7 +96,7 @@ struct SwipeCleanView: View {
         // Photos kept on a swipe stay kept: they aren't offered again next time.
         .onDisappear { model.markSwipeKept(kept) }
         .onChange(of: model.junkReport) { _, _ in
-            // After a delete the album is scanned again: start over on what's left.
+            // After a delete the library is scanned again: start over on what's left.
             if !model.isChanging, decisions.isEmpty { Task { await load() } }
         }
     }
@@ -219,10 +219,10 @@ struct SwipeCleanView: View {
     private func load() async {
         await model.findJunk()
         let candidates = model.swipeCandidates ?? []
-        // Leave out anything the album check won't let the app touch, such as a photo in another album.
+        // Leave out anything the safety check won't let the app touch, such as a photo that's gone since the scan.
         var blocked: Set<MediaItem.ID> = []
         if !candidates.isEmpty, case .success(let check) = await model.albumCheck(Set(candidates.map(\.id))) {
-            blocked = check.outsideTestAlbum.union(check.inOtherAlbums)
+            blocked = check.missing
         }
         queue = candidates.filter { !blocked.contains($0.id) }
         position = 0

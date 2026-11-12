@@ -2,8 +2,8 @@
 
 Everything App Store Connect asks for that the repository can answer,
 ready to paste. Steps that need the paid account are in `docs/RELEASE.md`,
-and the audit is in `docs/LAUNCH_AUDIT.md`. Test Mode stays on for now, so
-the review notes below tell the reviewer how to set up the test album.
+and the audit is in `docs/LAUNCH_AUDIT.md`. Test Mode was removed on
+2026-11-11: the app scans the whole photo library.
 
 Character limits are checked. The marketing copy (subtitle, promotional
 text, description, keywords) is a draft that uses only claims the app and
@@ -96,7 +96,7 @@ rejects brand names in keywords, so there's no "iphone".
 **Screenshots:** App Store Connect needs the 6.9" iPhone size, at 1320 × 2868
 or 1290 × 2796. CI's screenshots (the **Screenshots** artifact) come from a
 6.3" iPhone Pro, so take store screenshots on a 6.9" simulator or device.
-They must not show the Test Mode badge if Test Mode is off by then.
+Take them from a build made after 2026-11-11, which has no Test Mode badge.
 
 ## In-app purchases
 
@@ -123,11 +123,11 @@ Paste this into **App Review Information → Notes**. No sign-in is needed.
 
 > SimpleShrink needs no account.
 >
-> The app is in Test Mode for this release: it reads and changes only a photo album named exactly "Storage App Test", so it can never touch the rest of a person's library. To review:
+> To review:
 >
-> 1. In Photos, create an album named Storage App Test and add some photos and videos to it: ideally a duplicate, a Live Photo, a burst and a video longer than a minute.
-> 2. Open SimpleShrink, go through onboarding, and allow Full Access to Photos when iOS asks.
-> 3. Home shows the album's contents. Pick what to delete opens the review screen; Duplicates and junk is free; Live Photos to stills, Shrink videos and Best shot of each burst are Pro and open the paywall.
+> 1. Use a device or simulator with some photos and videos in Photos: ideally a duplicate, a Live Photo, a burst, a screenshot and a video longer than a minute.
+> 2. Open SimpleShrink, go through onboarding, and allow Full Access to Photos when iOS asks. The scan only reads; nothing leaves the device.
+> 3. Home shows what the scan found. Swipe to clean, Best shot of each burst and picking items in the Library are free; Shrink videos, Live Photos to stills, Duplicates and junk, Re-save screenshots and one-tap Photo Cleanup are Pro and open the paywall.
 >
 > Every deletion is reviewed on screen and confirmed by iOS. Photos go to Recently Deleted, and the app then shows how to empty it and measures the space that comes back.
 >

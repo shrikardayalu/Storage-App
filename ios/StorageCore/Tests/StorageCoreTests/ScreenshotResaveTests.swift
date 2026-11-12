@@ -6,7 +6,7 @@ final class ScreenshotResaveTests: XCTestCase {
     private func details(date: Date? = referenceDate, favorite: Bool = true, width: Int = 1179,
                          height: Int = 2556, inAlbum: Bool = true) -> AssetDetails {
         AssetDetails(creationDate: date, latitude: nil, longitude: nil, isFavorite: favorite,
-                     pixelWidth: width, pixelHeight: height, isLivePhoto: false, inTestAlbum: inAlbum)
+                     pixelWidth: width, pixelHeight: height, isLivePhoto: false, inOriginalAlbums: inAlbum)
     }
 
     func testOnlyPNGScreenshotsAreResavable() {
@@ -71,10 +71,10 @@ final class ScreenshotResaveTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
-    func testMockRefusesScreenshotsInAnotherAlbum() async {
-        let library = MockPhotoLibrary(items: [makeItem(id: "s", category: .screenshot)], inOtherAlbums: ["s"])
+    func testMockRefusesScreenshotsThatLeftTheLibrary() async {
+        let library = MockPhotoLibrary(items: [makeItem(id: "s", category: .screenshot)])
         do {
-            _ = try await library.resaveScreenshots(["s"])
+            _ = try await library.resaveScreenshots(["s", "gone"])
             XCTFail("Expected a refusal")
         } catch {
             guard case .unsafe? = error as? PhotoChangeError else { return XCTFail("Wrong error: \(error)") }

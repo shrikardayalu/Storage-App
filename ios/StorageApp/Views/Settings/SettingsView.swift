@@ -3,7 +3,7 @@ import StoreKit
 import SwiftUI
 import UIKit
 
-/// Test Mode status, Photos access, the cleanup guide, debug readings, and version.
+/// The safety promise, Photos access, the cleanup guide, debug readings, and version.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
@@ -19,9 +19,9 @@ struct SettingsView: View {
                 HStack(spacing: 14) {
                     IllustrationView(.shieldCheck, size: 52)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Test Mode is on")
+                        Text("Nothing changes without your OK")
                             .font(.headline)
-                        Text("SimpleShrink sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. It changes only items in that album that you approve on a review screen.")
+                        Text("SimpleShrink reads your photo library and your free space. It changes only the items you approve on a review screen, and nothing leaves your iPhone.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -31,13 +31,12 @@ struct SettingsView: View {
             }
 
             Section {
-                LabeledContent("Album", value: TestMode.albumName)
                 LabeledContent("Photos access", value: photoAccessText)
                 if model.photoAccess == .limited {
                     Button("Change Selected Photos") {
                         Task {
                             await LimitedPhotoPicker.present()
-                            await model.scanTestAlbum()
+                            await model.scanLibrary()
                         }
                     }
                 }
@@ -92,7 +91,6 @@ struct SettingsView: View {
 
             Section("About") {
                 LabeledContent("Version", value: AppInfo.versionString)
-                LabeledContent("Mode", value: "Test Mode (test album only)")
                 Link("Support", destination: PaywallConfig.supportURL)
                 Link("Privacy Policy", destination: PaywallConfig.privacyURL)
                 Link("Terms of Use", destination: PaywallConfig.termsURL)
@@ -119,9 +117,9 @@ struct SettingsView: View {
     private var photoFooter: String {
         switch model.photoAccess {
         case .limited:
-            "With selected-photos access, iOS hides albums, so the scan reads exactly the photos you picked. Pick everything in \u{201C}\(TestMode.albumName)\u{201D}."
+            "With selected-photos access, SimpleShrink sees only the photos you picked and can't make changes. Allow full access to clean up your whole library."
         default:
-            "With full access, the scan still reads only the \u{201C}\(TestMode.albumName)\u{201D} album. Nothing else in Photos is read."
+            "With full access, SimpleShrink scans your whole library. Nothing is changed until you approve it on a review screen."
         }
     }
 }

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Guards what the app may touch on the device. CI runs this on every change.
 #
-# 1. Changing Photos is allowed in exactly one file, StorageApp/Photos/TestAlbumChanges.swift,
-#    which can only reach the "Storage App Test" album (Build Plan steps 3 to 5).
-#    That file may not fetch assets library-wide or by ID: everything it changes
-#    must come out of the album's own fetch result.
+# 1. Changing Photos is allowed in exactly one file, StorageApp/Photos/PhotoLibraryChanges.swift
+#    (Build Plan steps 3 to 5). That file may not fetch assets library-wide or
+#    from an album: everything it changes must be looked up by the ID of an
+#    item the person approved, through its safety gate.
 # 2. Re-encoding video is allowed in exactly one file, StorageApp/Video/VideoExporter.swift,
 #    which writes and removes only its own copies in the app's temporary folder
 #    (Build Plan step 6). Removing files is allowed there and in
@@ -21,7 +21,7 @@ cd "$(dirname "$0")/.."
 # Comment lines (// or #) are allowed to mention these APIs.
 strip_comments() { grep -vE '^[^:]+:[0-9]+:[[:space:]]*(//|#|///)' || true; }
 
-changes_file='StorageApp/Photos/TestAlbumChanges.swift'
+changes_file='StorageApp/Photos/PhotoLibraryChanges.swift'
 status=0
 
 photo_changes='performChanges|PHAssetChangeRequest|PHAssetCreationRequest|PHAssetCollectionChangeRequest|deleteAssets|PHContentEditingOutput'
@@ -32,16 +32,27 @@ if [ -n "$matches" ]; then
   status=1
 fi
 
-# The change file reaches assets only through the test album.
-wide_fetches='fetchAssets\(with|fetchAssets\(withLocalIdentifiers|fetchAssets\(withBurstIdentifier|fetchKeyAssets|fetchAssetCollections\(withLocalIdentifiers|subtype: \.any'
+# The change file reaches assets only by the IDs the person approved: it has
+# no fetch of its own, library-wide or otherwise, and never lists the library.
+wide_fetches='fetchAssets\(|fetchKeyAssets|fetchAssetCollections\(|allAssets\(|enumerateObjects'
 matches=$(grep -En "$wide_fetches" "$changes_file" | sed "s|^|$changes_file:|" | strip_comments || true)
 if [ -n "$matches" ]; then
   echo "$matches"
-  echo "error: $changes_file may only fetch assets from the test album." >&2
+  echo "error: $changes_file may only look assets up by approved ID (PhotoLibrary.assets(withIDs:))." >&2
   status=1
 fi
-if ! grep -q 'TestMode.albumName' "$changes_file"; then
-  echo "error: $changes_file must look up the album by TestMode.albumName." >&2
+# Every change opens the gate first: one Gate.open for each performChanges.
+performs=$(grep -c 'Self.perform {' "$changes_file" || true)
+gates=$(grep -c 'Gate.open(' "$changes_file" || true)
+if [ "$performs" -lt 1 ] || [ "$gates" -lt "$performs" ]; then
+  echo "error: every change in $changes_file must pass Gate.open first ($gates gates, $performs changes)." >&2
+  status=1
+fi
+# Test Mode is gone: nothing may be tied to the old test album.
+matches=$(grep -rEn 'TestMode|Storage App Test' StorageApp StorageCore/Sources || true)
+if [ -n "$matches" ]; then
+  echo "$matches"
+  echo "error: Test Mode was removed for release; don't bring the test album back." >&2
   status=1
 fi
 
@@ -87,5 +98,5 @@ if [ -n "$matches" ]; then
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: Photos changes only in $changes_file, scoped to the test album; re-encoding only in $exporter; file removal only there and in $folder_files; no network."
+[ "$status" -eq 0 ] && echo "OK: Photos changes only in $changes_file, by approved ID behind the safety gate; re-encoding only in $exporter; file removal only there and in $folder_files; no network."
 exit "$status"

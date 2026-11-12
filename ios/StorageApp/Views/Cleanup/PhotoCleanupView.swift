@@ -14,7 +14,7 @@ struct PhotoCleanupView: View {
 
     private var plan: PhotoCleanupPlan? {
         guard let report = model.junkReport, let blocked else { return nil }
-        return PhotoCleanupPlan(report: report, livePhotos: model.convertibleLivePhotos, blocked: blocked)
+        return PhotoCleanupPlan(report: report, livePhotos: model.suggestedLivePhotos ?? [], blocked: blocked)
     }
 
     var body: some View {
@@ -26,7 +26,7 @@ struct PhotoCleanupView: View {
                         EmptyStateView(
                             illustration: .shieldCheck,
                             title: "Already tidy",
-                            message: "No Live Photos, duplicates or junk to clean in \u{201C}\(TestMode.albumName)\u{201D}."
+                            message: "No Live Photos, duplicates or junk to clean in your library."
                         )
                     } else {
                         summary(plan)
@@ -60,7 +60,7 @@ struct PhotoCleanupView: View {
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Cleaning up your photos…") }
         }
-        .confirmationDialog("Clean up \u{201C}\(TestMode.albumName)\u{201D}?", isPresented: $confirming, titleVisibility: .visible) {
+        .confirmationDialog("Clean up your photos?", isPresented: $confirming, titleVisibility: .visible) {
             Button("Clean up \(plan.map { ByteFormatter.string($0.totalBytes, precision: .twoDecimals) } ?? "")", role: .destructive) {
                 Task { await cleanUp() }
             }
@@ -71,7 +71,7 @@ struct PhotoCleanupView: View {
             await model.findJunk()
             await runCheck()
         }
-        .onChange(of: model.albumScan) { _, _ in Task { await runCheck() } }
+        .onChange(of: model.libraryScan) { _, _ in Task { await runCheck() } }
     }
 
     private var header: some View {
@@ -100,7 +100,7 @@ struct PhotoCleanupView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 10) {
                 if plan.stillCount > 0 {
-                    line("Live Photos \u{2192} stills", count: plan.stillCount, bytes: plan.convertBytes, note: "same photos, no video clip")
+                    line("Live Photos \u{2192} stills", count: plan.stillCount, bytes: plan.convertBytes, note: "ones that don't need to move")
                 }
                 if plan.copyCount > 0 {
                     line("Extra copies", count: plan.copyCount, bytes: plan.copyBytes, note: "the best copy of each stays")
@@ -110,7 +110,7 @@ struct PhotoCleanupView: View {
                 }
             }
             .onReceipt()
-            Text("Receipts and documents are left alone. Photos also in another album are skipped. To pick one by one, use Duplicates and junk or Live Photos \u{2192} stills instead.")
+            Text("Favorites, photos you edited, people, pets and scenery are left alone, and so are receipts and documents. To pick one by one, use Duplicates and junk or Live Photos \u{2192} stills instead.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -155,11 +155,11 @@ struct PhotoCleanupView: View {
         guard let report = model.junkReport else { return }
         let all = Set(report.findings.map(\.id))
             .union(report.duplicates.flatMap(\.items).map(\.id))
-            .union(model.convertibleLivePhotos.map(\.id))
+            .union((model.suggestedLivePhotos ?? []).map(\.id))
         guard !all.isEmpty else { blocked = []; return }
         switch await model.albumCheck(all) {
         case .success(let check):
-            blocked = check.outsideTestAlbum.union(check.inOtherAlbums)
+            blocked = check.missing
             error = nil
         case .failure(let failure):
             blocked = nil

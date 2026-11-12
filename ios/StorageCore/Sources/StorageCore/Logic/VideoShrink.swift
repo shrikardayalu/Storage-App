@@ -277,7 +277,7 @@ public struct VideoDetails: Hashable, Sendable {
     public var duration: TimeInterval
     public var bytes: Int64
     public var isVideo: Bool
-    public var inTestAlbum: Bool
+    public var inOriginalAlbums: Bool
 
     public init(
         creationDate: Date?,
@@ -287,7 +287,7 @@ public struct VideoDetails: Hashable, Sendable {
         duration: TimeInterval,
         bytes: Int64,
         isVideo: Bool,
-        inTestAlbum: Bool
+        inOriginalAlbums: Bool
     ) {
         self.creationDate = creationDate
         self.latitude = latitude
@@ -296,7 +296,7 @@ public struct VideoDetails: Hashable, Sendable {
         self.duration = duration
         self.bytes = bytes
         self.isVideo = isVideo
-        self.inTestAlbum = inTestAlbum
+        self.inOriginalAlbums = inOriginalAlbums
     }
 }
 
@@ -313,7 +313,7 @@ public struct VideoReplacement: Hashable, Sendable, Identifiable {
     /// A video, as long as the part the person kept.
     public let rightLength: Bool
     public let isSmaller: Bool
-    /// The original went to Recently Deleted, so it's no longer in the album.
+    /// The original went to Recently Deleted, so it's no longer in the library.
     public let originalGone: Bool
     public let originalBytes: Int64
     public let newBytes: Int64
@@ -347,7 +347,7 @@ public struct VideoReplacement: Hashable, Sendable, Identifiable {
         }
         keptLocation = Self.same(original.latitude, new.latitude) && Self.same(original.longitude, new.longitude)
         keptFavorite = original.isFavorite == new.isFavorite
-        keptAlbum = new.inTestAlbum
+        keptAlbum = new.inOriginalAlbums
         // Encoders round to whole frames, so allow half a second either way.
         rightLength = new.isVideo && abs(new.duration - edit.trim.clamped(to: original.duration).length) < 0.5
         isSmaller = new.bytes > 0 && new.bytes < original.bytes

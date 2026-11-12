@@ -1,14 +1,10 @@
 import Foundation
 
-/// An in-memory test album that both scans and changes, for tests and previews.
+/// An in-memory photo library that both scans and changes, for tests and previews.
 /// It follows the same rules as the real PhotoKit service: every change is
-/// checked against the album first, and one failing item blocks the whole change.
-public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
+/// checked against the library first, and one failing item blocks the whole change.
+public actor MockPhotoLibrary: PhotoScanService, PhotoChangeService {
     public private(set) var items: [MediaItem]
-    /// Item IDs that some other user album also holds.
-    public private(set) var inOtherAlbums: Set<MediaItem.ID>
-    /// Items outside the test album: the rest of the library. Nothing may change them.
-    public private(set) var outsideItems: [MediaItem]
     public var grantedAccess: PhotoAccess
     /// When true, the change acts like the person tapping Don't Allow on iOS's prompt.
     public var declinesChanges = false
@@ -19,13 +15,9 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
 
     public init(
         items: [MediaItem],
-        inOtherAlbums: Set<MediaItem.ID> = [],
-        outsideItems: [MediaItem] = [],
         access: PhotoAccess = .granted
     ) {
         self.items = items
-        self.inOtherAlbums = inOtherAlbums
-        self.outsideItems = outsideItems
         self.grantedAccess = access
     }
 
@@ -39,20 +31,16 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
 
     public func requestAccess() async -> PhotoAccess { grantedAccess }
 
-    public func scanAlbum(named albumName: String) async throws -> [MediaItem] {
+    public func scanLibrary() async throws -> [MediaItem] {
         guard grantedAccess.canRead else { throw PhotoScanError.accessDenied }
         return items
     }
 
-    // MARK: TestAlbumChangeService
+    // MARK: PhotoChangeService
 
     public func check(_ approved: Set<MediaItem.ID>) async throws -> SafetyCheck {
         guard grantedAccess == .granted else { throw PhotoChangeError.needsFullAccess }
-        return SafetyCheck.evaluate(
-            approved: approved,
-            testAlbumMembers: Set(items.map(\.id)),
-            otherAlbumMembers: inOtherAlbums
-        )
+        return SafetyCheck.evaluate(approved: approved, found: approved.intersection(items.map(\.id)))
     }
 
     public func delete(_ approved: Set<MediaItem.ID>) async throws -> DeletionReceipt {
@@ -93,7 +81,7 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
             items.append(still)
             let details = AssetDetails(
                 creationDate: original.creationDate, latitude: nil, longitude: nil, isFavorite: false,
-                pixelWidth: original.pixelWidth, pixelHeight: original.pixelHeight, isLivePhoto: true, inTestAlbum: true
+                pixelWidth: original.pixelWidth, pixelHeight: original.pixelHeight, isLivePhoto: true, inOriginalAlbums: true
             )
             var stillDetails = details
             stillDetails.isLivePhoto = false
@@ -132,7 +120,7 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
             items.append(copy)
             let details = AssetDetails(
                 creationDate: original.creationDate, latitude: nil, longitude: nil, isFavorite: false,
-                pixelWidth: original.pixelWidth, pixelHeight: original.pixelHeight, isLivePhoto: false, inTestAlbum: true
+                pixelWidth: original.pixelWidth, pixelHeight: original.pixelHeight, isLivePhoto: false, inOriginalAlbums: true
             )
             resaved.append(ResavedScreenshot(
                 originalID: original.id, newID: copy.id, original: details, new: details,
@@ -201,7 +189,7 @@ public actor MockPhotoLibrary: PhotoScanService, TestAlbumChangeService {
 
         func details(_ item: MediaItem) -> VideoDetails {
             VideoDetails(creationDate: item.creationDate, latitude: nil, longitude: nil, isFavorite: false,
-                         duration: item.duration ?? 0, bytes: item.currentBytes, isVideo: true, inTestAlbum: true)
+                         duration: item.duration ?? 0, bytes: item.currentBytes, isVideo: true, inOriginalAlbums: true)
         }
         return VideoReplacement(
             originalID: original.id, newID: copy.id, edit: prepared.edit,

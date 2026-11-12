@@ -6,24 +6,33 @@ import SwiftUI
 /// HEIC copy of the same image, with the same date, favorite and album; the
 /// PNG goes to Recently Deleted. Screenshots that wouldn't get much smaller
 /// are left alone.
+///
+/// It opens on All, where one tap re-saves every one. Select, in the top
+/// bar, starts with nothing ticked so the person chooses. Pressing and
+/// holding a screenshot shows it big.
 struct ScreenshotResaveView: View {
     @Environment(AppModel.self) private var model
+    @State private var scope: PickScope = .all
+    /// The screenshots ticked in Select. All ignores it.
     @State private var chosen: Set<MediaItem.ID> = []
+    @State private var preview: MediaPreview?
     @State private var check: SafetyCheck?
     @State private var error: PhotoChangeError?
     @State private var confirming = false
     @State private var progress: CGFloat = 0
-    @State private var didLoad = false
 
     private var screenshots: [MediaItem] { model.resavableScreenshots }
-    /// Items the safety check refused, such as ones also in another album.
+    /// Items the safety check refused, such as ones that are gone since the scan.
     private var blocked: Set<MediaItem.ID> {
         guard let check else { return [] }
-        return check.outsideTestAlbum.union(check.inOtherAlbums)
+        return check.missing
     }
-    private var approved: Set<MediaItem.ID> { chosen.subtracting(blocked) }
+    private var approved: Set<MediaItem.ID> {
+        (scope == .all ? Set(screenshots.map(\.id)) : chosen).subtracting(blocked)
+    }
     private var savedBytes: Int64 {
-        screenshots.filter { approved.contains($0.id) }.reduce(0) { $0 + ScreenshotResave.estimatedSaving(for: $1) }
+        let approved = approved
+        return screenshots.reduce(0) { approved.contains($1.id) ? $0 + ScreenshotResave.estimatedSaving(for: $1) : $0 }
     }
 
     var body: some View {
@@ -49,8 +58,10 @@ struct ScreenshotResaveView: View {
         .background(PaperBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .scopePicker($scope, label: "Which screenshots to re-save", isShown: !screenshots.isEmpty, isDisabled: model.isChanging)
         .safeAreaInset(edge: .bottom) { actionBar }
         .drawing($progress, duration: 3)
+        .mediaPreview($preview)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Re-saving screenshots…") }
         }
@@ -63,12 +74,10 @@ struct ScreenshotResaveView: View {
                 Task { await resave() }
             }
         } message: {
-            Text("Each screenshot is saved again as a smaller copy that stays in your library, with its date, favorite and album. The old PNG versions go to Recently Deleted. You can recover them there for 30 days. Screenshots that are already small are left alone.")
+            Text("Each screenshot is saved again as a smaller copy that stays in your library, with its date, favorite and albums. The old PNG versions go to Recently Deleted. You can recover them there for 30 days. Screenshots that are already small are left alone.")
         }
-        .task {
-            guard !didLoad else { return }
-            didLoad = true
-            chosen = Set(screenshots.map(\.id))
+        .task(id: screenshots.map(\.id)) {
+            chosen.formIntersection(screenshots.map(\.id))
             await runCheck()
         }
     }
@@ -118,7 +127,7 @@ struct ScreenshotResaveView: View {
                 SafetyLine(done: true, text: "Its size on screen", progress: progress, start: 0.55)
                 SafetyLine(done: true, text: "Its date", progress: progress, start: 0.62)
                 SafetyLine(done: true, text: "Favorite", progress: progress, start: 0.69)
-                SafetyLine(done: true, text: "The album", progress: progress, start: 0.76)
+                SafetyLine(done: true, text: "Its albums", progress: progress, start: 0.76)
             }
             Text("The figure is an estimate. SimpleShrink makes each copy first and only swaps the ones that come out clearly smaller, then checks each copy afterwards and shows you the result.")
                 .font(.caption)
@@ -129,29 +138,54 @@ struct ScreenshotResaveView: View {
 
     @ViewBuilder
     private var list: some View {
+        // Worked out once, not once per row: a library can hold thousands of these.
+        let approved = approved
+        let lastID = screenshots.last?.id
         if screenshots.isEmpty {
             EmptyStateView(
                 illustration: .screenshot,
                 title: "No PNG screenshots here",
-                message: "Every screenshot in \u{201C}\(TestMode.albumName)\u{201D} is already saved in a smaller format."
+                message: "Every screenshot in your library is already saved in a smaller format."
             )
         } else {
-            VStack(alignment: .leading, spacing: 0) {
+            // Lazy: a library can hold thousands of these.
+            LazyVStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text("\(screenshots.count) PNG \(screenshots.count == 1 ? "screenshot" : "screenshots")")
                         .font(.headline)
                     Spacer()
-                    Button(chosen.count == screenshots.count ? "None" : "All") {
-                        chosen = chosen.count == screenshots.count ? [] : Set(screenshots.map(\.id))
+                    if scope == .select {
+                        Text("\(approved.count) picked")
+                            .font(.hand(16))
+                            .foregroundStyle(Theme.accent)
+                        if !chosen.isEmpty {
+                            Button("Clear") { chosen = [] }
+                                .font(.subheadline.weight(.semibold))
+                                .padding(.leading, 6)
+                        }
                     }
-                    .font(.subheadline.weight(.semibold))
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, 4)
+                Text(scope == .all
+                     ? "Every screenshot is included. Switch to Select at the top to choose which ones. Press and hold one for a closer look."
+                     : "Tick the screenshots to re-save. Press and hold one for a closer look.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 6)
                 ForEach(screenshots) { item in
-                    ScreenshotRow(item: item, isOn: approved.contains(item.id), blockedReason: blockedReason(item)) {
-                        if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
-                    }
-                    if item.id != screenshots.last?.id { Divider() }
+                    let blockedReason = blockedReason(item)
+                    ScreenshotRow(item: item, showsCheck: scope == .select, isOn: approved.contains(item.id), blockedReason: blockedReason)
+                        .tapAndHold(isEnabled: blockedReason == nil) {
+                            if scope == .select {
+                                if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
+                            } else {
+                                preview = MediaPreview(item)
+                            }
+                        } hold: {
+                            preview = MediaPreview(item)
+                        }
+                    if item.id != lastID { Divider() }
                 }
             }
             .card(padding: 14)
@@ -160,8 +194,7 @@ struct ScreenshotResaveView: View {
 
     private func blockedReason(_ item: MediaItem) -> String? {
         guard let check else { return nil }
-        if check.inOtherAlbums.contains(item.id) { return "also in another album, so it's left alone" }
-        if check.outsideTestAlbum.contains(item.id) { return "not in the test album any more" }
+        if check.missing.contains(item.id) { return "not in your library any more" }
         return nil
     }
 
@@ -174,7 +207,7 @@ struct ScreenshotResaveView: View {
             }
             .buttonStyle(.sticker)
             .disabled(approved.isEmpty || check == nil || model.isChanging)
-            Text(check == nil ? (error == nil ? "Checking the test album…" : "Fix the problem above to continue.") : "Copies stay in your library. Old PNGs go to Recently Deleted.")
+            Text(check == nil ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.") : "Copies stay in your library. Old PNGs go to Recently Deleted.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -207,25 +240,25 @@ struct ScreenshotResaveView: View {
         if let failure = await model.resaveScreenshots(approved: ids) {
             error = failure
             await runCheck()
-        } else {
-            chosen = Set(model.resavableScreenshots.map(\.id))
         }
     }
 }
 
 private struct ScreenshotRow: View {
     let item: MediaItem
+    let showsCheck: Bool
     let isOn: Bool
     let blockedReason: String?
-    let toggle: () -> Void
 
     private var saving: Int64 { ScreenshotResave.estimatedSaving(for: item) }
 
     var body: some View {
-        Button(action: toggle) {
+        Group {
             HStack(spacing: 12) {
-                InkCheck(isOn: isOn, size: 24)
-                    .opacity(blockedReason == nil ? 1 : 0.3)
+                if showsCheck {
+                    InkCheck(isOn: isOn, size: 24)
+                        .opacity(blockedReason == nil ? 1 : 0.3)
+                }
                 ItemThumbnail(id: item.id, side: 46)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.filename)
@@ -253,13 +286,10 @@ private struct ScreenshotRow: View {
                 }
             }
             .padding(.vertical, 8)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .disabled(blockedReason != nil)
+        .opacity(blockedReason == nil ? 1 : 0.6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.filename), saves about \(ByteFormatter.accessibilityString(saving, precision: .twoDecimals))")
-        .accessibilityValue(blockedReason ?? (isOn ? "Picked" : "Not picked"))
-        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(blockedReason ?? (showsCheck ? (isOn ? "Picked" : "Not picked") : "Included"))
     }
 }

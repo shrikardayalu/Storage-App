@@ -37,7 +37,7 @@ const faq = [
   },
   {
     q: `Why doesn't ${name} see my photos?`,
-    a: `During Test Mode, ${name} reads only an album named **Storage App Test**. Create it in the Photos app (**Albums → + → New Album**), add some photos and videos, then tap **Scan** in ${name}. If Photos access is off, turn it on in **Settings → Apps → ${name} → Photos**. Cleanups need **Full Access**.`,
+    a: `${name} needs Photos access to scan. Turn it on in **Settings → Apps → ${name} → Photos**, then tap **Scan** in ${name}. If you chose **Limited Access**, ${name} sees only the photos you picked. Cleanups need **Full Access**.`,
   },
   {
     q: "I deleted photos but my free space didn't go up.",

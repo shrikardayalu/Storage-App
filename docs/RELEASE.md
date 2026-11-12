@@ -13,12 +13,20 @@ What's ready in the repo, and the steps only the account holder can do.
 - A **TestFlight** job in `.github/workflows/ios.yml`. It runs only from
   Actions > iOS > Run workflow, and skips with a warning until the secrets below exist.
 
+- **Test Mode is off (2026-11-11).** The app scans the whole photo library
+  (or just the picked photos with limited access) and changes only the items
+  approved on a review screen. `ios/Tools/check-no-device-access.sh` now
+  checks that every change looks its items up by approved ID behind the
+  safety gate, and fails if the test album comes back.
+
 ## Not done yet
 
-- **Test Mode is still on in every build.** The app reads and changes only the
-  "Storage App Test" album, by choice for now. Removing it means widening the
-  Photos code past the test album and rewriting `ios/Tools/check-no-device-access.sh`.
-- **Photos permission text** in `project.yml` and `xtool-Info.plist` mentions the test album.
+- **A run on a big real library.** The whole-library code is built and unit
+  tested, and installed on a phone, but each cleanup (delete, Live Photos to
+  stills, bursts, screenshots, videos) still needs one pass by hand on a real
+  library before release. The first scan measures every photo for duplicates
+  and blur; that takes minutes on a large library, runs in the background and
+  is saved, so it happens once.
 - **The legal pages need the real domain and a support email**: `NEXT_PUBLIC_SITE_URL` and
   `NEXT_PUBLIC_SUPPORT_EMAIL` for the site, and `PaywallConfig.siteURL` in the app.
   What to paste into App Store Connect is in `docs/APP_STORE.md`.

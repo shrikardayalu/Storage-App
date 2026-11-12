@@ -47,10 +47,10 @@ struct CleanupReviewView: View {
                 }
             }
             .overlay {
-                if model.isChanging { WorkingOverlay(message: "Deleting from the test album…") }
+                if model.isChanging { WorkingOverlay(message: "Deleting…") }
             }
             .confirmationDialog(
-                "Delete \(countText) from \u{201C}\(TestMode.albumName)\u{201D}?",
+                "Delete \(countText) from your library?",
                 isPresented: $confirming,
                 titleVisibility: .visible
             ) {
@@ -99,11 +99,11 @@ struct CleanupReviewView: View {
                     .font(.display(21))
                     .tracking(-0.5)
                 Spacer()
-                Text("test album")
+                Text("your library")
                     .font(.hand(16))
                     .foregroundStyle(.secondary)
             }
-            Text("\(TestMode.albumName.uppercased()) · TODAY")
+            Text("YOUR PHOTO LIBRARY · TODAY")
                 .font(.caption2.weight(.semibold))
                 .tracking(2)
                 .foregroundStyle(.secondary)
@@ -116,10 +116,13 @@ struct CleanupReviewView: View {
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 12)
             }
-            ForEach(approved) { item in
-                ReceiptRow(item: item, flag: flag(for: item)) {
-                    withAnimation(.snappy) { approved.removeAll { $0.id == item.id } }
-                    Task { await runCheck() }
+            // Lazy: "Select All" in a big library puts thousands of lines on the receipt.
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(approved) { item in
+                    ReceiptRow(item: item, flag: flag(for: item)) {
+                        withAnimation(.snappy) { approved.removeAll { $0.id == item.id } }
+                        Task { await runCheck() }
+                    }
                 }
             }
 
@@ -155,7 +158,7 @@ struct CleanupReviewView: View {
             RubberStamp(top: "safety check", main: "checking…", color: .secondary, angle: -6)
                 .opacity(0.8)
         } else if isSafe {
-            RubberStamp(top: "only from", main: TestMode.albumName, color: Theme.accent)
+            RubberStamp(top: "safety check", main: "passed", color: Theme.accent)
                 .transition(.scale(scale: 1.8).combined(with: .opacity))
         } else if check != nil || checkError != nil {
             RubberStamp(top: "safety check", main: "stopped", color: Theme.tomato, angle: 7)
@@ -165,21 +168,19 @@ struct CleanupReviewView: View {
 
     private func flag(for item: MediaItem) -> String? {
         guard let check else { return nil }
-        if check.outsideTestAlbum.contains(item.id) { return "not in the test album any more" }
-        if check.inOtherAlbums.contains(item.id) { return "also in another album, tap × to take it off" }
+        if check.missing.contains(item.id) { return "not in your library any more, tap × to take it off" }
         return nil
     }
 
     // MARK: Safety list
 
     private var safetyList: some View {
-        let inAlbum = check.map { $0.outsideTestAlbum.isEmpty } ?? false
-        let noOther = check.map { $0.inOtherAlbums.isEmpty } ?? false
+        let inAlbum = check.map { $0.missing.isEmpty } ?? false
         return VStack(alignment: .leading, spacing: 12) {
             Text("Before anything is deleted")
                 .font(.headline)
-            SafetyLine(done: inAlbum && !isChecking, text: "Every item is in \u{201C}\(TestMode.albumName)\u{201D}, checked just now", progress: progress, start: 0.35)
-            SafetyLine(done: noOther && !isChecking, text: "None of them are in any other album", progress: progress, start: 0.5)
+            SafetyLine(done: inAlbum && !isChecking, text: "Every item is still in your library, checked just now", progress: progress, start: 0.35)
+            SafetyLine(done: inAlbum && !isChecking, text: "Only these items change, nothing else", progress: progress, start: 0.5)
             SafetyLine(done: true, text: "iOS asks you to confirm once more", progress: progress, start: 0.65)
             SafetyLine(done: true, text: "They wait 30 days in Recently Deleted, so you can undo", progress: progress, start: 0.8)
         }

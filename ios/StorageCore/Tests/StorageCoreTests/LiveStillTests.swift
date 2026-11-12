@@ -8,7 +8,7 @@ final class LiveStillTests: XCTestCase {
         width: Int = 4032, height: Int = 3024, live: Bool = false, inAlbum: Bool = true
     ) -> AssetDetails {
         AssetDetails(creationDate: date, latitude: lat, longitude: lon, isFavorite: favorite,
-                     pixelWidth: width, pixelHeight: height, isLivePhoto: live, inTestAlbum: inAlbum)
+                     pixelWidth: width, pixelHeight: height, isLivePhoto: live, inOriginalAlbums: inAlbum)
     }
 
     func testMatchingStillKeepsEverything() {

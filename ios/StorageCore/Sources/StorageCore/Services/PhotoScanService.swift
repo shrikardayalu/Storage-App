@@ -13,56 +13,48 @@ public enum PhotoAccess: Sendable, Equatable {
 
 public enum PhotoScanError: LocalizedError, Equatable {
     case accessDenied
-    case albumNotFound(String)
-    case albumAmbiguous(String)
 
     public var errorDescription: String? {
         switch self {
         case .accessDenied:
             "SimpleShrink can't see your photos. You can allow access in Settings."
-        case .albumNotFound(let name):
-            "There's no album named \"\(name)\". Make one in the Photos app, then scan again."
-        case .albumAmbiguous(let name):
-            "More than one album is named \"\(name)\". Rename the extras, then scan again."
         }
     }
 }
 
-/// Reads media from one album of the photo library. Read-only: it never
-/// deletes, edits, or adds anything.
+/// Reads the photo library. Read-only: it never deletes, edits, or adds anything.
 public protocol PhotoScanService: Sendable {
     func access() async -> PhotoAccess
     /// Shows the system permission prompt if it hasn't been answered yet.
     func requestAccess() async -> PhotoAccess
-    /// Every item in the album named `albumName`.
-    func scanAlbum(named albumName: String) async throws -> [MediaItem]
+    /// Every photo and video the app is allowed to see: the whole library with
+    /// full access, or just the picked photos with limited access.
+    func scanLibrary() async throws -> [MediaItem]
+    /// What the last scan found, kept from an earlier launch, so the app can
+    /// show the library straight away while it scans again. Nil when nothing is kept.
+    func lastScan() async -> [MediaItem]?
 }
 
-/// Test Mode: until launch, the app reads only this one album, so it sees
-/// nothing else in the library.
-public enum TestMode {
-    public static let albumName = "Storage App Test"
+public extension PhotoScanService {
+    func lastScan() async -> [MediaItem]? { nil }
 }
 
 /// Returns fixed items, for tests and previews.
 public struct MockPhotoScanService: PhotoScanService {
     public var items: [MediaItem]
     public var grantedAccess: PhotoAccess
-    public var albumExists: Bool
 
-    public init(items: [MediaItem], access: PhotoAccess = .granted, albumExists: Bool = true) {
+    public init(items: [MediaItem], access: PhotoAccess = .granted) {
         self.items = items
         self.grantedAccess = access
-        self.albumExists = albumExists
     }
 
     public func access() async -> PhotoAccess { grantedAccess }
 
     public func requestAccess() async -> PhotoAccess { grantedAccess }
 
-    public func scanAlbum(named albumName: String) async throws -> [MediaItem] {
+    public func scanLibrary() async throws -> [MediaItem] {
         guard grantedAccess.canRead else { throw PhotoScanError.accessDenied }
-        guard albumExists else { throw PhotoScanError.albumNotFound(albumName) }
         return items
     }
 }

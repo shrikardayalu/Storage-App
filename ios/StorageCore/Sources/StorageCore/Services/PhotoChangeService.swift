@@ -1,17 +1,17 @@
 import Foundation
 
 public enum PhotoChangeError: LocalizedError, Equatable {
-    /// Limited access hides albums, so album membership can't be confirmed.
+    /// With limited access the app can't see albums, so a copy couldn't be put
+    /// back where its original was. Changes need full access.
     case needsFullAccess
-    case albumNotFound(String)
-    /// More than one album has the test album's name, so which one is meant is unclear.
-    case albumAmbiguous(String)
+    /// The copies need more free space than the phone has right now.
+    case notEnoughSpace
     /// The fresh check right before the change failed; nothing was changed.
     case unsafe(SafetyCheck)
     case notLivePhoto(count: Int)
-    /// The bursts in the album aren't what the person reviewed.
+    /// The bursts in the library aren't what the person reviewed.
     case burstsChanged(String)
-    /// The duplicates and junk in the album aren't what the person reviewed.
+    /// The duplicates and junk in the library aren't what the person reviewed.
     case junkChanged(String)
     /// The video can't be shrunk, or changed since the copy was made.
     case videoUnsupported(String)
@@ -25,17 +25,15 @@ public enum PhotoChangeError: LocalizedError, Equatable {
     case screenshotsNotSmaller
     /// The person tapped Don't Allow on iOS's own confirmation, or iOS refused.
     case cancelled
-    /// The change ran, but the album afterwards wasn't what was expected.
+    /// The change ran, but the library afterwards wasn't what was expected.
     case verificationFailed(String)
 
     public var errorDescription: String? {
         switch self {
         case .needsFullAccess:
-            "SimpleShrink needs full Photos access to check that each item is in \u{201C}\(TestMode.albumName)\u{201D} before changing it. Nothing was changed."
-        case .albumNotFound(let name):
-            "There's no album named \u{201C}\(name)\u{201D}. Nothing was changed."
-        case .albumAmbiguous(let name):
-            "More than one album is named \u{201C}\(name)\u{201D}. Rename the extras so SimpleShrink knows which one to use. Nothing was changed."
+            "SimpleShrink needs full Photos access to make changes. You can allow it in Settings. Nothing was changed."
+        case .notEnoughSpace:
+            "There isn't enough free space to make the copies. Pick fewer items, or free some space another way first. Nothing was changed."
         case .unsafe(let check):
             "\(check.problem ?? "The safety check failed.") Nothing was changed."
         case .notLivePhoto(let count):
@@ -60,21 +58,23 @@ public enum PhotoChangeError: LocalizedError, Equatable {
     }
 }
 
-/// The only way the app changes the photo library. Every method works on the
-/// "Storage App Test" album and nothing else: the album isn't a parameter, and
-/// each call re-checks, right before changing anything, that every approved
-/// item is in that album and in no other. If one item fails, nothing changes.
-public protocol TestAlbumChangeService: Sendable {
+/// The only way the app changes the photo library. Every method takes exactly
+/// the items the person approved on a review screen, and re-checks, right
+/// before changing anything, that every one of them is still in the library.
+/// If one item fails, nothing changes. Nothing that wasn't approved is touched.
+public protocol PhotoChangeService: Sendable {
     /// Runs the safety check without changing anything, for the review screen.
     func check(_ approved: Set<MediaItem.ID>) async throws -> SafetyCheck
     /// Moves the approved items to Recently Deleted (iOS asks to confirm too),
-    /// then confirms that exactly those items left the album.
+    /// then confirms that exactly those items left the library.
     func delete(_ approved: Set<MediaItem.ID>) async throws -> DeletionReceipt
     /// Replaces each approved Live Photo with a still of the same photo, keeping
-    /// its date, location, favorite and album. The originals go to Recently Deleted.
+    /// its date, location, favorite and albums. The originals go to Recently Deleted.
+    /// On a nearly full phone only as many as there's room for are converted;
+    /// the result lists the ones that were, and the rest are left as they are.
     func convertLivePhotosToStills(_ approved: Set<MediaItem.ID>) async throws -> [StillConversion]
     /// Replaces each approved PNG screenshot with a smaller HEIC copy of the same
-    /// image, keeping its date, favorite and album. Screenshots whose copy
+    /// image, keeping its date, favorite and albums. Screenshots whose copy
     /// wouldn't be much smaller are left alone and listed as skipped; if all
     /// would be, throws `.screenshotsNotSmaller`. The PNGs go to Recently Deleted.
     func resaveScreenshots(_ approved: Set<MediaItem.ID>) async throws -> ScreenshotResaveReceipt
@@ -87,8 +87,8 @@ public protocol TestAlbumChangeService: Sendable {
     /// `.videoNotSmaller` (and keeps no copy) when it wouldn't save space.
     func prepareVideo(_ id: MediaItem.ID, edit: VideoEdit) async throws -> PreparedVideo
     /// Replaces the original video with its prepared copy, keeping its date,
-    /// location, favorite and album. The original goes to Recently Deleted in
-    /// the same change. Afterwards the album is re-read and the copy checked.
+    /// location, favorite and albums. The original goes to Recently Deleted in
+    /// the same change. Afterwards the copy is re-read and checked.
     func replaceVideo(with prepared: PreparedVideo) async throws -> VideoReplacement
     /// Replaces several videos with their prepared copies in one change, so iOS
     /// asks once. Same checks and guarantees as `replaceVideo`; if any original

@@ -49,18 +49,21 @@ final class LibraryScanTests: XCTestCase {
     func testMockScanServiceErrors() async {
         let denied = MockPhotoScanService(items: [], access: .denied)
         do {
-            _ = try await denied.scanAlbum(named: TestMode.albumName)
+            _ = try await denied.scanLibrary()
             XCTFail("Expected an access error")
         } catch {
             XCTAssertEqual(error as? PhotoScanError, .accessDenied)
         }
+    }
 
-        let missing = MockPhotoScanService(items: [], albumExists: false)
-        do {
-            _ = try await missing.scanAlbum(named: TestMode.albumName)
-            XCTFail("Expected a missing-album error")
-        } catch {
-            XCTAssertEqual(error as? PhotoScanError, .albumNotFound(TestMode.albumName))
-        }
+    func testMockScanReadsEverythingItMaySee() async throws {
+        let full = MockPhotoScanService(items: sampleItems())
+        let all = try await full.scanLibrary()
+        XCTAssertEqual(all.count, sampleItems().count)
+
+        // Limited access still scans: the items are just the ones the person picked.
+        let limited = MockPhotoScanService(items: Array(sampleItems().prefix(2)), access: .limited)
+        let picked = try await limited.scanLibrary()
+        XCTAssertEqual(picked.count, 2)
     }
 }

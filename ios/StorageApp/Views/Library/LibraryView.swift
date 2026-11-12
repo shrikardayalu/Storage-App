@@ -2,7 +2,7 @@ import StorageCore
 import SwiftUI
 import UIKit
 
-/// Everything the test album scan found, biggest first, with totals per group.
+/// Everything the library scan found, biggest first, with totals per group.
 struct LibraryView: View {
     @Environment(AppModel.self) private var model
 
@@ -13,7 +13,7 @@ struct LibraryView: View {
             .background(PaperBackground())
             .navigationTitle(model.isSelecting ? "Pick to Delete" : "Library")
             .toolbar {
-                if model.albumScan?.total.count ?? 0 > 0 {
+                if model.libraryScan?.total.count ?? 0 > 0 {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(model.isSelecting ? "Cancel" : "Select") {
                             withAnimation(.snappy) {
@@ -25,7 +25,7 @@ struct LibraryView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Scan Again") {
-                        Task { await model.scanTestAlbum() }
+                        Task { await model.scanLibrary() }
                     }
                     .disabled(model.isScanning || model.isChanging)
                 }
@@ -37,8 +37,9 @@ struct LibraryView: View {
                 }
             }
             .overlay {
-                if model.isScanning {
-                    WorkingOverlay(message: "Scanning test album…")
+                // A re-scan of a library already on screen runs quietly behind it.
+                if model.isScanning, model.libraryScan == nil {
+                    WorkingOverlay(message: "Scanning your library…")
                 }
             }
             .sheet(isPresented: $model.isReviewing, onDismiss: { model.presentPendingGuide() }) {
@@ -48,7 +49,7 @@ struct LibraryView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let scan = model.albumScan {
+        if let scan = model.libraryScan {
             List {
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
@@ -76,7 +77,7 @@ struct LibraryView: View {
                 let items = scan.items(in: model.libraryGroup)
                 Section {
                     if items.isEmpty {
-                        Text("Nothing in \(model.libraryGroup?.title ?? "this album").")
+                        Text("Nothing in \(model.libraryGroup?.title ?? "your library").")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(items) { item in
@@ -100,9 +101,7 @@ struct LibraryView: View {
                         if model.isSelecting, !items.isEmpty {
                             let all = items.allSatisfy { model.selection.contains($0.id) }
                             Button(all ? "Deselect All" : "Select All") {
-                                for item in items where model.selection.contains(item.id) == all {
-                                    model.toggleSelection(item.id)
-                                }
+                                model.setSelected(!all, items.map(\.id))
                             }
                             .font(.caption.weight(.semibold))
                             .textCase(nil)
@@ -115,9 +114,9 @@ struct LibraryView: View {
                 EmptyStateView(
                     illustration: .photo,
                     title: "Nothing scanned yet",
-                    message: "Scan the \u{201C}\(TestMode.albumName)\u{201D} album to see what takes up space. The app only reads it.",
-                    actionTitle: model.isScanning ? nil : "Scan Test Album",
-                    action: { Task { await model.scanTestAlbum() } }
+                    message: "Scan your photos and videos to see what takes up space. Scanning only reads them.",
+                    actionTitle: model.isScanning ? nil : "Scan My Photos",
+                    action: { Task { await model.scanLibrary() } }
                 )
                 if let error = model.scanError {
                     ScanErrorView(error: error)
@@ -161,7 +160,7 @@ private struct SelectionBar: View {
 /// Where a scan's items came from, for the summary lines.
 enum ScanSource {
     static func title(for access: PhotoAccess) -> String {
-        access == .limited ? "photos you picked" : "\u{201C}\(TestMode.albumName)\u{201D}"
+        access == .limited ? "photos you picked" : "your whole library"
     }
 }
 

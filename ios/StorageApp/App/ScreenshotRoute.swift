@@ -42,7 +42,7 @@ enum ScreenshotRoute: String {
         case .library: model.showLibrary(group: nil)
         case .settings: model.selectedTab = .settings
         case .guide:
-            let receipt = DeletionReceipt(deleted: ["sample-1", "sample-2", "sample-3"], albumCountBefore: 48, albumCountAfter: 45,
+            let receipt = DeletionReceipt(deleted: ["sample-1", "sample-2", "sample-3"], countBefore: 48, countAfter: 45,
                                           deletedBytes: 1_240_000_000, onlyApprovedRemoved: true)
             model.guide = CleanupGuide(kind: .deleted(receipt), removedIDs: Array(receipt.deleted), expectedBytes: receipt.deletedBytes)
         case .whatsapp:

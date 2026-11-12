@@ -51,8 +51,8 @@ export default function TermsPage() {
             <h2>2. What the app does</h2>
             <p>
               The app helps you find what takes up space on your iPhone, and remove or shrink the items you choose.
-              It works only with what iOS lets it reach: photos and videos you give it access to (only the
-              &ldquo;Storage App Test&rdquo; album while it&apos;s in Test Mode), and the one folder you pick in Files.
+              It works only with what iOS lets it reach: the photos and videos you give it access to, and the one
+              folder you pick in Files.
               For space it can&apos;t clear itself, such as other apps&apos; data, it shows you the steps.
             </p>
 

@@ -4,16 +4,17 @@ import StorageCore
 import VideoToolbox
 
 /// Writes a smaller (and optionally trimmed) HEVC copy of a video into the
-/// app's own temporary folder. The only code in the app that re-encodes media
-/// or removes files, and it only ever removes its own copies in that folder.
-/// It never touches Photos: `TestAlbumChanges.swift` hands it the video and
+/// app's own temporary folder. The only code in the app that re-encodes media,
+/// and it only ever removes its own copies in that folder. Still and screenshot
+/// copies waiting to replace an original are kept in the same folder.
+/// It never touches Photos: `PhotoLibraryChanges.swift` hands it the video and
 /// decides what to do with the copy. `Tools/check-no-device-access.sh` enforces this.
 ///
 /// It decodes every frame and encodes it again at `VideoShrink.targetBitrate`.
 /// Apple's export presets can't be given a bitrate, and on iPhone videos
 /// (already HEVC) they come out about as big as the original.
 enum VideoExporter {
-    /// The app's own folder for copies waiting to replace a video.
+    /// The app's own folder for copies waiting to replace an original.
     static let folder = FileManager.default.temporaryDirectory.appendingPathComponent("SmallerVideos", isDirectory: true)
 
     /// Exports the kept part of `asset` at `quality` and returns the copy's location, size and length.

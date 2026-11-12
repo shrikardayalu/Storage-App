@@ -102,4 +102,8 @@ public struct MediaTraits: OptionSet, Hashable, Codable, Sendable {
     public static let burstPick = MediaTraits(rawValue: 1 << 2)
     /// A Cinematic mode video, whose focus can be changed after recording.
     public static let cinematic = MediaTraits(rawValue: 1 << 3)
+    /// Marked as a favorite in Photos. Never suggested for removal.
+    public static let favorite = MediaTraits(rawValue: 1 << 4)
+    /// Edited in Photos (cropped, adjusted, Portrait mode), so someone cared about it.
+    public static let edited = MediaTraits(rawValue: 1 << 5)
 }

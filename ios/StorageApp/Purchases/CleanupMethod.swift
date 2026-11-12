@@ -261,11 +261,6 @@ extension AppModel {
         }
     }
 
-    /// The swipe feed: every junk suggestion except photos already kept on a swipe.
-    var swipeCandidates: [SwipeCandidate]? {
-        junkReport.map { SwipeCandidate.all(from: $0).filter { !swipeKept.contains($0.id) } }
-    }
-
     /// What onboarding suggests after a scan, biggest saving first.
     var suggestions: [Suggestion] {
         Suggestion.ranked(CleanupMethod.onboardingChoices.map { Suggestion(method: $0, bytes: saving(for: $0)) })
@@ -280,14 +275,9 @@ extension AppModel {
         return [CleanupMethod.shrinkVideos, .photoCleanup].reduce(screenshots) { $0 + (saving(for: $1) ?? 0) }
     }
 
-    /// One-tap Photo Cleanup for the scanned album, once the photos have been checked.
-    var photoCleanupPlan: PhotoCleanupPlan? {
-        junkReport.map { PhotoCleanupPlan(report: $0, livePhotos: convertibleLivePhotos) }
-    }
-
     /// The plan card's order for these picks: free fixes first on the free
     /// tier, Pro tools first once Pro is unlocked.
     func planOrder(_ picks: [CleanupMethod], hasPro: Bool) -> [CleanupMethod] {
-        PlanOrder.build(picks: picks, saving: { saving(for: $0) }, albumBytes: albumScan?.total.bytes ?? 0, hasPro: hasPro)
+        PlanOrder.build(picks: picks, saving: { saving(for: $0) }, albumBytes: libraryScan?.total.bytes ?? 0, hasPro: hasPro)
     }
 }

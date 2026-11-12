@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { Marked, type Tokens } from "marked";
+import { Marked, type Token, type Tokens } from "marked";
 import { competitors } from "@/lib/comparisons";
 import { siteConfig } from "@/lib/site";
 import { getTopic, topics, type TopicId } from "@/lib/topics";
@@ -185,7 +185,11 @@ function validate(guides: RawGuide[]) {
   }
 }
 
-function createRenderer(toc: TocEntry[] | null) {
+type ArticleRenderOptions = {
+  renderTable?: (table: Tokens.Table, inline: (tokens: Token[]) => string) => string;
+};
+
+function createRenderer(toc: TocEntry[] | null, options?: ArticleRenderOptions) {
   const marked = new Marked({ gfm: true });
   const used = new Map<string, number>();
 
@@ -210,6 +214,9 @@ function createRenderer(toc: TocEntry[] | null) {
         return `<a href="${href}"${titleAttr}>${text}</a>`;
       },
       table(token: Tokens.Table) {
+        if (options?.renderTable) {
+          return options.renderTable(token, (tokens) => this.parser.parseInline(tokens));
+        }
         // Wrap tables so wide ones scroll on phones instead of the page.
         const header = token.header
           .map((cell) => `<th>${this.parser.parseInline(cell.tokens)}</th>`)
@@ -266,9 +273,9 @@ export function guideHref(slug: string) {
 }
 
 /** Renders an article body: HTML split at each CTA marker, plus its `##` table of contents. */
-export function renderArticle(markdown: string) {
+export function renderArticle(markdown: string, options?: ArticleRenderOptions) {
   const toc: TocEntry[] = [];
-  const body = createRenderer(toc).parse(markdown, { async: false });
+  const body = createRenderer(toc, options).parse(markdown, { async: false });
   return { segments: body.split(CTA_MARKER), toc };
 }
 

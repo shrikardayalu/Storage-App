@@ -76,7 +76,7 @@ final class GuidesAndResultsTests: XCTestCase {
         let storage = SteppingStorage([5_000_000_000, 5_000_000_000, 5_000_000_000, 5_003_000_000])
         let library = MockPhotoLibrary(items: [photo("a", bytes: 3_000_000), photo("b", bytes: 1_000_000)])
         let model = AppModel(storage: storage, photoScanner: library, photoChanges: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         await model.delete(approved: ["a"])
         XCTAssertEqual(model.freed.total, 0)
 

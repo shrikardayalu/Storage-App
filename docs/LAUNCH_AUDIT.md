@@ -75,7 +75,7 @@ From `StorageApp.swift`, `RootView` shows the tabs (Home, Library, Settings), wi
 
 ## Needs my decision
 
-1. **Test Mode: decided, it stays on for now.** The app reads and changes only the "Storage App Test" album. App Review may still reject a Test Mode build under 2.1. `docs/APP_STORE.md` has review notes that tell the reviewer how to create the album, which gives it the best chance. If it is rejected, the fix is to widen the Photos code to the whole library behind the same review screens.
+1. **Done (2026-11-11): Test Mode is removed; the app scans the whole library and changes only approved items.** Was: **Test Mode: decided, it stays on for now.** The app reads and changes only the "Storage App Test" album. App Review may still reject a Test Mode build under 2.1. `docs/APP_STORE.md` has review notes that tell the reviewer how to create the album, which gives it the best chance. If it is rejected, the fix is to widen the Photos code to the whole library behind the same review screens.
 2. **Privacy policy: done.** It needs your domain and an email address. `/privacy` now covers the app, and new `/terms` and `/support` pages exist on the site (see Added after the audit, below). Still needed from you:
    - the real domain, in `NEXT_PUBLIC_SITE_URL` and `PaywallConfig.siteURL`;
    - a support inbox, in `NEXT_PUBLIC_SUPPORT_EMAIL`;

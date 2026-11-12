@@ -86,7 +86,7 @@ final class BurstPickTests: XCTestCase {
         XCTAssertEqual(receipt.keptPick, ["A", "B"])
         XCTAssertEqual(receipt.removed, ["a1", "a2", "b2"])
         XCTAssertEqual(receipt.removedBytes, 3_600)
-        XCTAssertEqual(receipt.albumCountBefore - receipt.albumCountAfter, 3)
+        XCTAssertEqual(receipt.countBefore - receipt.countAfter, 3)
         let items = await library.items
         XCTAssertEqual(burstsLeft(items), ["A": ["a3"], "B": ["b1"], "C": ["c1"]])
         XCTAssertTrue(items.contains { $0.id == "plain" })
@@ -100,13 +100,13 @@ final class BurstPickTests: XCTestCase {
         XCTAssertEqual(left["B"], ["b2"])
     }
 
-    func testShotInAnotherAlbumBlocksTheWholeChange() async {
-        let library = MockPhotoLibrary(items: album(), inOtherAlbums: ["b2"])
+    func testShotThatLeftTheLibraryBlocksTheWholeChange() async {
+        let library = MockPhotoLibrary(items: album())
         do {
-            _ = try await library.keepBurstPicks(keep: ["a2", "b1"], remove: ["a1", "a3", "b2"])
-            XCTFail("Removed a shot that's in another album")
+            _ = try await library.keepBurstPicks(keep: ["a2", "b1"], remove: ["a1", "a3", "b2", "gone"])
+            XCTFail("Ran with a shot that isn't in the library")
         } catch {
-            guard case .unsafe? = error as? PhotoChangeError else { return XCTFail("Wrong error: \(error)") }
+            guard case .burstsChanged? = error as? PhotoChangeError else { return XCTFail("Wrong error: \(error)") }
         }
         let count = await library.items.count
         let changes = await library.changeCount

@@ -36,9 +36,9 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(StorageHistoryStore(fileURL: url).load().snapshots.isEmpty)
     }
 
-    // MARK: Test album scan
+    // MARK: Library scan
 
-    func testScanGroupsTestAlbum() async {
+    func testScanGroupsTheLibrary() async {
         let items = [
             MediaItem(id: "a", category: .photo, format: .heic, filename: "a.HEIC", creationDate: Date(),
                       pixelWidth: 4032, pixelHeight: 3024, duration: nil, originalBytes: 3_000_000, thumbnailSeed: 0),
@@ -46,28 +46,23 @@ final class AppModelTests: XCTestCase {
                       pixelWidth: 3840, pixelHeight: 2160, duration: 60, originalBytes: 400_000_000, thumbnailSeed: 0),
         ]
         let model = AppModel(photoScanner: MockPhotoScanService(items: items))
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         XCTAssertNil(model.scanError)
-        XCTAssertEqual(model.albumScan?.total.count, 2)
-        XCTAssertEqual(model.albumScan?.items.first?.id, "b")
-        XCTAssertEqual(model.albumScan?[.bigFormats].count, 1)
+        XCTAssertEqual(model.libraryScan?.total.count, 2)
+        XCTAssertEqual(model.libraryScan?.items.first?.id, "b")
+        XCTAssertEqual(model.libraryScan?[.bigFormats].count, 1)
     }
 
-    func testScanReportsMissingAlbumAndDeniedAccess() async {
-        let missing = AppModel(photoScanner: MockPhotoScanService(items: [], albumExists: false))
-        await missing.scanTestAlbum()
-        XCTAssertEqual(missing.scanError, .albumNotFound(TestMode.albumName))
-        XCTAssertNil(missing.albumScan)
-
+    func testScanReportsDeniedAccess() async {
         let denied = AppModel(photoScanner: MockPhotoScanService(items: [], access: .denied))
-        await denied.scanTestAlbum()
+        await denied.scanLibrary()
         XCTAssertEqual(denied.scanError, .accessDenied)
     }
 
     func testScanIfAllowedNeverPrompts() async {
         let model = AppModel(photoScanner: MockPhotoScanService(items: [], access: .notDetermined))
         await model.scanIfAllowed()
-        XCTAssertNil(model.albumScan)
+        XCTAssertNil(model.libraryScan)
         XCTAssertEqual(model.photoAccess, .notDetermined)
     }
 
@@ -89,7 +84,7 @@ final class AppModelTests: XCTestCase {
     func testDeletingRemovesOnlyApprovedItemsAndOpensGuide() async {
         let library = MockPhotoLibrary(items: [item("a"), item("b"), item("c")])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         model.toggleSelection("a")
         model.toggleSelection("b")
 
@@ -98,7 +93,7 @@ final class AppModelTests: XCTestCase {
         XCTAssertNil(error)
         let remaining = await library.items.map(\.id)
         XCTAssertEqual(Set(remaining), ["b", "c"])
-        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["b", "c"])
+        XCTAssertEqual(Set(model.libraryScan?.items.map(\.id) ?? []), ["b", "c"])
         XCTAssertFalse(model.selection.contains("a"))
         guard case .deleted(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(receipt.onlyApprovedRemoved)
@@ -127,7 +122,7 @@ final class AppModelTests: XCTestCase {
         let storage = SteppingStorage([5_000_000_000, 5_000_000_000, 5_000_000_000, 5_001_000_000])
         let library = MockPhotoLibrary(items: [item("a"), item("b")])
         let model = AppModel(storage: storage, photoScanner: library, photoChanges: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         await model.delete(approved: ["a"])
 
         await model.checkReclaim(readings: 6, every: .zero)
@@ -141,7 +136,7 @@ final class AppModelTests: XCTestCase {
         let storage = SteppingStorage([5_000_000_000])
         let library = MockPhotoLibrary(items: [item("a"), item("b")])
         let model = AppModel(storage: storage, photoScanner: library, photoChanges: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         await model.delete(approved: ["a"])
 
         await model.checkReclaim(readings: 3, every: .zero)
@@ -153,17 +148,18 @@ final class AppModelTests: XCTestCase {
 
     func testNothingOutsideTheScanCanBeSelected() async {
         let model = AppModel(library: MockPhotoLibrary(items: [item("a")]))
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         model.toggleSelection("someone-elses-photo")
         XCTAssertTrue(model.selection.isEmpty)
     }
 
     func testUnsafeDeleteChangesNothing() async {
-        let library = MockPhotoLibrary(items: [item("a"), item("b")], inOtherAlbums: ["b"])
+        let library = MockPhotoLibrary(items: [item("a"), item("b")])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
 
-        let error = await model.delete(approved: ["a", "b"])
+        // "gone" left the library after the review screen was shown.
+        let error = await model.delete(approved: ["a", "gone"])
         guard case .unsafe? = error else { return XCTFail("Expected the safety check to block it") }
         let count = await library.items.count
         XCTAssertEqual(count, 2)
@@ -172,7 +168,7 @@ final class AppModelTests: XCTestCase {
 
     func testGuideWaitsForReviewSheetToClose() async {
         let model = AppModel(library: MockPhotoLibrary(items: [item("a")]))
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         model.isReviewing = true
         await model.delete(approved: ["a"])
         XCTAssertFalse(model.isReviewing)
@@ -186,13 +182,13 @@ final class AppModelTests: XCTestCase {
     func testConvertingLivePhotosReplacesThemWithStills() async {
         let library = MockPhotoLibrary(items: [item("live", bytes: 5_000_000, live: 3_000_000), item("still")])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         XCTAssertEqual(model.convertibleLivePhotos.map(\.id), ["live"])
 
         let error = await model.convertToStills(approved: ["live"])
         XCTAssertNil(error)
         XCTAssertTrue(model.convertibleLivePhotos.isEmpty)
-        XCTAssertEqual(model.albumScan?.total.count, 2)
+        XCTAssertEqual(model.libraryScan?.total.count, 2)
         guard case .convertedLivePhotos(let results)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(results.allSatisfy(\.keptEverything))
         XCTAssertEqual(model.guide?.expectedBytes, 3_000_000)
@@ -208,14 +204,14 @@ final class AppModelTests: XCTestCase {
         }
         let library = MockPhotoLibrary(items: [shot("png", .png), shot("heic", .heic)])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         XCTAssertEqual(model.resavableScreenshots.map(\.id), ["png"])
         XCTAssertEqual(model.screenshotSaving, 1_300_000)
 
         let error = await model.resaveScreenshots(approved: ["png"])
         XCTAssertNil(error)
         XCTAssertTrue(model.resavableScreenshots.isEmpty)
-        XCTAssertEqual(model.albumScan?.total.count, 2)
+        XCTAssertEqual(model.libraryScan?.total.count, 2)
         guard case .resavedScreenshots(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(receipt.resaved.allSatisfy(\.keptEverything))
         XCTAssertEqual(model.guide?.expectedBytes, 1_300_000)
@@ -231,13 +227,13 @@ final class AppModelTests: XCTestCase {
         }
         let library = MockPhotoLibrary(items: [shot("a1", "A"), shot("a2", "A"), shot("a3", "A"), shot("b1", "B"), shot("b2", "B"), item("plain")])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         XCTAssertEqual(model.bursts.count, 2)
 
         let error = await model.keepBurstPicks(["A": "a1", "B": "b2"])
         XCTAssertNil(error)
         XCTAssertTrue(model.bursts.isEmpty)
-        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["a1", "b2", "plain"])
+        XCTAssertEqual(Set(model.libraryScan?.items.map(\.id) ?? []), ["a1", "b2", "plain"])
         guard case .keptBurstPicks(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(receipt.isExact)
         XCTAssertEqual(model.guide?.expectedBytes, 3_000_000)
@@ -250,7 +246,7 @@ final class AppModelTests: XCTestCase {
                               pixelWidth: 3840, pixelHeight: 2160, duration: 60, originalBytes: 340_000_000, thumbnailSeed: 0)
         let library = MockPhotoLibrary(items: [video, item("plain")])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         XCTAssertEqual(model.shrinkableVideos.map(\.id), ["v"])
 
         let edit = VideoEdit(quality: .smaller, trim: VideoTrim(start: 5, end: 35))
@@ -259,7 +255,7 @@ final class AppModelTests: XCTestCase {
 
         let error = await model.replaceVideo(with: prepared)
         XCTAssertNil(error)
-        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["v-small", "plain"])
+        XCTAssertEqual(Set(model.libraryScan?.items.map(\.id) ?? []), ["v-small", "plain"])
         guard case .shrunkVideo(let result)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(result.keptEverything)
         XCTAssertTrue(result.wasTrimmed)
@@ -275,13 +271,13 @@ final class AppModelTests: XCTestCase {
         let library = MockPhotoLibrary(items: [video("a", bytes: 340_000_000), video("b", bytes: 200_000_000),
                                                video("lean", bytes: 20_000_000), item("plain")])
         let model = AppModel(library: library)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
 
         let error = await model.shrinkVideos(["a": .smaller, "b": .sameQuality, "lean": .sameQuality])
         XCTAssertNil(error)
         let changes = await library.changeCount
         XCTAssertEqual(changes, 1, "One Photos change, so iOS asks once")
-        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["a-small", "b-small", "lean", "plain"])
+        XCTAssertEqual(Set(model.libraryScan?.items.map(\.id) ?? []), ["a-small", "b-small", "lean", "plain"])
         guard case .shrunkVideos(let results, let skipped)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertEqual(results.count, 2)
         XCTAssertEqual(skipped, 1)
@@ -305,10 +301,32 @@ final class AppModelTests: XCTestCase {
         return (MockPhotoLibrary(items: items), analysis)
     }
 
+    func testMeasurementsAreSavedAndNotMadeTwice() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("signals-\(UUID().uuidString).bin")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = PhotoSignalsStore(fileURL: url)
+        let (library, analysis) = junkLibrary()
+
+        let first = AppModel(photoScanner: library, photoChanges: library, photoAnalyzer: analysis, signalsStore: store)
+        await first.scanLibrary()
+        await first.findJunk()
+        XCTAssertTrue(first.junkAnalysisFinished)
+        XCTAssertEqual(Set(store.load().keys), ["dog", "dog-copy", "blur", "good"])
+
+        // A later launch with an analyzer that can't measure anything still
+        // finds the same junk, from what was saved.
+        let second = AppModel(photoScanner: library, photoChanges: library, photoAnalyzer: MockPhotoAnalysis(), signalsStore: store)
+        await second.scanLibrary()
+        await second.findJunk()
+        XCTAssertEqual(second.junkReport?.duplicates.count, 1)
+        XCTAssertEqual(second.junkReport?.findings.map(\.id), ["blur"])
+        XCTAssertFalse(second.isAnalyzing)
+    }
+
     func testFindingJunkFlagsCopiesAndBlurButNotGoodPhotos() async {
         let (library, analysis) = junkLibrary()
         let model = AppModel(library: library, analysis: analysis)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         await model.findJunk()
         let report = model.junkReport
         XCTAssertEqual(report?.duplicates.count, 1)
@@ -321,7 +339,7 @@ final class AppModelTests: XCTestCase {
     func testRemovingJunkKeepsThePickedCopy() async {
         let (library, analysis) = junkLibrary()
         let model = AppModel(library: library, analysis: analysis)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         await model.findJunk()
         let keeper = model.junkReport!.duplicates[0].suggestedKeeper
 
@@ -333,7 +351,7 @@ final class AppModelTests: XCTestCase {
 
         let error = await model.removeJunk(["dog-copy", "blur"], keeping: [keeper])
         XCTAssertNil(error)
-        XCTAssertEqual(Set(model.albumScan?.items.map(\.id) ?? []), ["dog", "good"])
+        XCTAssertEqual(Set(model.libraryScan?.items.map(\.id) ?? []), ["dog", "good"])
         XCTAssertEqual(model.junkReport?.isEmpty, true)
         guard case .deleted(let receipt)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertTrue(receipt.onlyApprovedRemoved)
@@ -350,7 +368,7 @@ final class AppModelTests: XCTestCase {
             "dog": signals(0), "dog-copy": signals(0), "blur": signals(1, sharpness: 5), "live": signals(2),
         ])
         let model = AppModel(library: MockPhotoLibrary(items: items), analysis: analysis)
-        await model.scanTestAlbum()
+        await model.scanLibrary()
         await model.findJunk()
 
         let plan = try XCTUnwrap(model.photoCleanupPlan)
@@ -362,13 +380,60 @@ final class AppModelTests: XCTestCase {
 
         let error = await model.cleanUpPhotos(plan)
         XCTAssertNil(error)
-        XCTAssertEqual(model.albumScan?.total.count, 2)
+        XCTAssertEqual(model.libraryScan?.total.count, 2)
         XCTAssertTrue(model.convertibleLivePhotos.isEmpty)
         XCTAssertEqual(model.photoCleanupPlan?.isEmpty, true)
         guard case .photoCleanup(let receipt, let stills)? = model.guide?.kind else { return XCTFail("No guide") }
         XCTAssertEqual(receipt?.deleted, ["dog-copy", "blur"])
         XCTAssertEqual(stills.count, 1)
         XCTAssertEqual(model.guide?.expectedBytes, plan.totalBytes)
+    }
+
+    func testOnlyLivePhotosThatDontNeedToBeLiveAreSuggested() async {
+        let items = [
+            item("lunch", bytes: 5_000_000, live: 3_000_000),
+            item("kids", bytes: 5_000_000, live: 3_000_000),
+            item("unseen", bytes: 5_000_000, live: 3_000_000),
+        ]
+        func signals(_ axis: Int, faces: Int = 0) -> PhotoSignals {
+            var print = [Float](repeating: 0, count: 4)
+            print[axis] = 1
+            return PhotoSignals(featurePrint: print, sharpness: 400, brightness: 0.5, darkFraction: 0,
+                                faceCount: faces, faceArea: faces > 0 ? 0.1 : 0)
+        }
+        let analysis = MockPhotoAnalysis(signals: ["lunch": signals(0), "kids": signals(1, faces: 2)])
+        let model = AppModel(library: MockPhotoLibrary(items: items), analysis: analysis)
+        await model.scanLibrary()
+        // Before the photos are checked, the figure covers every Live Photo.
+        XCTAssertNil(model.suggestedLivePhotos)
+        XCTAssertEqual(model.saving(for: .livePhotos), 9_000_000)
+
+        await model.findJunk()
+        XCTAssertEqual(model.suggestedLivePhotos?.map(\.id), ["lunch"])
+        XCTAssertEqual(model.liveKeepReasons, ["kids": .people, "unseen": .notChecked])
+        XCTAssertEqual(model.photoCleanupPlan?.convert, ["lunch"])
+        XCTAssertEqual(model.saving(for: .livePhotos), 3_000_000)
+        // Every Live Photo can still be picked by hand.
+        XCTAssertEqual(model.convertibleLivePhotos.count, 3)
+    }
+
+    func testMeasurementsFromAnOlderVersionAreMadeAgain() async {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("signals-\(UUID().uuidString).bin")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let store = PhotoSignalsStore(fileURL: url)
+        // What the first version knew: a soft photo, so it called it blurry.
+        store.append(["sunset": PhotoSignals(featurePrint: [1, 0, 0, 0], sharpness: 5, brightness: 0.4, darkFraction: 0.1, version: 1)])
+        let analysis = MockPhotoAnalysis(signals: [
+            "sunset": PhotoSignals(featurePrint: [1, 0, 0, 0], sharpness: 5, brightness: 0.4, darkFraction: 0.1,
+                                   peakSharpness: 20, labels: ["sunset_sunrise": 0.9]),
+        ])
+        let library = MockPhotoLibrary(items: [item("sunset")])
+        let model = AppModel(photoScanner: library, photoChanges: library, photoAnalyzer: analysis, signalsStore: store)
+        await model.scanLibrary()
+        await model.findJunk()
+
+        XCTAssertEqual(model.junkReport?.isEmpty, true, "a sunset isn't junk once Vision has seen it")
+        XCTAssertEqual(store.load()["sunset"]?.version, PhotoSignals.currentVersion)
     }
 
     // MARK: Files cleanup (Build Plan step 8)

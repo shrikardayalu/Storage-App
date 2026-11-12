@@ -46,7 +46,7 @@ func sampleItems() -> [MediaItem] {
     ]
 }
 
-/// A stand-in for the test album with at least one item in every scan group.
+/// A stand-in for a photo library with at least one item in every scan group.
 func sampleScanItems() -> [MediaItem] {
     func photo(_ id: String, bytes: Int64, format: MediaFormat = .heic, traits: MediaTraits = [], burst: String? = nil) -> MediaItem {
         MediaItem(

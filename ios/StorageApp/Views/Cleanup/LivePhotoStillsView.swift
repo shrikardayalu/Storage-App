@@ -1,33 +1,52 @@
 import StorageCore
 import SwiftUI
 
-/// Step 4: turn Live Photos in the test album into stills. Each still is the
+/// Step 4: turn Live Photos in the library into stills. Each still is the
 /// same image with the same date, location, favorite and album; only the
 /// short video goes, to Recently Deleted.
+///
+/// It opens on All, which covers only the Live Photos that don't need to be
+/// Live: people, pets, scenery, favorites and great shots are left as they
+/// are. Select, in the top bar, lists every Live Photo with nothing ticked,
+/// so the person chooses. Pressing and holding a photo plays it.
 struct LivePhotoStillsView: View {
     @Environment(AppModel.self) private var model
+    @State private var scope: PickScope = .all
+    /// The Live Photos ticked in Select. All ignores it.
     @State private var chosen: Set<MediaItem.ID> = []
     @State private var check: SafetyCheck?
     @State private var error: PhotoChangeError?
     @State private var confirming = false
     @State private var progress: CGFloat = 0
-    @State private var didLoad = false
+    @State private var preview: MediaPreview?
 
     private var livePhotos: [MediaItem] { model.convertibleLivePhotos }
-    /// Items the safety check refused, such as ones also in another album.
+    /// The ones a still would do for. Empty until the photos have been checked.
+    private var suggested: [MediaItem] { model.suggestedLivePhotos ?? [] }
+    /// Items the safety check refused, such as ones that are gone since the scan.
     private var blocked: Set<MediaItem.ID> {
         guard let check else { return [] }
-        return check.outsideTestAlbum.union(check.inOtherAlbums)
+        return check.missing
     }
-    private var approved: Set<MediaItem.ID> { chosen.subtracting(blocked) }
-    private var savedBytes: Int64 {
-        livePhotos.filter { approved.contains($0.id) }.reduce(0) { $0 + $1.livePhotoVideoBytes }
+    private var approved: [MediaItem] {
+        let blocked = blocked
+        switch scope {
+        case .all: return suggested.filter { !blocked.contains($0.id) }
+        case .select: return livePhotos.filter { chosen.contains($0.id) && !blocked.contains($0.id) }
+        }
     }
+    /// True until every photo has been looked at once.
+    private var isChecking: Bool { model.isAnalyzing || model.liveKeepReasons == nil }
 
     var body: some View {
+        // Worked out once per redraw: a library can hold thousands of these.
+        content(approved)
+    }
+
+    private func content(_ approved: [MediaItem]) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header
+                header(savedBytes: approved.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes })
                 SketchCanvas(marks: GuideScenes.liveToStill, progress: progress)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
@@ -35,7 +54,8 @@ struct LivePhotoStillsView: View {
                     .sticker(radius: 26, padding: 8)
                     .rotationEffect(.degrees(-0.6))
                 keeps
-                list
+                if isChecking, !livePhotos.isEmpty { checking }
+                list(approvedCount: approved.count)
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
@@ -49,37 +69,39 @@ struct LivePhotoStillsView: View {
         .background(PaperBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) { actionBar }
+        .scopePicker($scope, label: "Which Live Photos to turn into stills", isShown: !livePhotos.isEmpty, isDisabled: model.isChanging)
+        .safeAreaInset(edge: .bottom) { actionBar(approved) }
         .drawing($progress, duration: 3)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Making stills…") }
         }
         .confirmationDialog(
-            "Turn \(countText) into stills?",
+            "Turn \(approved.count == 1 ? "1 Live Photo" : "\(approved.count) Live Photos") into stills?",
             isPresented: $confirming,
             titleVisibility: .visible
         ) {
-            Button(approved.count == 1 ? "Make 1 Still" : "Make \(approved.count) Stills") {
-                Task { await convert() }
+            Button(Self.buttonTitle(approved.count)) {
+                Task { await convert(Set(approved.map(\.id))) }
             }
         } message: {
-            Text("Each photo becomes a still that stays in your library, with its date, location, favorite and album. Only the old Live versions (photo plus video) go to Recently Deleted. You can recover them there for 30 days.")
+            Text("Each photo becomes a still that stays in your library, with its date, location, favorite and albums. Only the old Live versions (photo plus video) go to Recently Deleted. You can recover them there for 30 days.")
         }
-        .task {
-            guard !didLoad else { return }
-            didLoad = true
-            chosen = Set(livePhotos.map(\.id))
+        .mediaPreview($preview)
+        // Looks at each photo once, to tell which ones are worth keeping Live.
+        .task { await model.findJunk() }
+        .task(id: livePhotos.map(\.id)) {
+            chosen.formIntersection(livePhotos.map(\.id))
             await runCheck()
         }
     }
 
-    private var countText: String {
-        approved.count == 1 ? "1 Live Photo" : "\(approved.count) Live Photos"
+    private static func buttonTitle(_ count: Int) -> String {
+        count == 1 ? "Make 1 Still" : "Make \(count) Stills"
     }
 
     // MARK: Sections
 
-    private var header: some View {
+    private func header(savedBytes: Int64) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("same photo, minus the video")
                 .font(.hand(20))
@@ -110,7 +132,7 @@ struct LivePhotoStillsView: View {
                 SafetyLine(done: true, text: "Its date", progress: progress, start: 0.55)
                 SafetyLine(done: true, text: "Its location", progress: progress, start: 0.62)
                 SafetyLine(done: true, text: "Favorite", progress: progress, start: 0.69)
-                SafetyLine(done: true, text: "The album", progress: progress, start: 0.76)
+                SafetyLine(done: true, text: "Its albums", progress: progress, start: 0.76)
             }
             Text("Your stills stay in your library. Only the old Live versions go to Recently Deleted, so you'll see them there. SimpleShrink checks each still afterwards and shows you the result.")
                 .font(.caption)
@@ -118,35 +140,92 @@ struct LivePhotoStillsView: View {
         }
     }
 
+    private var checking: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ProgressView(value: model.analysisProgress)
+                .tint(Theme.accent)
+            Text("Working out which Live Photos are worth keeping Live, on this iPhone. Nothing leaves it.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .card(padding: 16)
+    }
+
     @ViewBuilder
-    private var list: some View {
+    private func list(approvedCount: Int) -> some View {
+        let keep = model.liveKeepReasons ?? [:]
+        // Select shows every Live Photo, the suggested ones first.
+        let rows = scope == .all ? suggested : suggested + livePhotos.filter { keep[$0.id] != nil }
+        let staying = livePhotos.count - suggested.count
         if livePhotos.isEmpty {
             EmptyStateView(
                 illustration: .photo,
                 title: "No Live Photos here",
-                message: "Nothing in \u{201C}\(TestMode.albumName)\u{201D} is a Live Photo. Shots in a burst are left for the burst step."
+                message: "Nothing in your library is a Live Photo. Shots in a burst are left for the burst step."
             )
+        } else if rows.isEmpty {
+            if !isChecking {
+                EmptyStateView(
+                    illustration: .shieldCheck,
+                    title: "Nothing to suggest",
+                    message: "Your \(livePhotos.count == 1 ? "Live Photo looks" : "\(livePhotos.count) Live Photos look") worth keeping Live. Switch to Select at the top to pick any yourself."
+                )
+            }
         } else {
-            VStack(alignment: .leading, spacing: 0) {
+            // Lazy: a library can hold thousands of these.
+            LazyVStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("\(livePhotos.count) Live Photos in the test album")
+                    Text(scope == .all
+                         ? "\(suggested.count) \(suggested.count == 1 ? "Live Photo doesn't" : "Live Photos don't") need to be Live"
+                         : "\(livePhotos.count) Live \(livePhotos.count == 1 ? "Photo" : "Photos")")
                         .font(.headline)
                     Spacer()
-                    Button(chosen.count == livePhotos.count ? "None" : "All") {
-                        chosen = chosen.count == livePhotos.count ? [] : Set(livePhotos.map(\.id))
+                    if scope == .select {
+                        Text("\(approvedCount) picked")
+                            .font(.hand(16))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+                .padding(.bottom, 4)
+                Text(scope == .all
+                     ? "A still does fine for these. \(staying > 0 ? "\(staying) with people, pets, scenery or a favorite \(staying == 1 ? "stays" : "stay") Live. " : "")Switch to Select at the top to choose yourself. Press and hold a photo to play it."
+                     : "Tick the ones to turn into stills. Press and hold a photo to play it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 6)
+                if scope == .select {
+                    HStack(spacing: 16) {
+                        if !suggested.isEmpty {
+                            Button("Tick suggested") { chosen.formUnion(suggested.map(\.id)) }
+                        }
+                        if !chosen.isEmpty {
+                            Button("Clear") { chosen = [] }
+                        }
                     }
                     .font(.subheadline.weight(.semibold))
+                    .padding(.bottom, 6)
                 }
-                .padding(.bottom, 8)
-                ForEach(livePhotos) { item in
+                ForEach(rows) { item in
+                    let blockedReason = blockedReason(item)
                     LivePhotoRow(
                         item: item,
-                        isOn: approved.contains(item.id),
-                        blockedReason: blockedReason(item)
-                    ) {
-                        if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
+                        showsCheck: scope == .select,
+                        isOn: chosen.contains(item.id) && blockedReason == nil,
+                        stays: keep[item.id],
+                        blockedReason: blockedReason
+                    )
+                    .tapAndHold(isEnabled: blockedReason == nil) {
+                        if scope == .select {
+                            if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
+                        } else {
+                            preview = MediaPreview(item)
+                        }
+                    } hold: {
+                        preview = MediaPreview(item)
                     }
-                    if item.id != livePhotos.last?.id { Divider() }
+                    if item.id != rows.last?.id { Divider() }
                 }
             }
             .card(padding: 14)
@@ -155,21 +234,22 @@ struct LivePhotoStillsView: View {
 
     private func blockedReason(_ item: MediaItem) -> String? {
         guard let check else { return nil }
-        if check.inOtherAlbums.contains(item.id) { return "also in another album, so it's left alone" }
-        if check.outsideTestAlbum.contains(item.id) { return "not in the test album any more" }
+        if check.missing.contains(item.id) { return "not in your library any more" }
         return nil
     }
 
-    private var actionBar: some View {
+    private func actionBar(_ approved: [MediaItem]) -> some View {
         VStack(spacing: 6) {
             Button {
                 confirming = true
             } label: {
-                Text(approved.isEmpty ? "Pick Live Photos" : (approved.count == 1 ? "Make 1 Still" : "Make \(approved.count) Stills"))
+                Text(approved.isEmpty ? "Pick Live Photos" : Self.buttonTitle(approved.count))
             }
             .buttonStyle(.sticker)
-            .disabled(approved.isEmpty || check == nil || model.isChanging)
-            Text(check == nil ? (error == nil ? "Checking the test album…" : "Fix the problem above to continue.") : "Stills stay in your library. Old Live versions go to Recently Deleted.")
+            .disabled(approved.isEmpty || check == nil || model.isChanging || (scope == .all && isChecking))
+            Text(check == nil
+                 ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.")
+                 : "Stills stay in your library. Old Live versions go to Recently Deleted.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -196,63 +276,65 @@ struct LivePhotoStillsView: View {
         }
     }
 
-    private func convert() async {
-        let ids = approved
+    private func convert(_ ids: Set<MediaItem.ID>) async {
         guard !ids.isEmpty else { return }
         if let failure = await model.convertToStills(approved: ids) {
             error = failure
             await runCheck()
-        } else {
-            chosen = Set(model.convertibleLivePhotos.map(\.id))
         }
     }
 }
 
 private struct LivePhotoRow: View {
     let item: MediaItem
+    let showsCheck: Bool
     let isOn: Bool
+    /// Why this one is better left Live, if it is.
+    let stays: KeepReason?
     let blockedReason: String?
-    let toggle: () -> Void
 
     var body: some View {
-        Button(action: toggle) {
-            HStack(spacing: 12) {
+        HStack(spacing: 12) {
+            if showsCheck {
                 InkCheck(isOn: isOn, size: 24)
                     .opacity(blockedReason == nil ? 1 : 0.3)
-                ItemThumbnail(id: item.id, side: 46)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.filename)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    if let blockedReason {
-                        Text(blockedReason)
+            }
+            ItemThumbnail(id: item.id, side: 46)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.filename)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                if let blockedReason {
+                    Text(blockedReason)
+                        .font(.hand(14))
+                        .foregroundStyle(Theme.tomato)
+                } else {
+                    Text(item.creationDate.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let stays {
+                        Text(stays == .notChecked ? "not checked yet" : "better Live: \(stays.note)")
                             .font(.hand(14))
-                            .foregroundStyle(Theme.tomato)
-                    } else {
-                        Text(item.creationDate.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.accent)
+                            .lineLimit(1)
                     }
                 }
-                Spacer(minLength: 6)
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text("−\(ByteFormatter.string(item.livePhotoVideoBytes, precision: .twoDecimals))")
-                        .font(.subheadline.weight(.bold).monospacedDigit())
-                        .foregroundStyle(Theme.accent)
-                    Text("video")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
             }
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
+            Spacer(minLength: 6)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text("−\(ByteFormatter.string(item.livePhotoVideoBytes, precision: .twoDecimals))")
+                    .font(.subheadline.weight(.bold).monospacedDigit())
+                    .foregroundStyle(Theme.accent)
+                Text("video")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(blockedReason != nil)
+        .padding(.vertical, 8)
+        .opacity(blockedReason == nil ? 1 : 0.6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(item.filename), saves \(ByteFormatter.accessibilityString(item.livePhotoVideoBytes, precision: .twoDecimals))")
-        .accessibilityValue(blockedReason ?? (isOn ? "Picked" : "Not picked"))
-        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(blockedReason ?? (showsCheck ? (isOn ? "Picked" : "Not picked") : "Included"))
     }
 }

@@ -19,19 +19,43 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
             progress(1)
             return [:]
         }
-        var assets: [PHAsset] = []
-        PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil).enumerateObjects { asset, _, _ in assets.append(asset) }
+        let assets = PhotoLibrary.assets(withIDs: Set(ids))
+        guard !assets.isEmpty else {
+            progress(1)
+            return [:]
+        }
 
+        // A few photos at a time: a whole library is a lot of photos, and
+        // Vision still leaves the phone responsive at this pace.
         var results: [MediaItem.ID: PhotoSignals] = [:]
-        for (index, asset) in assets.enumerated() {
-            if Task.isCancelled { break }
-            if let image = await Self.smallCopy(of: asset),
-               let signals = await Task.detached(priority: .userInitiated, operation: { Self.measure(image) }).value {
-                results[asset.localIdentifier] = signals
+        await withTaskGroup(of: (String, PhotoSignals?).self) { group in
+            var next = 0
+            var done = 0
+            while next < min(Self.atOnce, assets.count) {
+                let asset = assets[next]
+                group.addTask { (asset.localIdentifier, await Self.signals(for: asset)) }
+                next += 1
             }
-            progress(Double(index + 1) / Double(assets.count))
+            for await (id, signals) in group {
+                if let signals { results[id] = signals }
+                done += 1
+                progress(Double(done) / Double(assets.count))
+                if next < assets.count, !Task.isCancelled {
+                    let asset = assets[next]
+                    group.addTask { (asset.localIdentifier, await Self.signals(for: asset)) }
+                    next += 1
+                }
+            }
         }
         return results
+    }
+
+    /// How many photos are measured at the same time.
+    private static let atOnce = 3
+
+    private static func signals(for asset: PHAsset) async -> PhotoSignals? {
+        guard let image = await smallCopy(of: asset) else { return nil }
+        return await Task.detached(priority: .utility) { measure(image) }.value
     }
 
     /// A copy no bigger than `side` on its long edge, as Photos shows it (edits included).
@@ -64,6 +88,20 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
         } catch {
             return nil
         }
+        // What's in the picture and how it came out, so memories aren't
+        // mistaken for junk. Each is optional: if one can't run on this
+        // phone, the photo is still measured without it.
+        let sceneRequest = VNClassifyImageRequest()
+        let faceRequest = VNDetectFaceCaptureQualityRequest()
+        try? handler.perform([sceneRequest])
+        try? handler.perform([faceRequest])
+        let looks = aesthetics(handler)
+        let labels = (sceneRequest.results ?? [])
+            .filter { $0.confidence >= 0.15 }
+            .sorted { $0.confidence > $1.confidence }
+            .prefix(12)
+            .reduce(into: [String: Double]()) { $0[$1.identifier] = Double($1.confidence) }
+        let faces = faceRequest.results ?? []
 
         let lines = (textRequest.results ?? []).compactMap { $0.topCandidates(1).first?.string }
         let coverage = (textRequest.results ?? []).reduce(0.0) { $0 + Double($1.boundingBox.width * $1.boundingBox.height) }
@@ -75,8 +113,23 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
             brightness: stats.brightness,
             darkFraction: stats.darkFraction,
             textLines: lines,
-            textCoverage: min(coverage, 1)
+            textCoverage: min(coverage, 1),
+            peakSharpness: stats.peakSharpness,
+            faceCount: faces.count,
+            faceArea: faces.map { Double($0.boundingBox.width * $0.boundingBox.height) }.max() ?? 0,
+            faceQuality: faces.compactMap(\.faceCaptureQuality).min().map(Double.init),
+            labels: labels,
+            aesthetics: looks?.score,
+            isUtility: looks?.isUtility ?? false
         )
+    }
+
+    /// Vision's rating of how good the photo looks, on iOS 18 and later.
+    private static func aesthetics(_ handler: VNImageRequestHandler) -> (score: Double, isUtility: Bool)? {
+        guard #available(iOS 18.0, *) else { return nil }
+        let request = VNCalculateImageAestheticsScoresRequest()
+        guard (try? handler.perform([request])) != nil, let result = request.results?.first else { return nil }
+        return (Double(result.overallScore), result.isUtility)
     }
 
     /// The print as unit-length floats, so distances mean the same thing whatever Vision revision made it.

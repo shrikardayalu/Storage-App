@@ -30,7 +30,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SimpleShrink reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.</string>
+	<string>SimpleShrink looks through your photos and videos on this iPhone to show what takes up space. It changes only the ones you approve, and nothing leaves your iPhone.</string>
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
 	<true/>
 </dict>

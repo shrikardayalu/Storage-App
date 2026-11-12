@@ -51,8 +51,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
-        # Test Mode reads one album only (Build Plan step 2). Keep in sync with xtool-Info.plist.
-        NSPhotoLibraryUsageDescription: SimpleShrink reads your "Storage App Test" album to show what takes up space. It changes only photos in that album that you approve.
+        # Keep in sync with xtool-Info.plist.
+        NSPhotoLibraryUsageDescription: SimpleShrink looks through your photos and videos on this iPhone to show what takes up space. It changes only the ones you approve, and nothing leaves your iPhone.
         # The app offers its own "Change Selection" button instead of iOS asking on every launch.
         PHPhotoLibraryPreventAutomaticLimitedAccessAlert: true
     settings:

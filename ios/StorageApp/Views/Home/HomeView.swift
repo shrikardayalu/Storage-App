@@ -22,7 +22,7 @@ struct HomeView: View {
                     .drawsIn(section: 1)
                 upNext
                     .drawsIn(section: 2)
-                if let scan = model.albumScan, scan.total.count > 0 {
+                if let scan = model.libraryScan, scan.total.count > 0 {
                     PhotoToolsSection(onPaywall: { showingPaywall = true })
                         .drawsIn(section: 3)
                 }
@@ -44,14 +44,14 @@ struct HomeView: View {
         }
         // Duplicates are checked again after a relaunch, so their row and the
         // plan show a real number even when the tool itself needs Pro.
-        .task(id: model.albumScan?.total.count) {
-            if model.albumScan != nil, model.junkReport == nil { await model.findJunk() }
+        .task(id: model.libraryScan?.total.count) {
+            if model.libraryScan != nil, !model.junkAnalysisFinished { await model.findJunk() }
         }
     }
 
     /// The onboarding picks, as a checklist. Needs a scan for its numbers.
     private var showsPlan: Bool {
-        onboardingDone && model.albumScan != nil && !OnboardingAnswers.load().picks.isEmpty
+        onboardingDone && model.libraryScan != nil && !OnboardingAnswers.load().picks.isEmpty
     }
 
     private var header: some View {
@@ -63,8 +63,7 @@ struct HomeView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
                 .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            TestModeBadge()
+            Spacer(minLength: 0)
         }
         .padding(.top, 12)
     }
@@ -77,7 +76,7 @@ struct HomeView: View {
     @ViewBuilder
     private var upNext: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if model.albumScan == nil {
+            if model.libraryScan == nil {
                 ScanCard()
             } else if showsPlan {
                 PlanCard(picks: OnboardingAnswers.load().picks)
@@ -319,7 +318,7 @@ private struct ScanCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Find what's taking space")
                             .font(.headline)
-                        Text("Scans the \u{201C}\(TestMode.albumName)\u{201D} album. Scanning only reads it.")
+                        Text("Scans your photos and videos. Scanning only reads them.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -329,9 +328,9 @@ private struct ScanCard: View {
                     ScanErrorView(error: error)
                 }
                 Button {
-                    Task { await model.scanTestAlbum() }
+                    Task { await model.scanLibrary() }
                 } label: {
-                    if model.isScanning { ProgressView() } else { Text("Scan Test Album") }
+                    if model.isScanning { ProgressView() } else { Text("Scan My Photos") }
                 }
                 .buttonStyle(.sticker)
                 .disabled(model.isScanning)
@@ -569,7 +568,7 @@ private struct PhotoToolsSection: View {
                 SectionTitle(text: "Photos & videos")
                 Spacer(minLength: 8)
                 Button {
-                    Task { await model.scanTestAlbum() }
+                    Task { await model.scanLibrary() }
                 } label: {
                     if model.isScanning {
                         ProgressView().controlSize(.small)
@@ -587,11 +586,11 @@ private struct PhotoToolsSection: View {
                 ScanErrorView(error: error)
             }
             GroupedList {
-                if let scan = model.albumScan {
+                if let scan = model.libraryScan {
                     Button { model.showLibrary(group: nil) } label: {
                         ListRow(
                             illustration: .photo,
-                            title: "Test album",
+                            title: "Your library",
                             subtitle: "\(scan.total.count.formatted()) items · \(ScanSource.title(for: model.photoAccess))",
                             trailing: ByteFormatter.string(scan.total.bytes, precision: .twoDecimals),
                             trailingIsSaving: false
@@ -653,7 +652,7 @@ private struct PhotoToolsSection: View {
     static func subtitle(for method: CleanupMethod, model: AppModel) -> String {
         switch method {
         case .livePhotos:
-            let count = model.convertibleLivePhotos.count
+            let count = (model.suggestedLivePhotos ?? model.convertibleLivePhotos).count
             return "\(count) Live \(count == 1 ? "Photo" : "Photos"), keep the still"
         case .screenshots:
             let count = model.resavableScreenshots.count
@@ -798,7 +797,7 @@ private struct SafetyFootnote: View {
             Image(systemName: "lock.shield")
                 .foregroundStyle(Theme.accent)
                 .accessibilityHidden(true)
-            Text("Test Mode: SimpleShrink sees only the \u{201C}\(TestMode.albumName)\u{201D} album, your free space and a folder you pick. Nothing changes without your OK.")
+            Text("SimpleShrink reads your photos, your free space and a folder you pick. Nothing changes without your OK, and nothing leaves your iPhone.")
                 .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)

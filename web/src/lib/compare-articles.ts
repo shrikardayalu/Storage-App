@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
 import { competitors, getCompetitor, type Competitor } from "@/lib/comparisons";
+import { createComparisonTableRenderer } from "@/lib/comparison-table";
 import { isKnownRoute, markdownToHtml, renderArticle, type FaqItem, type TocEntry } from "@/lib/guides";
 import { formatPrice, plans } from "@/lib/pricing";
 import { siteConfig } from "@/lib/site";
@@ -103,7 +104,7 @@ function loadAll(): Map<string, CompareArticle> {
       faq,
       faqHtml: faq.map((f) => ({ q: f.q, a: markdownToHtml(f.a) })),
       sources,
-      ...renderArticle(content),
+      ...renderArticle(content, { renderTable: createComparisonTableRenderer(competitor) }),
       readingMinutes: Math.max(1, Math.round(content.split(/\s+/).filter(Boolean).length / 220)),
     });
   }

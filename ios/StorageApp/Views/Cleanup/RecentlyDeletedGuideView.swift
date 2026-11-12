@@ -81,9 +81,9 @@ struct RecentlyDeletedGuideView: View {
             case .why:
                 switch swap {
                 case .none: "iOS keeps deleted photos for 30 days in case you change your mind. Until you empty them, they still fill your iPhone."
-                case .stills: "Each still is already in your library and the test album, right where the Live Photo was. What went to Recently Deleted is only the old Live version: the same photo plus its 3-second video. iOS keeps it for 30 days, so it still takes space until you empty it."
-                case .video: "The smaller copy is already in your library and the test album, with the same date and place. What went to Recently Deleted is the original, full-size video. iOS keeps it for 30 days, so it still takes space until you empty it."
-                case .screenshots: "Each smaller copy is already in your library and the test album, with the same date. What went to Recently Deleted is the old PNG version of each screenshot. iOS keeps them for 30 days, so they still take space until you empty them."
+                case .stills: "Each still is already in your library, right where the Live Photo was. What went to Recently Deleted is only the old Live version: the same photo plus its 3-second video. iOS keeps it for 30 days, so it still takes space until you empty it."
+                case .video: "The smaller copy is already in your library, with the same date and place. What went to Recently Deleted is the original, full-size video. iOS keeps it for 30 days, so it still takes space until you empty it."
+                case .screenshots: "Each smaller copy is already in your library, with the same date. What went to Recently Deleted is the old PNG version of each screenshot. iOS keeps them for 30 days, so they still take space until you empty them."
                 }
             case .openPhotos: "SimpleShrink can't empty Recently Deleted for you. Only you can, and it takes about ten seconds."
             case .findAlbum: "Scroll to the bottom, to Utilities. On iOS 17, it's in the Albums tab. Unlock it with Face ID or your passcode."
@@ -427,17 +427,17 @@ private struct DonePage: View {
     @ViewBuilder
     private func deletedProof(_ receipt: DeletionReceipt) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Test album")
+            Text("Your library")
                 .font(.subheadline.weight(.semibold))
             Spacer()
-            Text("\(receipt.albumCountBefore) → \(receipt.albumCountAfter) items")
+            Text("\(receipt.countBefore) → \(receipt.countAfter) items")
                 .font(.metric(.title3))
                 .monospacedDigit()
         }
         DashedRule()
-        SafetyLine(done: receipt.onlyApprovedRemoved, text: "Exactly the \(receipt.deleted.count) you approved left the album", progress: progress, start: 0.3)
+        SafetyLine(done: receipt.onlyApprovedRemoved, text: "Exactly the \(receipt.deleted.count) you approved left your library", progress: progress, start: 0.3)
         SafetyLine(done: receipt.onlyApprovedRemoved, text: "Every other item is still there", progress: progress, start: 0.42)
-        SafetyLine(done: true, text: "Nothing outside \u{201C}\(TestMode.albumName)\u{201D} was touched", progress: progress, start: 0.54)
+        SafetyLine(done: true, text: "Nothing else in your library was touched", progress: progress, start: 0.54)
         DashedRule()
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
@@ -454,10 +454,10 @@ private struct DonePage: View {
     @ViewBuilder
     private func burstProof(_ receipt: BurstReceipt) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Test album")
+            Text("Your library")
                 .font(.subheadline.weight(.semibold))
             Spacer()
-            Text("\(receipt.albumCountBefore) → \(receipt.albumCountAfter) items")
+            Text("\(receipt.countBefore) → \(receipt.countAfter) items")
                 .font(.metric(.title3))
                 .monospacedDigit()
         }
@@ -467,8 +467,8 @@ private struct DonePage: View {
             text: receipt.keepers.count == 1 ? "The burst has only your pick left" : "Each of the \(receipt.keepers.count) bursts has only your pick left",
             progress: progress, start: 0.3
         )
-        SafetyLine(done: receipt.onlyApprovedRemoved, text: "Exactly the other \(receipt.removed.count) shots left the album", progress: progress, start: 0.42)
-        SafetyLine(done: true, text: "Nothing outside \u{201C}\(TestMode.albumName)\u{201D} was touched", progress: progress, start: 0.54)
+        SafetyLine(done: receipt.onlyApprovedRemoved, text: "Exactly the other \(receipt.removed.count) shots left your library", progress: progress, start: 0.42)
+        SafetyLine(done: true, text: "Nothing else in your library was touched", progress: progress, start: 0.54)
         DashedRule()
         VStack(alignment: .leading, spacing: 2) {
             Text("WAITING IN RECENTLY DELETED")
@@ -501,7 +501,7 @@ private struct DonePage: View {
         SafetyLine(done: result.keptDate, text: "Date kept", progress: progress, start: 0.42)
         SafetyLine(done: result.keptLocation, text: "Location kept", progress: progress, start: 0.5)
         SafetyLine(done: result.keptFavorite, text: "Favorite kept", progress: progress, start: 0.58)
-        SafetyLine(done: result.keptAlbum && result.originalGone, text: "Swapped in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.66)
+        SafetyLine(done: result.keptAlbum && result.originalGone, text: "Swapped in place, in the same albums", progress: progress, start: 0.66)
         if !result.keptEverything {
             Text("Something didn't match. The original is in Recently Deleted, so you can recover it there instead of emptying it.")
                 .font(.footnote.weight(.medium))
@@ -536,7 +536,7 @@ private struct DonePage: View {
         SafetyLine(done: results.allSatisfy(\.keptDate), text: "Dates kept", progress: progress, start: 0.42)
         SafetyLine(done: results.allSatisfy(\.keptLocation), text: "Locations kept", progress: progress, start: 0.5)
         SafetyLine(done: results.allSatisfy(\.keptFavorite), text: "Favorites kept", progress: progress, start: 0.58)
-        SafetyLine(done: results.allSatisfy { $0.keptAlbum && $0.originalGone }, text: "Swapped in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.66)
+        SafetyLine(done: results.allSatisfy { $0.keptAlbum && $0.originalGone }, text: "Swapped in place, in the same albums", progress: progress, start: 0.66)
         if !results.allSatisfy(\.keptEverything) {
             Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
                 .font(.footnote.weight(.medium))
@@ -565,7 +565,7 @@ private struct DonePage: View {
         SafetyLine(done: results.allSatisfy(\.isSameSize), text: "Same image, same size", progress: progress, start: 0.26)
         SafetyLine(done: results.allSatisfy(\.keptDate), text: "Date kept", progress: progress, start: 0.34)
         SafetyLine(done: results.allSatisfy(\.keptFavorite), text: "Favorites kept", progress: progress, start: 0.42)
-        SafetyLine(done: results.allSatisfy(\.keptAlbum), text: "Still in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.5)
+        SafetyLine(done: results.allSatisfy(\.keptAlbum), text: "Still in the same albums", progress: progress, start: 0.5)
         if !results.allSatisfy(\.keptEverything) {
             Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
                 .font(.footnote.weight(.medium))
@@ -599,7 +599,7 @@ private struct DonePage: View {
         SafetyLine(done: results.allSatisfy(\.keptDate), text: "Date kept", progress: progress, start: 0.34)
         SafetyLine(done: results.allSatisfy(\.keptLocation), text: "Location kept", progress: progress, start: 0.42)
         SafetyLine(done: results.allSatisfy(\.keptFavorite), text: "Favorites kept", progress: progress, start: 0.5)
-        SafetyLine(done: results.allSatisfy(\.keptAlbum), text: "Still in \u{201C}\(TestMode.albumName)\u{201D}", progress: progress, start: 0.58)
+        SafetyLine(done: results.allSatisfy(\.keptAlbum), text: "Still in the same albums", progress: progress, start: 0.58)
         if !all {
             Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
                 .font(.footnote.weight(.medium))
@@ -981,7 +981,7 @@ private struct KeptVersusGoing: View {
         HStack(alignment: .top, spacing: 12) {
             column(
                 id: conversion.stillID, live: false, color: Theme.accent,
-                heading: "KEPT", detail: "Your still, in your library and the test album"
+                heading: "KEPT", detail: "Your still, in your library"
             )
             Image(systemName: "arrow.left.arrow.right")
                 .font(.footnote.weight(.bold))

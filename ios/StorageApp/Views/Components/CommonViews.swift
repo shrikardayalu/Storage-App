@@ -1,19 +1,6 @@
 import StorageCore
 import SwiftUI
 
-/// Small pill showing that the app reads only the test album.
-struct TestModeBadge: View {
-    var body: some View {
-        Label("Test Mode", systemImage: "testtube.2")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(Theme.accent)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Theme.mintSoft, in: Capsule())
-            .accessibilityLabel("Test Mode. Only the \(TestMode.albumName) album is read.")
-    }
-}
-
 /// Illustration, title, message, and an optional action, centered.
 struct EmptyStateView: View {
     let illustration: Illustration
@@ -48,7 +35,7 @@ struct EmptyStateView: View {
 
 /// Banner note on what the app may read and change.
 struct SafetyNote: View {
-    var text = "Test Mode: SimpleShrink sees only the \u{201C}\(TestMode.albumName)\u{201D} album and your free space. In Files, it sees only a folder you pick. It changes only what you approve, and nothing else on your iPhone."
+    var text = "SimpleShrink reads your photo library and your free space. In Files, it sees only a folder you pick. It changes only what you approve, and nothing leaves your iPhone."
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
