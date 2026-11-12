@@ -134,52 +134,53 @@ export default function Home() {
 
       <main id="main" className="flex-1 overflow-x-clip">
         {/* ── Hero ─────────────────────────────────────────────── */}
-        <section className="relative">
+        <section className="home-hero relative" aria-labelledby="hero-heading">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute top-10 right-[-10%] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,var(--mint-soft)_0,transparent_65%)] opacity-80 blur-2xl"
           />
-          <div className="relative mx-auto grid max-w-6xl items-center gap-16 px-5 pt-14 pb-24 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:pt-20 lg:pb-32">
-            <div className="min-w-0">
-              <p className="eyebrow flex items-center gap-2">
+          <div className="hero-layout relative mx-auto grid max-w-6xl items-center gap-x-16 px-5 sm:px-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="hero-copy min-w-0">
+              <p className="hero-eyebrow eyebrow flex items-center gap-2">
                 <Sparks className="size-6 text-mint-deep" />
                 for iPhone · {siteConfig.appStoreUrl ? "free on the App Store" : "launching soon"}
               </p>
-              <h1 className="mt-5 font-display text-[clamp(2.9rem,7vw,5.8rem)] leading-[0.93] font-extrabold">
-                Storage almost full.
+              <h1 id="hero-heading" className="hero-title mt-5 font-display leading-[0.93] font-extrabold">
+                <span className="hero-title-line">Storage <span className="whitespace-nowrap">almost full.</span></span>
                 <br />
                 <span className="relative inline-block">
                   Again?
                   <Scribble className="absolute -bottom-3 left-0 h-4 w-full text-mint" />
                 </span>
               </h1>
-              <p className="mt-8 max-w-xl text-lg leading-relaxed text-pretty text-ink-soft sm:text-xl">
+              <p className="hero-description mt-8 max-w-xl text-lg leading-relaxed text-pretty text-ink-soft sm:text-xl">
                 {name} makes what you already have take up less space.{" "}
                 <span className="font-semibold text-ink">
-                  Shrink the videos, compress the long ones, turn Live Photos into stills, and more.
+                  Shrink videos, trim long recordings, and turn Live Photos into stills.
                 </span>
               </p>
-              <div className="mt-9">
+              <div className="hero-cta mt-9">
                 <AppCta campaign="home-hero" />
               </div>
-              <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-ink-soft">
-                {["Nothing changes until you confirm", "Originals kept for 30 days", "Works on your iPhone"].map(
-                  (item) => (
-                    <li key={item} className="flex items-center gap-2">
-                      <span
-                        aria-hidden="true"
-                        className="grid size-5 place-items-center rounded-full bg-mint text-[11px] font-bold text-ink"
-                      >
-                        ✓
-                      </span>
-                      {item}
-                    </li>
-                  ),
-                )}
-              </ul>
             </div>
 
-            <div className="relative mx-auto w-full max-w-[400px] lg:mr-0">
+            <ul className="hero-assurances flex flex-wrap gap-x-6 gap-y-3 text-sm font-medium text-ink-soft">
+              {["Nothing changes until you confirm", "Originals kept for 30 days", "Works on your iPhone"].map(
+                (item) => (
+                  <li key={item} className="flex items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="grid size-5 shrink-0 place-items-center rounded-full bg-mint text-[11px] font-bold text-ink"
+                    >
+                      ✓
+                    </span>
+                    {item}
+                  </li>
+                ),
+              )}
+            </ul>
+
+            <div className="hero-receipt relative mx-auto w-full max-w-[400px] lg:mr-0" data-reveal>
               <div className="parallax" style={{ "--depth": 14 } as CSSProperties}>
                 <div className="rotate-[1.5deg]">
                   <SpaceReceipt />
@@ -189,7 +190,7 @@ export default function Home() {
                 name="ill-compress"
                 size={96}
                 priority
-                className="bob absolute -top-12 -left-6 sm:-left-16"
+                className="hero-compress bob absolute -top-12 -left-6 sm:-left-16"
                 style={{ "--r": "-10deg" } as CSSProperties}
               />
               <Illustration

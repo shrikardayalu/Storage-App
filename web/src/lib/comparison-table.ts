@@ -119,7 +119,11 @@ export function createComparisonTableRenderer(competitor: Competitor) {
 
   return function renderComparisonTable(table: Tokens.Table, inline: (tokens: Token[]) => string) {
     const header = table.header
-      .map((cell, index) => `<th scope="col">${index === 0 ? "Feature" : inline(cell.tokens)}</th>`)
+      .map((cell, index) => {
+        if (index === 0) return '<th scope="col">Feature</th>';
+        const icon = index === 1 ? "/logo.png" : competitor.icon;
+        return `<th scope="col"><span class="comparison-app"><img src="${icon}" alt="" width="36" height="36" loading="lazy" decoding="async">${inline(cell.tokens)}</span></th>`;
+      })
       .join("");
     const rows = table.rows.map((row) => {
       const statuses = statusesByFeature[row[0].text] ?? ["detail", "detail"];

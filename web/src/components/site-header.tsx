@@ -15,7 +15,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-hairline bg-paper/75 backdrop-blur-xl backdrop-saturate-150">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-5 md:gap-6 sm:px-8">
-        <Link href="/" className="group flex items-center gap-2.5 whitespace-nowrap font-display text-[1.05rem] font-bold">
+        <Link href="/" aria-label={siteConfig.name} className="group flex items-center gap-2.5 whitespace-nowrap font-display text-[1.05rem] font-bold">
           <Image
             src="/logo.png"
             alt=""
@@ -24,7 +24,7 @@ export function SiteHeader() {
             priority
             className="rounded-[9px] border-[1.5px] border-ink transition-transform duration-500 ease-[var(--ease-spring)] group-hover:-rotate-6"
           />
-          {siteConfig.name}
+          <span className="hidden min-[360px]:inline">{siteConfig.name}</span>
         </Link>
 
         <ul className="ml-auto hidden items-center gap-1 text-[0.95rem] font-medium text-ink-soft md:flex">

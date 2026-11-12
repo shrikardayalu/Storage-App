@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppCta } from "@/components/app-cta";
+import { AppIcon } from "@/components/app-icon";
 import { CompareCard } from "@/components/compare-card";
 import { FaqList } from "@/components/faq-list";
 import { TodoBanner } from "@/components/todo-banner";
@@ -161,10 +162,14 @@ function Article({ article }: { article: CompareArticle }) {
         <Breadcrumbs />
         <div className="mt-8 grid items-end gap-8 lg:grid-cols-[1fr_auto]">
           <div className="max-w-3xl">
-            <div className="flex items-center gap-3 font-display text-lg font-bold">
-              <span className="rounded-full border-2 border-ink bg-mint px-3 py-1 text-sm">{siteConfig.name}</span>
+            <div className="flex flex-wrap items-center gap-3 font-display text-sm font-bold sm:gap-4">
+              <span className="flex items-center gap-2">
+                <AppIcon src="/logo.png" />
+                {siteConfig.name}
+              </span>
               <span className="font-hand text-xl font-normal text-ink-faint">vs</span>
-              <span className="rounded-full border-2 border-ink bg-paper-deep px-3 py-1 text-sm">
+              <span className="flex items-center gap-2">
+                <AppIcon src={competitor.icon} />
                 {competitor.name}
               </span>
             </div>

@@ -17,16 +17,23 @@ const steps: { screen: PhoneScreen; kicker: string; title: string; body: string 
     body: "Pick a method and a quality level and see exactly how much space you'll get back before anything changes. You confirm every step.",
   },
   {
+    screen: "compress",
+    kicker: "03 · Shrink",
+    title: "Watch the size come down.",
+    body: "Make a smaller copy right on your iPhone. Follow the progress as a 4.2 GB video becomes 1.9 GB, with the quality level you chose.",
+  },
+  {
     screen: "reclaim",
-    kicker: "03 · Reclaim",
+    kicker: "04 · Reclaim",
     title: "Same memories. Lighter phone.",
-    body: "Your library keeps every moment, just smaller. Originals wait in Recently Deleted for 30 days, so you can compare and change your mind.",
+    body: "Your library keeps every moment, just smaller. See your savings, compare with the original, and empty Recently Deleted when you're ready to reclaim the space. You have 30 days to change your mind.",
   },
 ];
 
-/** Apple-style pinned story: the phone stays put while the steps scroll past. */
+/** Pinned story: the phone redraws in ink while the steps scroll past. */
 export function HowItWorks() {
   const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
   const refs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -51,23 +58,31 @@ export function HowItWorks() {
               <div
                 key={step.screen}
                 aria-hidden={i !== active}
-                className={`transition-all duration-700 ease-[var(--ease-out-soft)] ${
+                className={`${
                   i === 0 ? "relative" : "absolute inset-0"
-                } ${i === active ? "opacity-100 [transform:none]" : "pointer-events-none opacity-0 [transform:translateY(16px)_scale(0.97)]"}`}
+                } ${i === active ? "opacity-100" : "pointer-events-none opacity-0"}`}
               >
-                <PhoneMock screen={step.screen} />
+                <PhoneMock screen={step.screen} active={i === active} paused={paused} />
               </div>
             ))}
-            <ol className="absolute top-1/2 -left-14 flex -translate-y-1/2 flex-col gap-3" aria-hidden="true">
+            <ol className="absolute top-1/2 -left-16 flex -translate-y-1/2 flex-col" aria-label="Demo steps">
               {steps.map((step, i) => (
-                <li
-                  key={step.screen}
-                  className={`size-2.5 rounded-full border-2 border-ink transition-colors duration-500 ${
-                    i === active ? "bg-ink" : "bg-transparent"
-                  }`}
-                />
+                <li key={step.screen}>
+                  <button
+                    type="button"
+                    aria-label={`Show step ${i + 1}: ${step.kicker.split(" · ")[1]}`}
+                    aria-current={i === active ? "step" : undefined}
+                    onClick={() => refs.current[i]?.scrollIntoView({ block: "center" })}
+                    className="grid size-8 place-items-center rounded-full"
+                  >
+                    <span className={`size-2.5 rounded-full border-2 border-ink transition-colors duration-500 ${i === active ? "bg-ink" : "bg-transparent"}`} />
+                  </button>
+                </li>
               ))}
             </ol>
+            <div className="absolute -bottom-12 inset-x-0 flex justify-center">
+              <DemoControls paused={paused} onToggle={() => setPaused((value) => !value)} />
+            </div>
           </div>
         </div>
       </div>
@@ -91,12 +106,27 @@ export function HowItWorks() {
               {step.title}
             </h3>
             <p className="mt-5 max-w-md text-lg leading-relaxed text-ink-soft">{step.body}</p>
-            <div className="mt-10 flex justify-center lg:hidden">
-              <PhoneMock screen={step.screen} className="max-w-[250px]" />
+            <div className="mt-10 flex flex-col items-center gap-6 lg:hidden">
+              <PhoneMock screen={step.screen} paused={paused} className="!max-w-[280px]" />
+              <DemoControls paused={paused} onToggle={() => setPaused((value) => !value)} />
             </div>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function DemoControls({ paused, onToggle }: { paused: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={paused}
+      className="flex min-h-10 items-center gap-2 rounded-full border border-ink/20 bg-surface px-4 text-xs font-semibold text-ink-soft transition-colors hover:border-ink hover:text-ink motion-reduce:hidden"
+    >
+      <span aria-hidden="true">{paused ? "▶" : "Ⅱ"}</span>
+      {paused ? "Play demos" : "Pause demos"}
+    </button>
   );
 }

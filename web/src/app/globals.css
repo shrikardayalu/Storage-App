@@ -405,6 +405,18 @@ body::before {
     align-items: flex-start;
     gap: 0.55rem;
   }
+  .comparison-app {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+  .comparison-app img {
+    flex-shrink: 0;
+    border-radius: 24%;
+    background: white;
+    box-shadow: 0 0 0 1px rgb(26 26 23 / 0.1);
+  }
   .comparison-icon {
     display: inline-grid;
     flex: 0 0 1.25rem;
@@ -440,29 +452,78 @@ body::before {
    Motion. Everything here is decorative and switched off for reduced motion.
    --------------------------------------------------------------------------- */
 
-/* Scroll reveal: elements start visible; the `js` class (set before paint)
-   opts them into the entrance so the page still works without JavaScript. */
-.js [data-reveal] {
-  opacity: 0;
-  transform: translateY(28px) scale(0.985);
-  transition:
-    opacity 0.9s var(--ease-out-soft),
-    transform 0.9s var(--ease-out-soft);
-  transition-delay: calc(var(--reveal-delay, 0) * 1ms);
+/* Phone scenes use one shared timeline; these shapes are drawn inside the UI. */
+.phone-demo-eyebrow {
+  margin-bottom: 4px;
+  color: var(--mint-deep);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
-.js [data-reveal="tilt"] {
-  transform: translateY(36px) rotate(calc(var(--tilt, -3) * 1deg));
+
+/* Mobile has its own reading order; desktop keeps the two-column composition. */
+.hero-layout {
+  grid-template-areas: "copy" "receipt" "assurances";
+  row-gap: 2.5rem;
+  padding-block: 2.5rem 3.5rem;
 }
-.js [data-reveal].is-in {
-  opacity: 1;
-  transform: none;
+.hero-copy { grid-area: copy; }
+.hero-title { font-size: clamp(2.75rem, 10.5vw, 4.75rem); }
+.hero-title-line { display: inline; }
+.hero-description { margin-top: 1.75rem; }
+.hero-cta { margin-top: 1.5rem; }
+.hero-receipt {
+  grid-area: receipt;
+  max-width: 350px;
+  width: calc(100% - 1rem);
+  margin-top: 1.25rem;
 }
-.js [data-reveal="tilt"].is-in {
-  transform: rotate(calc(var(--rest, 0) * 1deg));
+.hero-assurances {
+  grid-area: assurances;
+  justify-content: center;
+  gap: 0.65rem 1.5rem;
+  padding-top: 0.75rem;
+  font-size: 0.8125rem;
+}
+@media (width < 640px) {
+  .hero-eyebrow { font-size: 1.125rem; }
+  .hero-description { font-size: 1.0625rem; line-height: 1.6; }
+  .hero-compress { width: 64px; height: 64px; top: -2.25rem; left: -0.5rem; }
+  .hero-receipt .receipt { padding-inline: 1rem; }
+}
+@media (min-width: 640px) {
+  .hero-layout { padding-block: 3.5rem 5rem; row-gap: 3.5rem; }
+  .hero-receipt { max-width: 400px; }
+}
+@media (min-width: 1024px) {
+  .hero-layout {
+    grid-template-areas: "copy receipt" "assurances receipt";
+    row-gap: 2.5rem;
+    padding-block: 5rem 8rem;
+  }
+  .hero-title { font-size: clamp(2.9rem, 7vw, 5.8rem); }
+  .hero-description { margin-top: 2rem; }
+  .hero-cta { margin-top: 2.25rem; }
+  .hero-receipt { width: 100%; margin-top: 0; }
+  .hero-assurances { justify-content: flex-start; padding-top: 0; font-size: 0.875rem; }
+}
+
+/* Web Animations reveals do not mutate server-rendered attributes. */
+.js [data-reveal] { opacity: 0; }
+@property --sketch-turn {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.js .sticker[data-reveal]::after {
+  mask-image: conic-gradient(from -45deg, #000 var(--sketch-turn), transparent 0);
 }
 
 /* Hand-drawn strokes that ink themselves in. */
-.draw path {
+.js .draw path,
+.js .draw-now path {
   stroke-dasharray: var(--len, 600);
   stroke-dashoffset: var(--len, 600);
 }
@@ -549,6 +610,7 @@ body::before {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     transition-delay: 0ms !important;
@@ -560,6 +622,7 @@ body::before {
   .draw path {
     stroke-dashoffset: 0;
   }
+  .js .sticker[data-reveal]::after { mask-image: none; }
   .parallax,
   .shrink-on-scroll {
     animation: none !important;

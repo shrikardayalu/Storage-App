@@ -10,6 +10,8 @@ export type Competitor = {
   slug: string;
   name: string;
   maker?: string;
+  /** Official App Store artwork, served locally. Sources: public/competitors/README.md. */
+  icon: string;
   /** One line on what the app is best known for. */
   knownFor: string;
   /** Short tags for the card. */
@@ -20,6 +22,7 @@ export type Competitor = {
 export const competitors: Competitor[] = [
   {
     slug: "cleanup",
+    icon: "/competitors/cleanup.jpg",
     name: "Cleanup",
     knownFor: "One of the top-grossing cleaner apps on the App Store: duplicates, similar shots, and contacts in one place.",
     tags: ["Duplicates", "Similar photos", "Contacts"],
@@ -27,6 +30,7 @@ export const competitors: Competitor[] = [
   },
   {
     slug: "clever-cleaner",
+    icon: "/competitors/clever-cleaner.jpg",
     name: "Clever Cleaner",
     maker: "CleverFiles",
     knownFor: "From the makers of Disk Drill: groups similar photos and compresses Live Photos and videos, free within daily limits.",
@@ -35,6 +39,7 @@ export const competitors: Competitor[] = [
   },
   {
     slug: "cleanmy-phone",
+    icon: "/competitors/cleanmy-phone.jpg",
     name: "CleanMy®Phone",
     maker: "MacPaw",
     knownFor: "MacPaw's AI-sorted cleaner, the successor to Gemini Photos, from the makers of CleanMyMac.",
@@ -43,6 +48,7 @@ export const competitors: Competitor[] = [
   },
   {
     slug: "cleaner-kit",
+    icon: "/competitors/cleaner-kit.jpg",
     name: "Cleaner Kit",
     maker: "BPMobile",
     knownFor: "Groups duplicate and similar photos, screenshots, and videos for quick bulk review.",
@@ -51,6 +57,7 @@ export const competitors: Competitor[] = [
   },
   {
     slug: "swipewipe",
+    icon: "/competitors/swipewipe.jpg",
     name: "Swipewipe",
     maker: "MWM",
     knownFor: "Swipe left to delete, right to keep: a fast way to work through your camera roll month by month.",
@@ -59,6 +66,7 @@ export const competitors: Competitor[] = [
   },
   {
     slug: "slidebox",
+    icon: "/competitors/slidebox.jpg",
     name: "Slidebox",
     knownFor: "Swipe through photos one at a time to trash them or file them into albums.",
     tags: ["Swipe to sort", "Albums"],

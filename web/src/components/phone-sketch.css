@@ -1,0 +1,40 @@
+.phone-sketch-scene *,
+.phone-sketch-scene *::before,
+.phone-sketch-scene *::after {
+  /* The cel clock holds each drawing, including its masks and pen strokes. */
+  transition: none;
+}
+
+.phone-sketch-card {
+  position: relative;
+  isolation: isolate;
+}
+
+.phone-sketch-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.phone-sketch-write {
+  display: block;
+}
+
+.phone-sketch-progress {
+  display: block;
+  width: 100%;
+  height: 16px;
+  overflow: visible;
+}
+
+.phone-sketch-tap {
+  position: absolute;
+  right: 14px;
+  top: calc(50% - 14px);
+  width: 38px;
+  height: 34px;
+  pointer-events: none;
+}

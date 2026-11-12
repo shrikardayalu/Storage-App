@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
+import { AppIcon } from "@/components/app-icon";
 import { compareHref, type Competitor } from "@/lib/comparisons";
 import { siteConfig } from "@/lib/site";
 
@@ -17,14 +18,12 @@ export function CompareCard({ competitor, index = 0 }: { competitor: Competitor;
     >
       <div className="sticker sticker-lift flex h-full flex-col p-6">
         <div className="flex items-center gap-3 font-display text-lg font-bold">
-          <span className="rounded-full border-2 border-ink bg-mint px-3 py-1 text-sm">{siteConfig.name}</span>
-          <span className="font-hand text-xl font-normal text-ink-faint">vs</span>
-          <span
-            aria-hidden="true"
-            className="grid size-9 place-items-center rounded-[10px] border-2 border-ink bg-paper-deep text-base"
-          >
-            {competitor.name.charAt(0)}
+          <span className="flex items-center gap-2 text-sm">
+            <AppIcon src="/logo.png" />
+            {siteConfig.name}
           </span>
+          <span className="font-hand text-xl font-normal text-ink-faint">vs</span>
+          <AppIcon src={competitor.icon} />
         </div>
 
         <h3 className="mt-5 font-display text-2xl leading-tight font-bold">
