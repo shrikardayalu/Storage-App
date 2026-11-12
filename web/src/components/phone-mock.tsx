@@ -72,16 +72,17 @@ export function PhoneMock({ screen, className, active = true, paused = false }: 
     <div
       ref={ref}
       data-phone-demo={screen}
-      className={`relative aspect-[9/19] w-full max-w-[300px] rounded-[48px] border-[3px] border-ink bg-ink p-[9px] shadow-[10px_12px_0_var(--mint)] ${className ?? ""}`}
+      className={`relative grid min-h-[600px] w-full max-w-[300px] rounded-[48px] border-[3px] border-ink bg-ink p-[9px] shadow-[10px_12px_0_var(--mint)] ${className ?? ""}`}
       role="img"
       aria-label={labels[screen]}
     >
-      <div className="relative h-full overflow-hidden rounded-[39px] bg-paper">
+      {/* Grid fills the frame without percentage heights, including on mobile Safari. */}
+      <div className="relative flex min-h-min flex-col overflow-hidden rounded-[39px] bg-paper">
         <div className="absolute top-2.5 left-1/2 z-10 h-[22px] w-[84px] -translate-x-1/2 rounded-full bg-ink" />
-        <div className="flex items-center justify-between px-7 pt-3 text-[10px] font-semibold" aria-hidden="true">
+        <div className="flex shrink-0 items-center justify-between px-7 pt-3 text-[10px] font-semibold" aria-hidden="true">
           <span>9:41</span><span className="tracking-tight">●●● ▮</span>
         </div>
-        <div className="phone-demo-content px-4 pt-6" aria-hidden="true">
+        <div className="phone-demo-content shrink-0 px-4 pt-6" aria-hidden="true">
           <SketchScene progress={progress} frame={frame}>
             {screen === "scan" && <ScanScreen progress={progress} />}
             {screen === "review" && <ChooseScreen progress={progress} />}
@@ -89,7 +90,7 @@ export function PhoneMock({ screen, className, active = true, paused = false }: 
             {screen === "reclaim" && <ReclaimScreen progress={progress} />}
           </SketchScene>
         </div>
-        <div className="absolute inset-x-0 bottom-3 text-center" aria-hidden="true">
+        <div className="mt-auto shrink-0 pt-2 pb-3 text-center" aria-hidden="true">
           <p className="text-[9px] text-ink-faint">Demo · sample library</p>
           <div className="mx-auto mt-2 h-1 w-20 rounded-full bg-ink/70" />
         </div>
