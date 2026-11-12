@@ -510,3 +510,103 @@ struct InkCheck: View {
         .accessibilityHidden(true)
     }
 }
+
+/// The loading line for a scan: a marker scribble that draws itself as the
+/// work advances, with the pen still scratching at the tip so a slow photo
+/// doesn't look like a bar that has stopped.
+struct SketchMeter: View {
+    var progress: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let value = min(1, max(0, progress))
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: reduceMotion || value >= 1)) { context in
+            SketchMeterInk(progress: value, time: context.date.timeIntervalSinceReferenceDate, scratches: !reduceMotion && value < 1)
+        }
+        .frame(height: 36)
+        .animation(.easeInOut(duration: 0.4), value: value)
+        .accessibilityElement()
+        .accessibilityLabel("Progress")
+        .accessibilityValue("\(Int((value * 100).rounded())) percent")
+    }
+}
+
+/// Scribble plus caption, in the same card the old progress bar used.
+struct AnalysisMeter: View {
+    var progress: Double
+    var caption: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SketchMeter(progress: progress)
+            Text(caption)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .card(padding: 16)
+    }
+}
+
+/// One frame of the meter. The mint stroke sits off-register under the ink, like the rest of the drawings.
+private struct SketchMeterInk: View {
+    var progress: Double
+    var time: TimeInterval
+    var scratches: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let size = proxy.size
+            let width = max(size.width - 8, 1)
+            let guide = Sketch.scribble(width: width, at: CGPoint(x: 4, y: 10), seed: 9)
+            let drawn = CGFloat(progress)
+            ZStack(alignment: .topLeading) {
+                DrawnStroke(path: guide, design: size, progress: 1, showsPenTip: false)
+                    .stroke(Theme.ink.opacity(0.14), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+                DrawnStroke(path: guide, design: size, progress: drawn, showsPenTip: false)
+                    .stroke(Theme.mint, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                    .offset(x: -1.5, y: 2.5)
+                DrawnStroke(path: guide, design: size, progress: drawn, showsPenTip: true)
+                    .stroke(Theme.ink, style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round))
+                if scratches {
+                    PenScratches(progress: drawn, phase: phase)
+                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
+                }
+            }
+        }
+    }
+
+    /// 0 to 1, looping, for the scratches at the pen tip.
+    private var phase: CGFloat {
+        CGFloat(time.truncatingRemainder(dividingBy: 0.85) / 0.85)
+    }
+}
+
+/// Short pen marks at the tip of the scribble. Each one draws on, then lifts off, out of step with the others.
+private struct PenScratches: Shape {
+    var progress: CGFloat
+    var phase: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let tipX = 4 + (rect.width - 8) * progress
+        let tipY = rect.height * 0.36
+        var path = Path()
+        for index in 0..<4 {
+            let local = scratch(phase, offset: CGFloat(index) * 0.23)
+            guard local > 0.08 else { continue }
+            let angle = -1.05 + CGFloat(index) * 0.48
+            let length = 6 + local * 9
+            let origin = CGPoint(x: tipX + CGFloat(index) * 1.4 - 7, y: tipY - 6)
+            let end = CGPoint(x: origin.x + cos(angle) * length, y: origin.y + sin(angle) * length)
+            path.addPath(Sketch.line(origin, end, wobble: 0.6, seed: UInt64(index) &+ 5))
+        }
+        return path
+    }
+
+    /// Draws in through the first part of the loop, then lifts off.
+    private func scratch(_ phase: CGFloat, offset: CGFloat) -> CGFloat {
+        let t = (phase + offset).truncatingRemainder(dividingBy: 1)
+        if t < 0.62 { return t / 0.62 }
+        return max(0, 1 - (t - 0.62) / 0.38)
+    }
+}

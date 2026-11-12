@@ -13,33 +13,28 @@ struct PhotoCleanupView: View {
     @State private var confirming = false
 
     private var plan: PhotoCleanupPlan? {
-        guard let report = model.junkReport, let blocked else { return nil }
-        return PhotoCleanupPlan(report: report, livePhotos: model.suggestedLivePhotos ?? [], blocked: blocked)
+        guard let report = model.junkReport else { return nil }
+        return PhotoCleanupPlan(report: report, livePhotos: model.suggestedLivePhotos ?? [], blocked: blocked ?? [])
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
-                if let plan {
-                    if plan.isEmpty {
-                        EmptyStateView(
-                            illustration: .shieldCheck,
-                            title: "Already tidy",
-                            message: "No Live Photos, duplicates or junk to clean in your library."
-                        )
-                    } else {
-                        summary(plan)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 10) {
-                        ProgressView(value: model.analysisProgress)
-                            .tint(Theme.accent)
-                        Text("Checking each photo, on this iPhone. Nothing leaves it.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .card(padding: 16)
+                if model.isAnalyzing || plan == nil {
+                    AnalysisMeter(
+                        progress: model.analysisProgress,
+                        caption: "Checking each photo, on this iPhone. Nothing leaves it."
+                    )
+                }
+                if let plan, plan.isEmpty, !model.isAnalyzing {
+                    EmptyStateView(
+                        illustration: .shieldCheck,
+                        title: "Already tidy",
+                        message: "No Live Photos, duplicates or junk to clean in your library."
+                    )
+                } else if let plan, !plan.isEmpty {
+                    summary(plan)
                 }
                 if let error {
                     Text(error.localizedDescription)
@@ -139,7 +134,7 @@ struct PhotoCleanupView: View {
         VStack(spacing: 6) {
             Button("Clean up \(ByteFormatter.string(plan.totalBytes, precision: .twoDecimals))") { confirming = true }
                 .buttonStyle(.sticker)
-                .disabled(model.isChanging || model.isAnalyzing)
+                .disabled(model.isChanging || model.isAnalyzing || blocked == nil)
             Text("Everything goes to Recently Deleted first.")
                 .font(.caption)
                 .foregroundStyle(.secondary)

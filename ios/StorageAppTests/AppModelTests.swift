@@ -411,10 +411,37 @@ final class AppModelTests: XCTestCase {
         await model.findJunk()
         XCTAssertEqual(model.suggestedLivePhotos?.map(\.id), ["lunch"])
         XCTAssertEqual(model.liveKeepReasons, ["kids": .people, "unseen": .notChecked])
+        XCTAssertTrue(model.liveCheckFinished, "every Live Photo was looked at, including the one with no measurement")
+        XCTAssertEqual(model.liveAnalysisProgress, 1)
         XCTAssertEqual(model.photoCleanupPlan?.convert, ["lunch"])
         XCTAssertEqual(model.saving(for: .livePhotos), 3_000_000)
         // Every Live Photo can still be picked by hand.
         XCTAssertEqual(model.convertibleLivePhotos.count, 3)
+    }
+
+    func testLivePhotosAreMeasuredFirstAndAFinishedPassIsNotRunAgain() async {
+        let analysis = RecordingAnalysis()
+        let library = MockPhotoLibrary(items: [
+            item("plain", bytes: 9_000_000),
+            item("live", bytes: 1_000_000, live: 500_000),
+        ])
+        let model = AppModel(photoScanner: library, photoChanges: library, photoAnalyzer: analysis)
+        await model.scanLibrary()
+        // Before the pass, the saving is already the Live Photo's video, not a blank.
+        XCTAssertNil(model.suggestedLivePhotos)
+        XCTAssertEqual(model.saving(for: .livePhotos), 500_000)
+
+        await model.findJunk()
+        XCTAssertEqual(analysis.batches.first?.first, "live", "Live Photos are measured before the rest of the library")
+        XCTAssertTrue(model.liveCheckFinished)
+        XCTAssertFalse(model.isAnalyzing)
+        XCTAssertNotNil(model.junkReport)
+        XCTAssertNotNil(model.saving(for: .duplicates))
+
+        let calls = analysis.batches.count
+        await model.findJunk()
+        XCTAssertEqual(analysis.batches.count, calls, "opening the tool again must not restart the scan")
+        XCTAssertFalse(model.isAnalyzing)
     }
 
     func testMeasurementsFromAnOlderVersionAreMadeAgain() async {
@@ -472,5 +499,16 @@ final class AppModelTests: XCTestCase {
         guard case .changed? = error else { return XCTFail("Expected a refusal") }
         let count = await folder.deleteCount
         XCTAssertEqual(count, 0)
+    }
+}
+
+/// Records the order photos are handed to the analyzer.
+private final class RecordingAnalysis: PhotoAnalysisService, @unchecked Sendable {
+    var batches: [[MediaItem.ID]] = []
+
+    func analyze(_ items: [MediaItem], progress: @escaping @Sendable (Double) -> Void) async -> [MediaItem.ID: PhotoSignals] {
+        batches.append(items.map(\.id))
+        progress(1)
+        return [:]
     }
 }

@@ -173,6 +173,18 @@ final class AppModel {
     private var junkTask: Task<Void, Never>?
     /// True once every photo in the latest scan has been through the junk finder this session.
     private(set) var junkAnalysisFinished = false
+    /// True once every Live Photo in this scan has been checked. The rest of the
+    /// library can still be measuring; a Live Photo only depends on its own signals.
+    private(set) var liveCheckFinished = false
+    /// Share of Live Photos checked so far, 0 to 1. Separate from `analysisProgress`,
+    /// which covers every photo the junk finder still has to look at.
+    private(set) var liveAnalysisProgress: Double = 0
+    /// Photos this run already tried to measure, including ones Photos couldn't hand over.
+    private var measuredAttempts: Set<MediaItem.ID> = []
+    /// Bumped each time a junk report starts, so a slow older pass can't overwrite a newer one.
+    private var reportGeneration = 0
+    /// The report being built in the background, if any. Measuring doesn't wait for it.
+    private var reportTask: Task<Void, Never>?
     /// How many photos are measured between saves and progress steps.
     static let analysisBatch = 100
     /// What the junk finder suggests; nil until the photos have been measured once.
@@ -403,7 +415,19 @@ final class AppModel {
             libraryScan = scan
             self.lists = lists
             selection.prune(keeping: lists.ids)
+            // A new library needs measuring again. The report below uses whatever
+            // is already known, so the savings figures don't wait for that.
+            junkAnalysisFinished = false
             if junkReport != nil { await updateJunkReport() }
+            if needsPhotoMeasurement() {
+                // A run for the previous library has to finish before this one starts.
+                if junkTask != nil { await junkTask?.value }
+                startFindingJunk()
+            } else if junkReport != nil {
+                junkAnalysisFinished = true
+                liveCheckFinished = true
+                liveAnalysisProgress = 1
+            }
         } catch let error as PhotoScanError {
             scanError = error
         } catch {
@@ -457,7 +481,10 @@ final class AppModel {
     /// What Live Photos to stills could save: the suggested ones once the
     /// photos have been checked, every Live Photo before that.
     var livePhotoSaving: Int64 {
-        suggestedLivePhotos.map { $0.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes } } ?? lists.livePhotoSaving
+        // Until every Live Photo has been checked, this is the whole video portion.
+        // The precise figure replaces it the moment that check finishes.
+        guard liveCheckFinished, let suggested = suggestedLivePhotos else { return lists.livePhotoSaving }
+        return suggested.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
     }
 
     /// What keeping the suggested shot of each burst could save.
@@ -480,13 +507,24 @@ final class AppModel {
     /// while the first time; measurements are saved as they're made, so a run
     /// that's cut short picks up where it stopped.
     func startFindingJunk() {
-        guard junkTask == nil, libraryScan != nil else { return }
+        // Already done for this scan: opening a tool must not put the bar back
+        // and run the whole pass again.
+        guard junkTask == nil, libraryScan != nil, !junkAnalysisFinished else { return }
         isAnalyzing = true
         analysisProgress = 0
+        measuredAttempts = []
         junkTask = Task { [weak self] in
             await self?.measurePhotos()
             self?.junkTask = nil
             self?.isAnalyzing = false
+        }
+    }
+
+    /// Photos that still need a measurement. Videos and burst shots have their own tools.
+    private func needsPhotoMeasurement() -> Bool {
+        guard let items = libraryScan?.items else { return false }
+        return items.contains {
+            $0.category != .video && $0.burstID == nil && (photoSignals[$0.id]?.version ?? 0) < PhotoSignals.currentVersion
         }
     }
 
@@ -505,30 +543,61 @@ final class AppModel {
 
         // Videos and burst shots aren't measured; they have their own tools.
         // Measurements from an older version of the app are made again.
-        let unmeasured = scan.items.filter {
-            $0.category != .video && $0.burstID == nil && (photoSignals[$0.id]?.version ?? 0) < PhotoSignals.currentVersion
-        }
-        let outdated = unmeasured.contains { photoSignals[$0.id] != nil }
+        // Live Photos go first: their screen can finish as soon as they have,
+        // without waiting for every other photo in the library.
+        let liveIDs = Set(lists.convertibleLivePhotos.map(\.id))
+        let pending = scan.items.enumerated().filter { _, item in
+            item.category != .video && item.burstID == nil && (photoSignals[item.id]?.version ?? 0) < PhotoSignals.currentVersion
+        }.sorted { lhs, rhs in
+            let leftLive = liveIDs.contains(lhs.element.id)
+            let rightLive = liveIDs.contains(rhs.element.id)
+            if leftLive != rightLive { return leftLive }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+        let outdated = pending.contains { photoSignals[$0.id] != nil }
+
+        // Numbers from what's already saved, before the first new photo is measured.
+        await publishLiveProgress()
+        scheduleJunkReport()
+
         var done = 0
         var lastReport = Date()
-        while done < unmeasured.count, !Task.isCancelled {
-            let batch = Array(unmeasured[done..<min(done + Self.analysisBatch, unmeasured.count)])
+        while done < pending.count, !Task.isCancelled {
+            let batch = Array(pending[done..<min(done + Self.analysisBatch, pending.count)])
             let base = done
-            let total = unmeasured.count
+            let total = pending.count
+            let batchIDs = Set(batch.map(\.id))
+            let liveTotal = lists.convertibleLivePhotos.count
+            let liveBatch = batch.reduce(0) { $0 + (liveIDs.contains($1.id) ? 1 : 0) }
+            let liveBase = lists.convertibleLivePhotos.reduce(0) { count, item in
+                guard !batchIDs.contains(item.id) else { return count }
+                let checked = item.traits.contains(.favorite)
+                    || (photoSignals[item.id]?.version ?? 0) >= PhotoSignals.currentVersion
+                    || measuredAttempts.contains(item.id)
+                return count + (checked ? 1 : 0)
+            }
             let found = await photoAnalyzer.analyze(batch) { [weak self] value in
+                let analysis = total > 0 ? (Double(base) + value * Double(batch.count)) / Double(total) : 1
+                let live = liveTotal > 0 && liveBatch > 0
+                    ? min(1, (Double(liveBase) + value * Double(liveBatch)) / Double(liveTotal))
+                    : nil
                 Task { @MainActor in
                     guard let self, self.isAnalyzing else { return }
-                    self.analysisProgress = max(self.analysisProgress, (Double(base) + value * Double(batch.count)) / Double(total))
+                    self.analysisProgress = max(self.analysisProgress, analysis)
+                    if let live { self.liveAnalysisProgress = max(self.liveAnalysisProgress, live) }
                 }
             }
             photoSignals.merge(found) { _, new in new }
             done += batch.count
+            measuredAttempts.formUnion(batchIDs)
+            analysisProgress = max(analysisProgress, total > 0 ? Double(done) / Double(total) : 1)
             if !found.isEmpty {
                 await Task.detached(priority: .utility) { store.append(found) }.value
             }
-            // A first look at what's been found so far, while a big library is still being measured.
-            if done < unmeasured.count, Date().timeIntervalSince(lastReport) > 10 {
-                await updateJunkReport()
+            await publishLiveProgress()
+            // A fresh report while measuring, without making the next photo wait for it.
+            if reportTask == nil, done == pending.count || Date().timeIntervalSince(lastReport) > 2 {
+                scheduleJunkReport()
                 lastReport = Date()
             }
         }
@@ -539,29 +608,67 @@ final class AppModel {
             await Task.detached(priority: .utility) { store.rewrite(current) }.value
         }
         analysisProgress = 1
+        await publishLiveProgress()
+        await reportTask?.value
+        reportTask = nil
         await updateJunkReport()
         junkAnalysisFinished = !Task.isCancelled && libraryScan?.date == scan.date
+    }
+
+    /// Starts a junk report if one isn't already running. Measuring keeps going either way.
+    private func scheduleJunkReport() {
+        guard reportTask == nil else { return }
+        reportTask = Task { [weak self] in
+            await self?.updateJunkReport()
+            self?.reportTask = nil
+        }
     }
 
     /// Works the report out off the main thread: comparing every photo with
     /// every other takes a moment on a big library.
     private func updateJunkReport() async {
+        reportGeneration += 1
+        let generation = reportGeneration
         let items = libraryScan?.items ?? []
         let signals = photoSignals
-        let livePhotos = lists.convertibleLivePhotos
-        let (report, plan, candidates, keepLive, suggested) = await Task.detached(priority: .userInitiated) {
+        let (report, candidates) = await Task.detached(priority: .userInitiated) {
             let report = JunkFinder.find(in: items, signals: signals, now: Date())
-            // Only Live Photos that don't need to be Live are made into stills.
-            let keepLive = LiveStills.keepReasons(for: livePhotos, signals: signals)
-            let suggested = livePhotos.filter { keepLive[$0.id] == nil }
-            return (report, PhotoCleanupPlan(report: report, livePhotos: suggested), SwipeCandidate.all(from: report), keepLive, suggested)
+            return (report, SwipeCandidate.all(from: report))
         }.value
+        // A newer pass started while this one was comparing photos. Drop this result.
+        guard generation == reportGeneration, !Task.isCancelled else { return }
         junkReport = report
-        photoCleanupPlan = plan
-        liveKeepReasons = keepLive
-        suggestedLivePhotos = suggested
         allSwipeCandidates = candidates
         swipeCandidates = candidates.filter { !swipeKept.contains($0.id) }
+        await publishLiveProgress()
+    }
+
+    /// Which Live Photos a still would do for, from measurements made so far.
+    /// An older measurement doesn't count: it's being made again.
+    private func publishLiveProgress() async {
+        let livePhotos = lists.convertibleLivePhotos
+        let signals = photoSignals
+        let attempted = measuredAttempts
+        let (keep, suggested, doneCount) = await Task.detached(priority: .userInitiated) {
+            let current = signals.filter { $0.value.version >= PhotoSignals.currentVersion }
+            let keep = LiveStills.keepReasons(for: livePhotos, signals: current)
+            let suggested = livePhotos.filter { keep[$0.id] == nil }
+            let done = livePhotos.reduce(into: 0) { count, item in
+                if item.traits.contains(.favorite) || current[item.id] != nil || attempted.contains(item.id) {
+                    count += 1
+                }
+            }
+            return (keep, suggested, done)
+        }.value
+        guard !Task.isCancelled else { return }
+        liveKeepReasons = keep
+        suggestedLivePhotos = suggested
+        if let junkReport {
+            photoCleanupPlan = PhotoCleanupPlan(report: junkReport, livePhotos: suggested)
+        }
+        let total = livePhotos.count
+        liveAnalysisProgress = total == 0 ? 1 : Double(doneCount) / Double(total)
+        liveCheckFinished = total == 0 || doneCount == total
     }
 
     /// Removes the approved duplicates and junk, keeping the picked copy of each

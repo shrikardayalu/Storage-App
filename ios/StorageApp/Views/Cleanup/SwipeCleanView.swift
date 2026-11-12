@@ -30,16 +30,12 @@ struct SwipeCleanView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            if !loaded || model.isAnalyzing {
+            if !loaded {
                 Spacer()
-                VStack(spacing: 10) {
-                    ProgressView(value: model.analysisProgress)
-                        .tint(Theme.accent)
-                    Text("Finding photos you probably don't need, on this iPhone.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .card(padding: 16)
+                AnalysisMeter(
+                    progress: model.analysisProgress,
+                    caption: "Finding photos you probably don't need, on this iPhone."
+                )
                 .padding(.horizontal, 20)
                 Spacer()
             } else if let current {
@@ -93,11 +89,14 @@ struct SwipeCleanView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: decisions.count)
         .task { await load() }
+        .onChange(of: model.swipeCandidates) { _, _ in adoptCandidatesIfStillWaiting() }
         // Photos kept on a swipe stay kept: they aren't offered again next time.
         .onDisappear { model.markSwipeKept(kept) }
         .onChange(of: model.junkReport) { _, _ in
             // After a delete the library is scanned again: start over on what's left.
-            if !model.isChanging, decisions.isEmpty { Task { await load() } }
+            // While a scan is still running, the candidates handler shows what's found so far.
+            guard !model.isChanging, !model.isAnalyzing, decisions.isEmpty else { return }
+            Task { await load() }
         }
     }
 
@@ -218,6 +217,8 @@ struct SwipeCleanView: View {
 
     private func load() async {
         await model.findJunk()
+        // Someone already started swiping the photos found so far. Leave their place.
+        guard decisions.isEmpty, position == 0 else { loaded = true; return }
         let candidates = model.swipeCandidates ?? []
         // Leave out anything the safety check won't let the app touch, such as a photo that's gone since the scan.
         var blocked: Set<MediaItem.ID> = []
@@ -225,9 +226,15 @@ struct SwipeCleanView: View {
             blocked = check.missing
         }
         queue = candidates.filter { !blocked.contains($0.id) }
-        position = 0
-        decisions = []
         drag = .zero
+        loaded = true
+    }
+
+    /// Shows the deck as soon as the first photos are found, instead of waiting for the whole library.
+    private func adoptCandidatesIfStillWaiting() {
+        guard decisions.isEmpty, position == 0, drag == .zero else { return }
+        guard let candidates = model.swipeCandidates else { return }
+        queue = candidates
         loaded = true
     }
 

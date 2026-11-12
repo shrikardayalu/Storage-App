@@ -19,6 +19,8 @@ struct LivePhotoStillsView: View {
     @State private var confirming = false
     @State private var progress: CGFloat = 0
     @State private var preview: MediaPreview?
+    /// Stays up a moment after the check finishes, so the scribble can reach the end.
+    @State private var showChecking = false
 
     private var livePhotos: [MediaItem] { model.convertibleLivePhotos }
     /// The ones a still would do for. Empty until the photos have been checked.
@@ -35,8 +37,8 @@ struct LivePhotoStillsView: View {
         case .select: return livePhotos.filter { chosen.contains($0.id) && !blocked.contains($0.id) }
         }
     }
-    /// True until every photo has been looked at once.
-    private var isChecking: Bool { model.isAnalyzing || model.liveKeepReasons == nil }
+    /// True until every Live Photo has been looked at. The rest of the library can still be measuring.
+    private var isChecking: Bool { !model.liveCheckFinished }
 
     var body: some View {
         // Worked out once per redraw: a library can hold thousands of these.
@@ -46,7 +48,7 @@ struct LivePhotoStillsView: View {
     private func content(_ approved: [MediaItem]) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header(savedBytes: approved.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes })
+                header(savedBytes: savedBytes(approved))
                 SketchCanvas(marks: GuideScenes.liveToStill, progress: progress)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
@@ -54,7 +56,7 @@ struct LivePhotoStillsView: View {
                     .sticker(radius: 26, padding: 8)
                     .rotationEffect(.degrees(-0.6))
                 keeps
-                if isChecking, !livePhotos.isEmpty { checking }
+                if showChecking { checking }
                 list(approvedCount: approved.count)
                 if let error {
                     Text(error.localizedDescription)
@@ -88,7 +90,21 @@ struct LivePhotoStillsView: View {
         }
         .mediaPreview($preview)
         // Looks at each photo once, to tell which ones are worth keeping Live.
-        .task { await model.findJunk() }
+        .task {
+            showChecking = !model.liveCheckFinished && !livePhotos.isEmpty
+            await model.findJunk()
+        }
+        .onChange(of: model.liveCheckFinished) { _, finished in
+            guard !livePhotos.isEmpty else { showChecking = false; return }
+            if !finished {
+                showChecking = true
+                return
+            }
+            Task {
+                try? await Task.sleep(for: .milliseconds(450))
+                if model.liveCheckFinished { showChecking = false }
+            }
+        }
         .task(id: livePhotos.map(\.id)) {
             chosen.formIntersection(livePhotos.map(\.id))
             await runCheck()
@@ -100,6 +116,12 @@ struct LivePhotoStillsView: View {
     }
 
     // MARK: Sections
+
+    /// While the check is still going, All shows the whole video portion. It settles to the suggested stills once every Live Photo has been looked at.
+    private func savedBytes(_ approved: [MediaItem]) -> Int64 {
+        let items = isChecking && scope == .all ? livePhotos : approved
+        return items.reduce(Int64(0)) { $0 + $1.livePhotoVideoBytes }
+    }
 
     private func header(savedBytes: Int64) -> some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -141,15 +163,10 @@ struct LivePhotoStillsView: View {
     }
 
     private var checking: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ProgressView(value: model.analysisProgress)
-                .tint(Theme.accent)
-            Text("Working out which Live Photos are worth keeping Live, on this iPhone. Nothing leaves it.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .card(padding: 16)
+        AnalysisMeter(
+            progress: model.liveAnalysisProgress,
+            caption: "Working out which Live Photos are worth keeping Live, on this iPhone. Nothing leaves it."
+        )
     }
 
     @ViewBuilder

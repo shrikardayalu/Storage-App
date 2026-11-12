@@ -632,8 +632,7 @@ private struct ScanPage: View {
                 if phase == .printing, model.isAnalyzing, shown >= lines.count {
                     VStack(alignment: .leading, spacing: 6) {
                         ReadingIndicator(text: "looking for duplicates and blurry shots")
-                        ProgressView(value: model.analysisProgress)
-                            .tint(Theme.accent)
+                        SketchMeter(progress: model.analysisProgress)
                     }
                     .padding(.vertical, 8)
                 }

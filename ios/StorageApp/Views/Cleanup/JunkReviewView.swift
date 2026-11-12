@@ -126,6 +126,14 @@ struct JunkReviewView: View {
             await runCheck()
         }
         .onChange(of: model.junkReport) { _, _ in
+            // Keep the list in step with each pass. The library check waits until
+            // the pass is done, so it isn't repeated for every handful of photos.
+            reset()
+            guard !model.isAnalyzing else { return }
+            Task { await runCheck() }
+        }
+        .onChange(of: model.isAnalyzing) { _, analyzing in
+            guard !analyzing else { return }
             reset()
             Task { await runCheck() }
         }
@@ -157,7 +165,7 @@ struct JunkReviewView: View {
                 .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
-            if report != nil, !model.isAnalyzing {
+            if report != nil {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("Saves about")
                         .font(.title3.weight(.semibold))
@@ -174,21 +182,18 @@ struct JunkReviewView: View {
     @ViewBuilder
     private var content: some View {
         if model.isAnalyzing || report == nil {
-            VStack(alignment: .leading, spacing: 10) {
-                ProgressView(value: model.analysisProgress)
-                    .tint(Theme.accent)
-                Text("Looking at each photo, on this iPhone. Nothing leaves it.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .card(padding: 16)
-        } else if let report, report.isEmpty {
+            AnalysisMeter(
+                progress: model.analysisProgress,
+                caption: "Looking at each photo, on this iPhone. Nothing leaves it."
+            )
+        }
+        if let report, report.isEmpty, !model.isAnalyzing {
             EmptyStateView(
                 illustration: .shieldCheck,
                 title: "Nothing to clean",
                 message: "No duplicates, blurry or black shots, receipts, documents or old screenshots in your library."
             )
-        } else if let report {
+        } else if let report, !report.isEmpty {
             Text(scope == .all
                  ? "Everything suggested is included, and the best copy of each duplicate stays. Receipts and documents are left alone, in case you still need them. Switch to Select at the top to choose yourself. Press and hold a photo for a closer look."
                  : "Tick what to remove, and tap the copy to keep in each duplicate. Press and hold a photo for a closer look.")
@@ -305,7 +310,9 @@ struct JunkReviewView: View {
             }
             .buttonStyle(.sticker)
             .disabled(removeIDs.isEmpty || check == nil || model.isChanging || model.isAnalyzing)
-            Text(check == nil ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.") : "Best copies stay. The rest go to Recently Deleted.")
+            Text(model.isAnalyzing
+                 ? "Still looking. You can remove what's here once it's finished."
+                 : (check == nil ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.") : "Best copies stay. The rest go to Recently Deleted."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

@@ -53,12 +53,91 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
     /// How many photos are measured at the same time.
     private static let atOnce = 3
 
+    /// One PhotoKit image request that resumes exactly once. `requestImage` can
+    /// call back twice (a stand-in, then the real copy); a second resume crashes the scan.
+    private final class OneShotImage: @unchecked Sendable {
+        private let lock = NSLock()
+        private var requestID: PHImageRequestID = PHInvalidImageRequestID
+        private var continuation: CheckedContinuation<UIImage?, Never>?
+        private var finished = false
+        private var cancelled = false
+
+        func fetch(_ asset: PHAsset, target: CGSize, options: PHImageRequestOptions) async -> UIImage? {
+            await withCheckedContinuation { continuation in
+                self.lock.lock()
+                self.continuation = continuation
+                self.lock.unlock()
+
+                // PhotoKit can deliver the copy on the thread that asked, and only
+                // if that thread runs a run loop. The main thread does; a task doesn't.
+                Task { @MainActor [self] in
+                    let id = PHImageManager.default().requestImage(
+                        for: asset, targetSize: target, contentMode: .aspectFit, options: options
+                    ) { image, info in
+                        let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+                        let failed = info?[PHImageErrorKey] != nil
+                        let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                        if cancelled || failed {
+                            self.finish(nil)
+                            return
+                        }
+                        // Wait for the final copy when Photos hands over a stand-in first.
+                        if degraded { return }
+                        self.finish(image)
+                    }
+                    if self.remember(id) { PHImageManager.default().cancelImageRequest(id) }
+                }
+            }
+        }
+
+        /// Stores the Photos request id. Returns true when the request should be cancelled
+        /// because the copy already arrived, or this pass already gave up on it.
+        private func remember(_ id: PHImageRequestID) -> Bool {
+            lock.lock()
+            requestID = id
+            let stop = finished || cancelled
+            lock.unlock()
+            return stop
+        }
+
+        func cancel() {
+            lock.lock()
+            cancelled = true
+            let id = requestID
+            lock.unlock()
+            if id != PHInvalidImageRequestID {
+                PHImageManager.default().cancelImageRequest(id)
+            }
+            finish(nil)
+        }
+
+        private func finish(_ image: UIImage?) {
+            lock.lock()
+            guard !finished else {
+                lock.unlock()
+                return
+            }
+            finished = true
+            let continuation = self.continuation
+            self.continuation = nil
+            lock.unlock()
+            continuation?.resume(returning: image)
+        }
+    }
+
     private static func signals(for asset: PHAsset) async -> PhotoSignals? {
         guard let image = await smallCopy(of: asset) else { return nil }
         return await Task.detached(priority: .utility) { measure(image) }.value
     }
 
+    /// How long one photo may take to come back before it's skipped for this pass.
+    /// A photo that never arrives (usually one still downloading from iCloud) used
+    /// to hold the progress bar in place for the rest of the library.
+    private static let copyTimeout = Duration.seconds(8)
+
     /// A copy no bigger than `side` on its long edge, as Photos shows it (edits included).
+    /// Asked for on the main thread: PhotoKit delivers some results on the calling
+    /// thread's run loop, and a Swift task has none, so the request would never finish.
     private static func smallCopy(of asset: PHAsset) async -> UIImage? {
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
@@ -66,11 +145,20 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
         options.version = .current
         // Only a small copy is fetched if the photo is in iCloud.
         options.isNetworkAccessAllowed = true
+        options.isSynchronous = false
+        let request = OneShotImage()
         let size = CGSize(width: side, height: side)
-        return await withCheckedContinuation { continuation in
-            PHImageManager.default().requestImage(for: asset, targetSize: size, contentMode: .aspectFit, options: options) { image, _ in
-                continuation.resume(returning: image)
+        return await withTaskGroup(of: UIImage?.self) { group in
+            group.addTask { await request.fetch(asset, target: size, options: options) }
+            group.addTask {
+                do { try await Task.sleep(for: copyTimeout) } catch { return nil }
+                request.cancel()
+                return nil
             }
+            let image = await group.next() ?? nil
+            group.cancelAll()
+            if image == nil { request.cancel() }
+            return image
         }
     }
 
