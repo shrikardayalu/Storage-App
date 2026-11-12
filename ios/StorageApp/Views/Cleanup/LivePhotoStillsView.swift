@@ -163,10 +163,7 @@ struct LivePhotoStillsView: View {
     }
 
     private var checking: some View {
-        AnalysisMeter(
-            progress: model.liveAnalysisProgress,
-            caption: "Working out which Live Photos are worth keeping Live, on this iPhone. Nothing leaves it."
-        )
+        LiveAnalysisLoader(caption: "Working out which Live Photos are worth keeping Live, on this iPhone. Nothing leaves it.")
     }
 
     @ViewBuilder
@@ -296,8 +293,9 @@ struct LivePhotoStillsView: View {
     private func convert(_ ids: Set<MediaItem.ID>) async {
         guard !ids.isEmpty else { return }
         if let failure = await model.convertToStills(approved: ids) {
-            error = failure
             await runCheck()
+            // After the check: a successful re-check used to clear this message.
+            error = failure
         }
     }
 }

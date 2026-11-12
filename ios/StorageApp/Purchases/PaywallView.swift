@@ -193,7 +193,7 @@ struct PaywallView: View {
         VStack(spacing: 6) {
             Button(action: buy) {
                 if purchases.isPurchasing {
-                    ProgressView()
+                    SketchSpinner(size: 22)
                 } else {
                     Text(selected == .annual ? "Get Pro for the year" : "Get Pro")
                 }
@@ -416,7 +416,7 @@ struct LifetimeOfferView: View {
                     }
                 } label: {
                     if purchases.isPurchasing {
-                        ProgressView()
+                        SketchSpinner(size: 22)
                     } else {
                         Text("Get Lifetime for \(purchases.displayPrice(.lifetime))")
                     }

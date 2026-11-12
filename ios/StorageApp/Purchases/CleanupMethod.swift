@@ -81,6 +81,8 @@ enum CleanupMethod: String, CaseIterable, Identifiable, Codable {
     var coveredBy: [CleanupMethod] {
         switch self {
         case .duplicates, .livePhotos: [.photoCleanup]
+        // Old PNG screenshots Photo Cleanup would remove aren't counted again for re-saving.
+        case .screenshots: [.photoCleanup]
         case .swipe: [.photoCleanup, .duplicates]
         default: []
         }
@@ -252,10 +254,10 @@ extension AppModel {
         switch method {
         case .shrinkVideos: videoSaving
         case .photoCleanup: photoCleanupPlan?.totalBytes
-        case .duplicates: junkReport?.suggestedBytes
+        case .duplicates: junkSaving
         case .livePhotos: livePhotoSaving
         case .screenshots: screenshotSaving
-        case .swipe: swipeCandidates.map { $0.reduce(Int64(0)) { $0 + $1.item.currentBytes } }
+        case .swipe: swipeSaving
         case .bursts: burstSaving
         case .chatAttachments: nil
         }

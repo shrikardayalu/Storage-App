@@ -50,8 +50,9 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
         return results
     }
 
-    /// How many photos are measured at the same time.
-    private static let atOnce = 3
+    /// How many photos are measured at the same time: enough that the next copy
+    /// is on its way while Vision works, with cores left for the screen.
+    private static let atOnce = max(3, min(6, ProcessInfo.processInfo.activeProcessorCount - 2))
 
     /// One PhotoKit image request that resumes exactly once. `requestImage` can
     /// call back twice (a stand-in, then the real copy); a second resume crashes the scan.
@@ -141,7 +142,8 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
     private static func smallCopy(of asset: PHAsset) async -> UIImage? {
         let options = PHImageRequestOptions()
         options.deliveryMode = .highQualityFormat
-        options.resizeMode = .exact
+        // The nearest copy Photos already has; the pixel pass scales it to `side` anyway.
+        options.resizeMode = .fast
         options.version = .current
         // Only a small copy is fetched if the photo is in iCloud.
         options.isNetworkAccessAllowed = true
@@ -168,21 +170,22 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
 
         let printRequest = VNGenerateImageFeaturePrintRequest()
         printRequest.imageCropAndScaleOption = .scaleFill
-        let textRequest = VNRecognizeTextRequest()
-        textRequest.recognitionLevel = .fast
-        textRequest.usesLanguageCorrection = false
-        do {
-            try handler.perform([printRequest, textRequest])
-        } catch {
-            return nil
-        }
         // What's in the picture and how it came out, so memories aren't
-        // mistaken for junk. Each is optional: if one can't run on this
-        // phone, the photo is still measured without it.
+        // mistaken for junk. Run together when the phone can; fall back one
+        // by one if a request the phone doesn't support spoils the batch.
         let sceneRequest = VNClassifyImageRequest()
         let faceRequest = VNDetectFaceCaptureQualityRequest()
-        try? handler.perform([sceneRequest])
-        try? handler.perform([faceRequest])
+        do {
+            try handler.perform([printRequest, sceneRequest, faceRequest])
+        } catch {
+            do {
+                try handler.perform([printRequest])
+            } catch {
+                return nil
+            }
+            try? handler.perform([sceneRequest])
+            try? handler.perform([faceRequest])
+        }
         let looks = aesthetics(handler)
         let labels = (sceneRequest.results ?? [])
             .filter { $0.confidence >= 0.15 }
@@ -191,17 +194,13 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
             .reduce(into: [String: Double]()) { $0[$1.identifier] = Double($1.confidence) }
         let faces = faceRequest.results ?? []
 
-        let lines = (textRequest.results ?? []).compactMap { $0.topCandidates(1).first?.string }
-        let coverage = (textRequest.results ?? []).reduce(0.0) { $0 + Double($1.boundingBox.width * $1.boundingBox.height) }
         guard let gray = grayPixels(cgImage) else { return nil }
         let stats = ImageStats.measure(gray: gray.pixels, width: gray.width, height: gray.height)
-        return PhotoSignals(
+        var signals = PhotoSignals(
             featurePrint: printRequest.results?.first.map(floats) ?? [],
             sharpness: stats.sharpness,
             brightness: stats.brightness,
             darkFraction: stats.darkFraction,
-            textLines: lines,
-            textCoverage: min(coverage, 1),
             peakSharpness: stats.peakSharpness,
             faceCount: faces.count,
             faceArea: faces.map { Double($0.boundingBox.width * $0.boundingBox.height) }.max() ?? 0,
@@ -210,6 +209,16 @@ struct PhotoKitAnalyzer: PhotoAnalysisService {
             aesthetics: looks?.score,
             isUtility: looks?.isUtility ?? false
         )
+        // Text only matters for documents and receipts, and a photo of people,
+        // a pet or scenery is never one, so reading it is skipped there.
+        guard PhotoWorth.keepReason(for: signals) == nil else { return signals }
+        let textRequest = VNRecognizeTextRequest()
+        textRequest.recognitionLevel = .fast
+        textRequest.usesLanguageCorrection = false
+        guard (try? handler.perform([textRequest])) != nil, let text = textRequest.results else { return signals }
+        signals.textLines = text.compactMap { $0.topCandidates(1).first?.string }
+        signals.textCoverage = min(text.reduce(0.0) { $0 + Double($1.boundingBox.width * $1.boundingBox.height) }, 1)
+        return signals
     }
 
     /// Vision's rating of how good the photo looks, on iOS 18 and later.

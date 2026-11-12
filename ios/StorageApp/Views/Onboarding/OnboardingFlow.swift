@@ -630,9 +630,12 @@ private struct ScanPage: View {
                         .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
                 }
                 if phase == .printing, model.isAnalyzing, shown >= lines.count {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 8) {
                         ReadingIndicator(text: "looking for duplicates and blurry shots")
-                        SketchMeter(progress: model.analysisProgress)
+                        CelTimeline { frame in
+                            SketchProgressBar(progress: model.analysisProgress, frame: frame)
+                        }
+                        .frame(height: 22)
                     }
                     .padding(.vertical, 8)
                 }

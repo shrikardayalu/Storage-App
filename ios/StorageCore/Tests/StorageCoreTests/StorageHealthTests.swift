@@ -48,10 +48,12 @@ final class StorageHealthTests: XCTestCase {
         let now = referenceDate.addingTimeInterval(600)
         // Started 2 minutes ago, baseline was 10 minutes ago: restarted.
         XCTAssertTrue(pending.restarted(now: now, uptime: 120))
+        // The in-app steps power off within a minute; that restart still counts.
+        XCTAssertTrue(pending.restarted(now: now, uptime: 560))
         // Running for days: no restart, even if it slept.
         XCTAssertFalse(pending.restarted(now: now, uptime: 5 * 86_400))
-        // Within the slack: not counted.
-        XCTAssertFalse(pending.restarted(now: now, uptime: 560))
+        // Within the slack of the baseline: not counted.
+        XCTAssertFalse(pending.restarted(now: now, uptime: 597))
         // A baseline in the future (clock changed) never counts.
         XCTAssertFalse(pending.restarted(now: referenceDate.addingTimeInterval(-10), uptime: 0))
     }

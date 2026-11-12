@@ -9,9 +9,26 @@ import SwiftUI
 /// It opens on All, which covers every suggestion except receipts and
 /// documents. Select, in the top bar, starts with nothing ticked so the
 /// person chooses. Pressing and holding a photo shows it big.
+/// Which part of the report is on screen. Everything is the old full list;
+/// the other two skip the long scroll to the bottom.
+private enum JunkSection: String, CaseIterable, Identifiable {
+    case everything, duplicates, junk
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .everything: "Everything"
+        case .duplicates: "Duplicates"
+        case .junk: "Junk"
+        }
+    }
+}
+
 struct JunkReviewView: View {
     @Environment(AppModel.self) private var model
     @State private var scope: PickScope = .all
+    @State private var section: JunkSection = .everything
     /// Single-photo findings ticked in Select. All ignores it.
     @State private var ticked: Set<MediaItem.ID> = []
     /// Duplicate group → the copy to keep, where it isn't the suggested one.
@@ -22,9 +39,20 @@ struct JunkReviewView: View {
     @State private var check: SafetyCheck?
     @State private var error: PhotoChangeError?
     @State private var confirming = false
-    @State private var loadedReport: JunkReport?
+    /// The report on screen. Newer ones from a pass still running wait behind
+    /// "Show more", so the list doesn't move while the person is picking.
+    @State private var shown: JunkReport?
+    /// Photos in the latest report that aren't on screen yet.
+    @State private var waiting = 0
+    /// Set when what's on screen is out of date for sure, as after a removal.
+    @State private var adoptNext = false
 
-    private var report: JunkReport? { model.junkReport }
+    private var report: JunkReport? { shown }
+
+    /// Whether the person has picked anything that a new report would have to carry over.
+    private var hasChoices: Bool {
+        !ticked.isEmpty || !keepers.isEmpty || !pickedGroups.isEmpty
+    }
     /// Photos the safety check refused, such as ones that are gone since the scan.
     private var blocked: Set<MediaItem.ID> {
         guard let check else { return [] }
@@ -43,13 +71,19 @@ struct JunkReviewView: View {
         scope == .all || pickedGroups.contains(group.id)
     }
 
+    private var showsDuplicates: Bool { section != .junk }
+    private var showsJunk: Bool { section != .duplicates }
+
     private var activeGroups: [DuplicateGroup] {
-        (report?.duplicates ?? []).filter { isIncluded($0) && !isBlocked($0) }
+        guard showsDuplicates else { return [] }
+        return (report?.duplicates ?? []).filter { isIncluded($0) && !isBlocked($0) }
     }
 
     /// The single photos that go: every suggestion in All (receipts and
-    /// documents left alone), the ticked ones in Select.
+    /// documents left alone), the ticked ones in Select. Scoped to the
+    /// section on screen, so Remove only acts on what's in front of you.
     private var singles: Set<MediaItem.ID> {
+        guard showsJunk else { return [] }
         let included = scope == .all
             ? Set((report?.findings ?? []).filter { $0.reason.startsSelected }.map(\.id))
             : ticked
@@ -85,9 +119,37 @@ struct JunkReviewView: View {
     var body: some View {
         ScrollView {
             // Lazy: a library can hold hundreds of duplicate groups.
-            LazyVStack(alignment: .leading, spacing: 20) {
+            // The section switch stays pinned so junk isn't a long scroll away.
+            LazyVStack(alignment: .leading, spacing: 20, pinnedViews: [.sectionHeaders]) {
                 header
-                content
+                if model.isAnalyzing || report == nil {
+                    PhotoAnalysisLoader(caption: "Looking at each photo, on this iPhone. Nothing leaves it. The first look takes a while; after that it's quick.")
+                }
+                if let report, !report.isEmpty {
+                    Section {
+                        findings(report)
+                    } header: {
+                        sectionSwitch(report)
+                    }
+                } else if let report, report.isEmpty, !model.isAnalyzing {
+                    EmptyStateView(
+                        illustration: .shieldCheck,
+                        title: "Nothing to clean",
+                        message: "No duplicates, blurry or black shots, receipts, documents or old screenshots in your library."
+                    )
+                }
+                if waiting > 0, let latest = model.junkReport {
+                    Button {
+                        show(latest)
+                    } label: {
+                        Label(waiting == 1 ? "Show 1 more found" : "Show \(waiting) more found", systemImage: "arrow.down.circle")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.accent)
+                    .accessibilityHint("Adds the newly found photos to the list. Your picks stay.")
+                }
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
@@ -121,22 +183,50 @@ struct JunkReviewView: View {
             Text("\(ByteFormatter.string(removeBytes, precision: .twoDecimals)). The best copy of each duplicate stays. The rest go to Recently Deleted, where you can recover them for 30 days.")
         }
         .task {
+            offer(model.junkReport)
             await model.findJunk()
-            reset()
-            await runCheck()
+            offer(model.junkReport, finished: true)
         }
-        .onChange(of: model.junkReport) { _, _ in
-            // Keep the list in step with each pass. The library check waits until
-            // the pass is done, so it isn't repeated for every handful of photos.
-            reset()
-            guard !model.isAnalyzing else { return }
-            Task { await runCheck() }
+        .onChange(of: model.junkReport) { _, latest in
+            offer(latest, finished: !model.isAnalyzing)
         }
         .onChange(of: model.isAnalyzing) { _, analyzing in
             guard !analyzing else { return }
-            reset()
-            Task { await runCheck() }
+            offer(model.junkReport, finished: true)
         }
+    }
+
+    /// Puts `latest` on screen when that won't move anything the person is
+    /// looking at: nothing shown yet, nothing found so far, a finished pass they
+    /// haven't started picking in, or after a removal. Otherwise it waits behind "Show more".
+    private func offer(_ latest: JunkReport?, finished: Bool = false) {
+        guard let latest, latest != shown else {
+            waiting = 0
+            if finished, check == nil, error == nil, shown != nil { Task { await runCheck() } }
+            return
+        }
+        if shown == nil || shown?.isEmpty == true || adoptNext || (finished && !hasChoices) {
+            show(latest)
+        } else {
+            let onScreen = Self.ids(in: shown)
+            waiting = Self.ids(in: latest).subtracting(onScreen).count
+            if waiting == 0, finished { show(latest) }
+        }
+    }
+
+    private func show(_ latest: JunkReport) {
+        shown = latest
+        waiting = 0
+        adoptNext = false
+        reset()
+        // The library check waits until the pass is done, so it isn't repeated for every handful of photos.
+        guard !model.isAnalyzing else { return }
+        Task { await runCheck() }
+    }
+
+    private static func ids(in report: JunkReport?) -> Set<MediaItem.ID> {
+        guard let report else { return [] }
+        return Set(report.findings.map(\.id)).union(report.duplicates.flatMap(\.items).map(\.id))
     }
 
     private var countText: String {
@@ -145,8 +235,7 @@ struct JunkReviewView: View {
 
     /// Keeps the person's choices where they still apply to a new report.
     private func reset() {
-        guard let report, report != loadedReport else { return }
-        loadedReport = report
+        guard let report else { return }
         ticked.formIntersection(report.findings.map(\.id))
         let groups = Set(report.duplicates.map(\.id))
         keepers = keepers.filter { groups.contains($0.key) }
@@ -179,28 +268,36 @@ struct JunkReviewView: View {
         .padding(.top, 8)
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if model.isAnalyzing || report == nil {
-            AnalysisMeter(
-                progress: model.analysisProgress,
-                caption: "Looking at each photo, on this iPhone. Nothing leaves it."
-            )
+    private func sectionSwitch(_ report: JunkReport) -> some View {
+        let duplicateCount = report.duplicates.count
+        let junkCount = report.findings.count
+        return Picker("Section", selection: $section) {
+            Text(duplicateCount + junkCount > 0
+                 ? "Everything · \(duplicateCount + junkCount)"
+                 : "Everything").tag(JunkSection.everything)
+            Text(duplicateCount > 0 ? "Duplicates · \(duplicateCount)" : "Duplicates").tag(JunkSection.duplicates)
+            Text(junkCount > 0 ? "Junk · \(junkCount)" : "Junk").tag(JunkSection.junk)
         }
-        if let report, report.isEmpty, !model.isAnalyzing {
-            EmptyStateView(
-                illustration: .shieldCheck,
-                title: "Nothing to clean",
-                message: "No duplicates, blurry or black shots, receipts, documents or old screenshots in your library."
-            )
-        } else if let report, !report.isEmpty {
-            Text(scope == .all
-                 ? "Everything suggested is included, and the best copy of each duplicate stays. Receipts and documents are left alone, in case you still need them. Switch to Select at the top to choose yourself. Press and hold a photo for a closer look."
-                 : "Tick what to remove, and tap the copy to keep in each duplicate. Press and hold a photo for a closer look.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if !report.duplicates.isEmpty {
+        .pickerStyle(.segmented)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(Theme.background)
+        .accessibilityLabel("Which findings to show")
+    }
+
+    @ViewBuilder
+    private func findings(_ report: JunkReport) -> some View {
+        Text(sectionHint)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        if showsDuplicates {
+            if report.duplicates.isEmpty {
+                Text("No duplicates in this library.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+            } else {
                 sectionTitle(JunkReason.duplicate.title, detail: "tap the copy to keep")
                 ForEach(report.duplicates) { group in
                     let keeper = keeper(of: group)
@@ -228,12 +325,36 @@ struct JunkReviewView: View {
                     )
                 }
             }
-            ForEach(JunkReason.allCases.filter { $0 != .duplicate }) { reason in
-                let findings = report.findings(for: reason)
-                if !findings.isEmpty {
-                    findingSection(reason, findings)
+        }
+        if showsJunk {
+            let junkReasons = JunkReason.allCases.filter { $0 != .duplicate }
+            let anyJunk = junkReasons.contains { !report.findings(for: $0).isEmpty }
+            if !anyJunk {
+                Text("No junk photos in this library.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
+            } else {
+                ForEach(junkReasons) { reason in
+                    let findings = report.findings(for: reason)
+                    if !findings.isEmpty {
+                        findingSection(reason, findings)
+                    }
                 }
             }
+        }
+    }
+
+    private var sectionHint: String {
+        switch (section, scope) {
+        case (.everything, .all):
+            "Everything suggested is included, and the best copy of each duplicate stays. Receipts and documents are left alone, in case you still need them. Switch to Select at the top to choose yourself. Press and hold a photo for a closer look."
+        case (.duplicates, .all):
+            "Every duplicate group is included, and the best copy stays. Switch to Select at the top to choose groups yourself. Press and hold a photo for a closer look."
+        case (.junk, .all):
+            "Blurry, black and old shots are included. Receipts and documents are left alone, in case you still need them. Switch to Select at the top to choose yourself. Press and hold a photo for a closer look."
+        case (_, .select):
+            "Tick what to remove, and tap the copy to keep in each duplicate. Press and hold a photo for a closer look."
         }
     }
 
@@ -306,13 +427,19 @@ struct JunkReviewView: View {
             Button {
                 confirming = true
             } label: {
-                Text(removeIDs.isEmpty ? (scope == .all ? "Nothing to Remove" : "Tick Photos to Remove") : "Remove \(countText)")
+                Text(removeIDs.isEmpty
+                     ? (scope == .all ? "Nothing to Remove" : "Tick Photos to Remove")
+                     : "Remove \(countText)")
             }
             .buttonStyle(.sticker)
             .disabled(removeIDs.isEmpty || check == nil || model.isChanging || model.isAnalyzing)
             Text(model.isAnalyzing
                  ? "Still looking. You can remove what's here once it's finished."
-                 : (check == nil ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.") : "Best copies stay. The rest go to Recently Deleted."))
+                 : (check == nil
+                    ? (error == nil ? "Checking your library…" : "Fix the problem above to continue.")
+                    : (section == .everything
+                       ? "Best copies stay. The rest go to Recently Deleted."
+                       : "Only what's in \(section.title.lowercased()) right now. Your other ticks stay for when you switch back.")))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -342,9 +469,17 @@ struct JunkReviewView: View {
     private func remove() async {
         let remove = removeIDs
         guard !remove.isEmpty else { return }
+        // The library is scanned again after a removal; what's on screen is out of date either way.
+        adoptNext = true
         if let failure = await model.removeJunk(remove, keeping: keeperIDs) {
+            if let latest = model.junkReport, latest != shown {
+                show(latest)
+            } else {
+                adoptNext = false
+                await runCheck()
+            }
+            // After the check: a successful re-check used to clear this message.
             error = failure
-            await runCheck()
         }
     }
 }

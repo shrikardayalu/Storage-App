@@ -56,12 +56,18 @@ struct WorkingOverlay: View {
     var body: some View {
         ZStack {
             Color.black.opacity(0.15).ignoresSafeArea()
-            VStack(spacing: 12) {
-                ProgressView()
-                Text(message).font(.subheadline.weight(.medium))
+            VStack(spacing: 14) {
+                SketchSpinner(size: 36)
+                Text(message)
+                    .font(.hand(18))
+                    .foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(24)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.horizontal, 26)
+            .padding(.vertical, 22)
+            .sticker(padding: 0)
+            .frame(maxWidth: 280)
         }
         .accessibilityElement(children: .combine)
     }

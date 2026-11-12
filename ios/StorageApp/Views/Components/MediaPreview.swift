@@ -239,7 +239,7 @@ struct StillPreview: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFit()
             } else {
-                ProgressView()
+                SketchSpinner(size: 28)
             }
         }
         .task(id: id) {
@@ -272,7 +272,7 @@ private struct VideoPreview: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .padding()
             } else {
-                ProgressView().tint(.white)
+                SketchSpinner(size: 28, tint: .white)
             }
         }
         .task(id: id) {

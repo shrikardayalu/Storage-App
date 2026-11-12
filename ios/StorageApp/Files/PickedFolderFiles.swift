@@ -151,7 +151,11 @@ struct PickedFolderFiles: FolderFilesService {
         var hasher = SHA256()
         do {
             while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
-                hasher.update(data: chunk)
+                // Without this, a multi-GB file can pile up autoreleased chunks
+                // and get the process killed while hashing two copies of it.
+                autoreleasepool {
+                    hasher.update(data: chunk)
+                }
             }
         } catch {
             return nil

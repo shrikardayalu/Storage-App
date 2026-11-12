@@ -228,8 +228,9 @@ struct BurstPicksView: View {
     private func clean(_ picks: [String: MediaItem.ID]) async {
         guard !picks.isEmpty else { return }
         if let failure = await model.keepBurstPicks(picks) {
-            error = failure
             await runCheck()
+            // After the check: a successful re-check used to clear this message.
+            error = failure
         }
     }
 }

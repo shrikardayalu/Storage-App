@@ -271,8 +271,9 @@ struct VideosView: View {
         guard !qualities.isEmpty else { return }
         error = nil
         if let failure = await model.shrinkVideos(qualities) {
-            error = failure
             await runCheck()
+            // After the check: a successful re-check used to clear this message.
+            error = failure
         }
     }
 }
@@ -389,6 +390,9 @@ struct VideoShrinkView: View {
         .background(PaperBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        // Leaving mid-export used to leave the copy in the temporary folder and
+        // keep every other tool showing "working" until the next launch.
+        .navigationBarBackButtonHidden(model.isChanging)
         .safeAreaInset(edge: .bottom) { actionBar }
         .overlay {
             if model.isChanging {
@@ -436,7 +440,7 @@ struct VideoShrinkView: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .padding()
             } else {
-                ProgressView().tint(.white)
+                SketchSpinner(size: 28, tint: .white)
             }
         }
         .aspectRatio(CGFloat(max(item.pixelWidth, 1)) / CGFloat(max(item.pixelHeight, 1)), contentMode: .fit)

@@ -333,7 +333,7 @@ private struct GuideMeasurePage: View {
                 } label: {
                     HStack(spacing: 8) {
                         if model.isCheckingGuide {
-                            ProgressView()
+                            SketchSpinner(size: 18)
                         } else {
                             Image(systemName: "arrow.clockwise")
                         }

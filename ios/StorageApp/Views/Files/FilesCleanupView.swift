@@ -123,21 +123,29 @@ struct FilesCleanupView: View {
                 .boiling()
                 .tracking(-1)
                 .accessibilityAddTraits(.isHeader)
-            if let scan = model.folderScan {
+            if model.pickedFolder != nil {
                 HStack(spacing: 10) {
                     Image(systemName: "folder.fill")
                         .foregroundStyle(Theme.accent)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(scan.folderName)
-                            .font(.headline)
-                        Text("\(scan.files.count == 1 ? "1 file" : "\(scan.files.count) files") · \(ByteFormatter.string(scan.totalBytes, precision: .twoDecimals))")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                        if let scan = model.folderScan {
+                            Text(scan.folderName)
+                                .font(.headline)
+                            Text("\(scan.files.count == 1 ? "1 file" : "\(scan.files.count) files") · \(ByteFormatter.string(scan.totalBytes, precision: .twoDecimals))")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("This folder")
+                                .font(.headline)
+                            Text(model.isScanningFolder ? "Reading…" : "Couldn't read it. Pick it again.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     Spacer(minLength: 6)
                     Button("Change") { picking = true }
                         .font(.footnote.weight(.semibold))
-                        .disabled(model.isChanging)
+                        .disabled(model.isChanging || model.isScanningFolder)
                 }
                 .card(padding: 14)
                 .padding(.top, 6)
@@ -160,8 +168,13 @@ struct FilesCleanupView: View {
             }
             .card(padding: 18)
         } else if model.isScanningFolder && report == nil {
-            ProgressView("Reading the folder…")
-                .frame(maxWidth: .infinity, minHeight: 120)
+            VStack(spacing: 12) {
+                SketchSpinner(size: 28)
+                Text("Reading the folder…")
+                    .font(.hand(17))
+                    .foregroundStyle(Theme.accent)
+            }
+            .frame(maxWidth: .infinity, minHeight: 120)
         } else if let report, report.isEmpty {
             EmptyStateView(
                 illustration: .shieldCheck,

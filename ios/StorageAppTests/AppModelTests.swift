@@ -282,7 +282,9 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(results.count, 2)
         XCTAssertEqual(skipped, 1)
         XCTAssertTrue(results.allSatisfy(\.keptEverything))
-        XCTAssertEqual(model.guide?.expectedBytes, 540_000_000)
+        // Copies are made after the baseline, so only the saving can come back.
+        XCTAssertEqual(model.guide?.expectedBytes, results.reduce(Int64(0)) { $0 + $1.savedBytes })
+        XCTAssertGreaterThan(model.guide?.expectedBytes ?? 0, 0)
         XCTAssertNil(model.videoBatchProgress)
     }
 

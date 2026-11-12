@@ -22,10 +22,7 @@ struct PhotoCleanupView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 if model.isAnalyzing || plan == nil {
-                    AnalysisMeter(
-                        progress: model.analysisProgress,
-                        caption: "Checking each photo, on this iPhone. Nothing leaves it."
-                    )
+                    PhotoAnalysisLoader(caption: "Checking each photo, on this iPhone. Nothing leaves it.")
                 }
                 if let plan, plan.isEmpty, !model.isAnalyzing {
                     EmptyStateView(
@@ -165,8 +162,9 @@ struct PhotoCleanupView: View {
     private func cleanUp() async {
         guard let plan, !plan.isEmpty else { return }
         if let failure = await model.cleanUpPhotos(plan) {
-            error = failure
             await runCheck()
+            // After the check: a successful re-check used to clear this message.
+            error = failure
         }
     }
 }

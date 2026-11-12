@@ -32,11 +32,8 @@ struct SwipeCleanView: View {
             header
             if !loaded {
                 Spacer()
-                AnalysisMeter(
-                    progress: model.analysisProgress,
-                    caption: "Finding photos you probably don't need, on this iPhone."
-                )
-                .padding(.horizontal, 20)
+                PhotoAnalysisLoader(caption: "Finding photos you probably don't need, on this iPhone.")
+                    .padding(.horizontal, 20)
                 Spacer()
             } else if let current {
                 Spacer(minLength: 8)
@@ -218,23 +215,35 @@ struct SwipeCleanView: View {
     private func load() async {
         await model.findJunk()
         // Someone already started swiping the photos found so far. Leave their place.
-        guard decisions.isEmpty, position == 0 else { loaded = true; return }
+        guard decisions.isEmpty, position == 0 else {
+            adoptCandidatesIfStillWaiting()
+            loaded = true
+            return
+        }
         let candidates = model.swipeCandidates ?? []
         // Leave out anything the safety check won't let the app touch, such as a photo that's gone since the scan.
         var blocked: Set<MediaItem.ID> = []
         if !candidates.isEmpty, case .success(let check) = await model.albumCheck(Set(candidates.map(\.id))) {
             blocked = check.missing
         }
-        queue = candidates.filter { !blocked.contains($0.id) }
+        // The card already on screen stays first; anything new goes after what's there.
+        let fresh = candidates.filter { !blocked.contains($0.id) }
+        let freshIDs = Set(fresh.map(\.id))
+        let staying = queue.filter { freshIDs.contains($0.id) }
+        let stayingIDs = Set(staying.map(\.id))
+        queue = staying + fresh.filter { !stayingIDs.contains($0.id) }
         drag = .zero
         loaded = true
     }
 
-    /// Shows the deck as soon as the first photos are found, instead of waiting for the whole library.
+    /// Shows the deck as soon as the first photos are found, instead of waiting
+    /// for the whole library. Later finds go on the end, so the card on screen never changes.
     private func adoptCandidatesIfStillWaiting() {
-        guard decisions.isEmpty, position == 0, drag == .zero else { return }
         guard let candidates = model.swipeCandidates else { return }
-        queue = candidates
+        let inDeck = Set(queue.map(\.id))
+        let added = candidates.filter { !inDeck.contains($0.id) }
+        guard !added.isEmpty || !loaded else { return }
+        queue.append(contentsOf: added)
         loaded = true
     }
 
@@ -265,6 +274,9 @@ struct SwipeCleanView: View {
             error = failure
         } else {
             error = nil
+            decisions = []
+            position = 0
+            queue = []
             await load()
         }
     }
@@ -287,7 +299,7 @@ private struct SwipePhoto: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
-                ProgressView()
+                SketchSpinner(size: 22)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

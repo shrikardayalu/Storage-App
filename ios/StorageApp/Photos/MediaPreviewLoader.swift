@@ -90,7 +90,7 @@ struct LivePhotoPlayer: View {
                 // The still is better than nothing.
                 StillPreview(id: id)
             } else {
-                ProgressView()
+                SketchSpinner(size: 28)
             }
         }
         .task(id: id) {

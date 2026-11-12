@@ -76,7 +76,9 @@ struct HomeView: View {
     @ViewBuilder
     private var upNext: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if model.libraryScan == nil {
+                if model.libraryScan == nil || model.libraryScan?.total.count == 0 {
+                // Limited access with nothing picked, or a first scan that found
+                // nothing: still offer a scan, so they aren't stuck with only Library.
                 ScanCard()
             } else if showsPlan {
                 PlanCard(picks: OnboardingAnswers.load().picks)
@@ -123,7 +125,7 @@ private struct StorageSummaryCard: View {
                 Text("Couldn't read this iPhone's storage.")
                     .font(.subheadline)
             } else {
-                ProgressView()
+                SketchSpinner(size: 26)
                     .frame(maxWidth: .infinity, minHeight: 60)
             }
 
@@ -330,7 +332,7 @@ private struct ScanCard: View {
                 Button {
                     Task { await model.scanLibrary() }
                 } label: {
-                    if model.isScanning { ProgressView() } else { Text("Scan My Photos") }
+                    if model.isScanning { SketchSpinner(size: 22) } else { Text("Scan My Photos") }
                 }
                 .buttonStyle(.sticker)
                 .disabled(model.isScanning)
@@ -493,8 +495,15 @@ private struct PlanCard: View {
     }
 
     /// Measured, with nothing left to free. Guides can't be measured, so they stay open.
+    /// Photo tools that need the junk pass wait until that pass is finished, so a
+    /// first empty interim report doesn't strike them through as "done".
     private func isDone(_ method: CleanupMethod) -> Bool {
-        model.saving(for: method) == 0
+        switch method {
+        case .photoCleanup, .duplicates, .swipe:
+            guard model.junkAnalysisFinished else { return false }
+        default: break
+        }
+        return model.saving(for: method) == 0
     }
 
     /// `PlanOrder`, with anything already done moved to the end.
@@ -571,7 +580,7 @@ private struct PhotoToolsSection: View {
                     Task { await model.scanLibrary() }
                 } label: {
                     if model.isScanning {
-                        ProgressView().controlSize(.small)
+                        SketchSpinner(size: 16)
                     } else {
                         Label("Scan Again", systemImage: "arrow.clockwise")
                             .font(.footnote.weight(.semibold))

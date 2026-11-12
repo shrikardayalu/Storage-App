@@ -117,6 +117,15 @@ final class StorageHistoryTests: XCTestCase {
         XCTAssertEqual(history.change(over: 600), 4_000)
     }
 
+    func testChangeIsNilWhenTheEarlierReadingIsMuchOlderThanTheWindow() {
+        var history = StorageHistory()
+        history.append(snapshot(minutes: 0, free: 10_000))
+        // Forty days later, with nothing in between.
+        history.append(snapshot(minutes: 40 * 24 * 60, free: 6_000))
+        // A 3-day window would otherwise report the whole 40-day drop.
+        XCTAssertNil(history.change(over: 3 * 86_400))
+    }
+
     // MARK: Mock service
 
     func testMockServiceReportsItsNumbers() async throws {

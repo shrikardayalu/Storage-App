@@ -178,6 +178,63 @@ final class JunkFinderTests: XCTestCase {
         XCTAssertEqual(black.darkFraction, 1)
     }
 
+    // MARK: Memories aren't junk
+
+    private func reason(_ signals: PhotoSignals) -> JunkReason? {
+        JunkFinder.reason(for: photo("p"), signals: signals, now: referenceDate, rules: .standard)
+    }
+
+    func testPeopleWithTextInThePictureAreNotDocuments() {
+        var shirt = signals(print(0), lines: letter)
+        shirt.faceCount = 2
+        shirt.faceArea = 0.05
+        XCTAssertNil(reason(shirt))
+    }
+
+    func testSceneryAndPetsWithTextAreNotDocuments() {
+        var sign = signals(print(0), lines: letter)
+        sign.labels = ["mountain": 0.8]
+        XCTAssertNil(reason(sign))
+        var dog = signals(print(0), lines: letter)
+        dog.labels = ["dog": 0.7]
+        XCTAssertNil(reason(dog))
+    }
+
+    func testScrapsOfTextReadOffTexturesAreNotADocument() {
+        // What fast text reading picks out of leaves, gravel or a number plate.
+        let scraps = signals(print(0), lines: ["ll", "I", "o0", "VY", "Il1", "7", "M", "rr"])
+        XCTAssertNil(reason(scraps))
+        var plate = signals(print(0), lines: ["NJ", "ABC 1234"])
+        plate.textCoverage = 0.02
+        XCTAssertNil(reason(plate))
+    }
+
+    func testAPhotoVisionCallsAMemoryNeedsMoreTextToBeADocument() {
+        var menu = signals(print(0), lines: letter)
+        menu.aesthetics = -0.1
+        menu.isUtility = false
+        XCTAssertNil(reason(menu), "a few lines in a photo that isn't a practical picture")
+        menu.isUtility = true
+        XCTAssertEqual(reason(menu), .document)
+    }
+
+    func testCampfiresAndFireworksAreNotBlackShots() {
+        // Mostly black, but with crisp bright flames or sparks.
+        let campfire = PhotoSignals(featurePrint: print(0), sharpness: 25, brightness: 0.06, darkFraction: 0.9, peakSharpness: 2_400)
+        XCTAssertNil(reason(campfire))
+        var fireworks = PhotoSignals(featurePrint: print(0), sharpness: 8, brightness: 0.04, darkFraction: 0.95, peakSharpness: 90)
+        fireworks.labels = ["fireworks": 0.4]
+        XCTAssertNil(reason(fireworks))
+        var bonfire = fireworks
+        bonfire.labels = ["bonfire": 0.2]
+        XCTAssertNil(reason(bonfire))
+    }
+
+    func testAPocketShotIsStillABlackShot() {
+        let pocket = PhotoSignals(featurePrint: print(0), sharpness: 3, brightness: 0.02, darkFraction: 0.98, peakSharpness: 6)
+        XCTAssertEqual(reason(pocket), .dark)
+    }
+
     func testReceiptNeedsPricesAndAReceiptWord() {
         XCTAssertTrue(JunkFinder.isReceipt(receipt))
         XCTAssertFalse(JunkFinder.isReceipt(letter))

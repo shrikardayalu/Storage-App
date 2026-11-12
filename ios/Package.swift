@@ -28,7 +28,11 @@ let package = Package(
             ],
             path: "StorageApp",
             // Info.plist exists only after `xcodegen generate` on a Mac.
-            exclude: ["Resources", "Info.plist"]
+            exclude: ["Resources", "Info.plist"],
+            // xtool installs with `-c release` by default (see Tools/xtool-dev.sh),
+            // which would otherwise drop DEBUG and lock Pro tools behind StoreKit
+            // on a sideloaded phone. Keep the debug helpers available there.
+            swiftSettings: [.define("DEBUG")]
         ),
     ],
     // Matches SWIFT_VERSION 5.0 in project.yml.

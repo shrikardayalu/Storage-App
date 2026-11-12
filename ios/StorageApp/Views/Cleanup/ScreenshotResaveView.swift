@@ -238,8 +238,9 @@ struct ScreenshotResaveView: View {
         let ids = approved
         guard !ids.isEmpty else { return }
         if let failure = await model.resaveScreenshots(approved: ids) {
-            error = failure
             await runCheck()
+            // After the check: a successful re-check used to clear this message.
+            error = failure
         }
     }
 }

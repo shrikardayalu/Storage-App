@@ -120,9 +120,21 @@ struct RecentlyDeletedGuideView: View {
         switch guide.kind {
         case .convertedLivePhotos: .stills
         case .shrunkVideo, .shrunkVideos: .video
-        case .photoCleanup(_, let stills): stills.isEmpty ? .none : .stills
+        // Mixed cleanups (junk removed and stills made) aren't a pure still swap:
+        // calling everything a Live version would leave the junk in Recently Deleted.
+        case .photoCleanup(let receipt, let stills):
+            stills.isEmpty || receipt != nil ? .none : .stills
         case .resavedScreenshots: .screenshots
         case .deleted, .keptBurstPicks: .none
+        }
+    }
+
+    /// Original Live Photos that became stills, so only those get the LIVE badge.
+    private var stillOriginalIDs: Set<MediaItem.ID> {
+        switch guide.kind {
+        case .convertedLivePhotos(let stills): Set(stills.map(\.originalID))
+        case .photoCleanup(_, let stills): Set(stills.map(\.originalID))
+        default: []
         }
     }
 
@@ -205,7 +217,7 @@ struct RecentlyDeletedGuideView: View {
         case .done: DonePage(guide: guide, progress: progress)
         case .measure: MeasurePage(guide: guide, progress: progress)
         case .summary:
-            SummaryPage(guide: guide, swap: swap, progress: progress)
+            SummaryPage(guide: guide, swap: swap, stillIDs: stillOriginalIDs, progress: progress)
         default: drawnPage
         }
     }
@@ -237,7 +249,7 @@ struct RecentlyDeletedGuideView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 4)
                 if step == .select {
-                    LookForThese(ids: guide.removedIDs, stills: swap == .stills)
+                    LookForThese(ids: guide.removedIDs, stillIDs: stillOriginalIDs)
                 }
             }
             .padding(.horizontal, 20)
@@ -454,10 +466,11 @@ private struct DonePage: View {
     @ViewBuilder
     private func burstProof(_ receipt: BurstReceipt) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Your library")
+            // These counts are only the burst shots that were checked, not the whole library.
+            Text("These bursts")
                 .font(.subheadline.weight(.semibold))
             Spacer()
-            Text("\(receipt.countBefore) → \(receipt.countAfter) items")
+            Text("\(receipt.countBefore) → \(receipt.countAfter) shots")
                 .font(.metric(.title3))
                 .monospacedDigit()
         }
@@ -701,7 +714,7 @@ private struct MeasurePage: View {
                 } label: {
                     HStack(spacing: 8) {
                         if model.isCheckingReclaim {
-                            ProgressView()
+                            SketchSpinner(size: 18)
                         } else {
                             Image(systemName: "arrow.clockwise")
                         }
@@ -764,6 +777,7 @@ private struct GuideLinkStyle: ViewModifier {
 private struct SummaryPage: View {
     let guide: CleanupGuide
     let swap: RecentlyDeletedGuideView.Swap
+    let stillIDs: Set<MediaItem.ID>
     let progress: CGFloat
 
     private var lines: [String] {
@@ -826,7 +840,7 @@ private struct SummaryPage: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .sticker(radius: 24, padding: 0)
 
-                LookForThese(ids: guide.removedIDs, stills: swap == .stills)
+                LookForThese(ids: guide.removedIDs, stillIDs: stillIDs)
             }
             .padding(.horizontal, 20)
             .padding(.top, 18)
@@ -907,19 +921,30 @@ private struct StepDots: View {
 /// Thumbnails of what was removed, from the cache, so the person knows what to pick.
 private struct LookForThese: View {
     let ids: [MediaItem.ID]
-    var stills = false
+    /// Live Photo originals among `ids`; only those get the LIVE badge.
+    var stillIDs: Set<MediaItem.ID> = []
 
     var body: some View {
-        if !ids.isEmpty {
+        // Only IDs that were on screen long enough to land in the cache: Photos
+        // can't fetch thumbnails for items already in Recently Deleted.
+        let shown = ids.filter { PhotoThumbnailLoader.cached($0) != nil }
+        let rows = shown.isEmpty ? Array(ids.prefix(30)) : Array(shown.prefix(30))
+        if !rows.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text(stills ? "look for these, with the LIVE badge" : "look for these")
+                Text(stillIDs.isEmpty
+                     ? "look for these"
+                     : (stillIDs.count == rows.count
+                        ? "look for these, with the LIVE badge"
+                        : "look for these — LIVE badge on the old Live versions"))
                     .font(.hand(18))
                     .foregroundStyle(Theme.accent)
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
-                        ForEach(ids.prefix(30), id: \.self) { id in
+                        ForEach(rows, id: \.self) { id in
                             ItemThumbnail(id: id, side: 54)
-                                .overlay(alignment: .topLeading) { if stills { LiveBadge().padding(3) } }
+                                .overlay(alignment: .topLeading) {
+                                    if stillIDs.contains(id) { LiveBadge().padding(3) }
+                                }
                                 .rotationEffect(.degrees(Double(abs(id.hashValue % 5)) - 2))
                         }
                     }
@@ -940,7 +965,8 @@ private struct SwapSafeNote: View {
         switch swap {
         case .video: "Your smaller video stays in your library. Only the original is in Recently Deleted."
         case .screenshots: "Your smaller screenshots stay in your library. Only the old PNGs are in Recently Deleted."
-        case .stills, .none: "Your stills stay in your library. Only the old Live versions are in Recently Deleted."
+        case .stills: "Your stills stay in your library. Only the old Live versions are in Recently Deleted."
+        case .none: "What's below is only in Recently Deleted. Nothing else in your library was touched."
         }
     }
 

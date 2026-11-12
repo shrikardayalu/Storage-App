@@ -33,13 +33,16 @@ public struct StorageHistory: Codable, Equatable, Sendable {
 
     /// Change in plain free space from the reading at the start of `window`
     /// (counting back from the latest reading) to the latest one. Negative means
-    /// free space shrank. Nil when no reading is at least `window` old, since
-    /// the change would cover a shorter span than asked.
+    /// free space shrank. Nil when no reading is at least `window` old, or when
+    /// the nearest earlier reading is itself much older than `window` (so the
+    /// change would describe weeks as "3 days").
     public func change(over window: TimeInterval) -> Int64? {
         guard let latest else { return nil }
         let start = latest.date.addingTimeInterval(-window)
         // The newest reading taken at or before the start of the window.
         guard let baseline = snapshots.last(where: { $0.date <= start }) else { return nil }
+        // The baseline has to sit inside the window, not years before it.
+        guard start.timeIntervalSince(baseline.date) <= window else { return nil }
         return latest.availableBytes - baseline.availableBytes
     }
 }

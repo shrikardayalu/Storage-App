@@ -78,46 +78,50 @@ public enum ImageStats {
     ///   so one stray bright dot doesn't count as a crisp part.
     public static func measure(gray: [UInt8], width: Int, height: Int) -> (sharpness: Double, brightness: Double, darkFraction: Double, peakSharpness: Double) {
         guard width > 2, height > 2, gray.count >= width * height else { return (0, 0, 1, 0) }
-        var sum = 0.0
-        var dark = 0
-        for value in gray.prefix(width * height) {
-            sum += Double(value)
-            if value < 26 { dark += 1 }
-        }
-        let count = Double(width * height)
-
-        // 4-neighbour Laplacian over the interior; its variance is a standard blur measure.
-        let grid = 4
-        var lapSum = 0.0
-        var lapSquares = 0.0
-        var tileSum = [Double](repeating: 0, count: grid * grid)
-        var tileSquares = [Double](repeating: 0, count: grid * grid)
-        var tileCount = [Double](repeating: 0, count: grid * grid)
-        for y in 1..<(height - 1) {
-            let row = y * width
-            let tileRow = min(grid - 1, y * grid / height) * grid
-            for x in 1..<(width - 1) {
-                let i = row + x
-                let centre = 4 * Int(gray[i])
-                let lap = Double(Int(gray[i - 1]) + Int(gray[i + 1]) + Int(gray[i - width]) + Int(gray[i + width]) - centre)
-                lapSum += lap
-                lapSquares += lap * lap
-                let tile = tileRow + min(grid - 1, x * grid / width)
-                tileSum[tile] += lap
-                tileSquares[tile] += lap * lap
-                tileCount[tile] += 1
+        return gray.withUnsafeBufferPointer { buffer in
+            let pixels = buffer.baseAddress!
+            var sum = 0.0
+            var dark = 0
+            for i in 0..<(width * height) {
+                let value = pixels[i]
+                sum += Double(value)
+                if value < 26 { dark += 1 }
             }
+            let count = Double(width * height)
+
+            // 4-neighbour Laplacian over the interior; its variance is a standard blur measure.
+            let grid = 4
+            var lapSum = 0.0
+            var lapSquares = 0.0
+            var tileSum = [Double](repeating: 0, count: grid * grid)
+            var tileSquares = [Double](repeating: 0, count: grid * grid)
+            var tileCount = [Double](repeating: 0, count: grid * grid)
+            for y in 1..<(height - 1) {
+                let row = y * width
+                let tileRow = min(grid - 1, y * grid / height) * grid
+                for x in 1..<(width - 1) {
+                    let i = row + x
+                    let centre = 4 * Int(pixels[i])
+                    let lap = Double(Int(pixels[i - 1]) + Int(pixels[i + 1]) + Int(pixels[i - width]) + Int(pixels[i + width]) - centre)
+                    lapSum += lap
+                    lapSquares += lap * lap
+                    let tile = tileRow + min(grid - 1, x * grid / width)
+                    tileSum[tile] += lap
+                    tileSquares[tile] += lap * lap
+                    tileCount[tile] += 1
+                }
+            }
+            let inner = Double((width - 2) * (height - 2))
+            let mean = lapSum / inner
+            let tiles = (0..<(grid * grid)).compactMap { tile -> Double? in
+                guard tileCount[tile] > 0 else { return nil }
+                let tileMean = tileSum[tile] / tileCount[tile]
+                return tileSquares[tile] / tileCount[tile] - tileMean * tileMean
+            }.sorted(by: >)
+            let overall = lapSquares / inner - mean * mean
+            let peak = tiles.count > 1 ? tiles[1] : (tiles.first ?? overall)
+            return (overall, sum / count / 255, Double(dark) / count, peak)
         }
-        let inner = Double((width - 2) * (height - 2))
-        let mean = lapSum / inner
-        let tiles = (0..<(grid * grid)).compactMap { tile -> Double? in
-            guard tileCount[tile] > 0 else { return nil }
-            let tileMean = tileSum[tile] / tileCount[tile]
-            return tileSquares[tile] / tileCount[tile] - tileMean * tileMean
-        }.sorted(by: >)
-        let overall = lapSquares / inner - mean * mean
-        let peak = tiles.count > 1 ? tiles[1] : (tiles.first ?? overall)
-        return (overall, sum / count / 255, Double(dark) / count, peak)
     }
 }
 
@@ -174,9 +178,18 @@ public struct JunkRules: Hashable, Sendable {
     /// Black or pocket shot: this dark on average, with this much of the frame nearly black.
     public var darkBrightness: Double
     public var darkFraction: Double
-    /// A photo of a page: at least this many lines of text, or this much of the frame covered by text.
+    /// A dark photo whose crispest parts are this sharp has something bright
+    /// in it (flames, sparks, city lights), not a lens covered by a pocket.
+    public var darkPeakSharpness: Double
+    /// A photo of a page: at least this many lines of real text, or this much
+    /// of the frame covered by text with at least `documentMinLines` lines.
     public var documentLines: Int
     public var documentCoverage: Double
+    public var documentMinLines: Int
+    /// What a photo needs when Vision has rated it and didn't call it a
+    /// practical picture: a lot more text, as with a page filling the frame.
+    public var memoryDocumentLines: Int
+    public var memoryDocumentCoverage: Double
     /// Screenshots older than this count as old.
     public var oldScreenshotAge: TimeInterval
 
@@ -190,8 +203,12 @@ public struct JunkRules: Hashable, Sendable {
         worth: WorthRules = .standard,
         darkBrightness: Double = 0.08,
         darkFraction: Double = 0.85,
+        darkPeakSharpness: Double = 200,
         documentLines: Int = 6,
         documentCoverage: Double = 0.15,
+        documentMinLines: Int = 3,
+        memoryDocumentLines: Int = 12,
+        memoryDocumentCoverage: Double = 0.3,
         oldScreenshotAge: TimeInterval = 30 * 86_400
     ) {
         self.sameDistance = sameDistance
@@ -203,8 +220,12 @@ public struct JunkRules: Hashable, Sendable {
         self.worth = worth
         self.darkBrightness = darkBrightness
         self.darkFraction = darkFraction
+        self.darkPeakSharpness = darkPeakSharpness
         self.documentLines = documentLines
         self.documentCoverage = documentCoverage
+        self.documentMinLines = documentMinLines
+        self.memoryDocumentLines = memoryDocumentLines
+        self.memoryDocumentCoverage = memoryDocumentCoverage
         self.oldScreenshotAge = oldScreenshotAge
     }
 
@@ -217,14 +238,16 @@ public struct DuplicateGroup: Identifiable, Hashable, Sendable {
     /// True when every copy is the same picture, not just a near-duplicate.
     public let isExact: Bool
 
-    /// Stable while the group's members don't change.
-    public var id: String { items.map(\.id).sorted().joined(separator: "|") }
+    /// Stable while the group's members don't change. Worked out once, when
+    /// the group is made: lists and lookups ask for it on every redraw.
+    public let id: String
 
     public var suggestedKeeper: MediaItem.ID { items[0].id }
 
     public init(items: [MediaItem], isExact: Bool) {
         self.items = items
         self.isExact = isExact
+        self.id = items.map(\.id).sorted().joined(separator: "|")
     }
 
     public func savedBytes(keeping keeper: MediaItem.ID) -> Int64 {
@@ -330,12 +353,40 @@ public enum JunkFinder {
             return now.timeIntervalSince(item.creationDate) > rules.oldScreenshotAge ? .oldScreenshot : nil
         }
         guard let signals else { return nil }
-        let keep = PhotoWorth.keepReason(for: item, signals: signals, rules: rules.worth) != nil
-        if !keep, signals.brightness < rules.darkBrightness, signals.darkFraction > rules.darkFraction { return .dark }
-        let isPage = signals.textLines.count >= rules.documentLines || signals.textCoverage >= rules.documentCoverage
-        if isPage { return isReceipt(signals.textLines) ? .receipt : .document }
-        if !keep, isBlurry(signals, rules: rules) { return .blurry }
+        // People, pets, scenery and great shots are never suggested, whatever else is in them.
+        if PhotoWorth.keepReason(for: item, signals: signals, rules: rules.worth) != nil { return nil }
+        if isBlackShot(signals, rules: rules) { return .dark }
+        if isPage(signals, rules: rules) { return isReceipt(signals.textLines) ? .receipt : .document }
+        if isBlurry(signals, rules: rules) { return .blurry }
         return nil
+    }
+
+    /// Labels for dark photos that are dark on purpose.
+    static let nightWords: Set<String> = [
+        "fire", "campfire", "bonfire", "fireplace", "flame", "candle", "fireworks", "sparkler",
+        "concert", "nightlife", "night", "moon", "stars", "aurora", "lightning",
+    ]
+
+    /// Black all over with nothing bright and crisp in it, and nothing Vision
+    /// recognises as dark on purpose (a campfire, fireworks, the moon).
+    static func isBlackShot(_ signals: PhotoSignals, rules: JunkRules) -> Bool {
+        guard signals.brightness < rules.darkBrightness, signals.darkFraction > rules.darkFraction else { return false }
+        if let peak = signals.peakSharpness, peak >= rules.darkPeakSharpness { return false }
+        // Any label at all counts here: Vision is less sure of anything in the dark.
+        return !signals.labels.keys.contains { label in
+            label.lowercased().split(whereSeparator: { !$0.isLetter }).contains { nightWords.contains(String($0)) }
+        }
+    }
+
+    /// A photo of a page. Fast text reading picks scraps out of leaves, gravel
+    /// and number plates, so only lines with a few letters or digits count.
+    static func isPage(_ signals: PhotoSignals, rules: JunkRules) -> Bool {
+        let lines = signals.textLines.filter { $0.filter { $0.isLetter || $0.isNumber }.count >= 4 }.count
+        let looksLikeMemory = signals.aesthetics != nil && !signals.isUtility
+        let enoughLines = looksLikeMemory ? rules.memoryDocumentLines : rules.documentLines
+        let enoughCoverage = looksLikeMemory ? rules.memoryDocumentCoverage : rules.documentCoverage
+        if lines >= enoughLines { return true }
+        return lines >= rules.documentMinLines && signals.textCoverage >= enoughCoverage
     }
 
     /// Soft all over, with no crisp part anywhere, and not a photo Vision rates as good-looking.
@@ -357,56 +408,145 @@ public enum JunkFinder {
 
     /// Groups photos that look the same. Each photo joins a group only if it is
     /// close to every photo already in it, so a run of similar shots doesn't chain together.
+    ///
+    /// Photos are taken oldest first. Each joins the earliest group it fits, or
+    /// starts its own. Most photos are nobody's duplicate, so there are nearly
+    /// as many groups as photos, and every photo is tried against every
+    /// earlier group: on a whole library that's hundreds of millions of tries.
+    /// What keeps it quick is ruling a group out before its prints are compared.
+    /// Every print's distance to a few fixed prints is worked out once. Two
+    /// prints can't be closer to each other than their distances to a third
+    /// differ, so a group whose first print is too far off on any of those is
+    /// skipped after a subtraction or two. The numbers each try needs sit in
+    /// plain arrays in group order, so the loop never copies an item or looks
+    /// an ID up.
     static func duplicateGroups(_ items: [MediaItem], signals: [MediaItem.ID: PhotoSignals], rules: JunkRules) -> [DuplicateGroup] {
-        // Items and prints side by side, so the inner loop never looks an ID
-        // up: a whole library is tens of thousands of photos.
-        // `keeper`: a photo worth keeping, whose near-duplicates must be the same frame.
-        let measured: [(item: MediaItem, print: [Float], keeper: Bool)] = items
-            .compactMap { item in
-                guard let found = signals[item.id], !found.featurePrint.isEmpty else { return nil }
-                return (item, found.featurePrint, PhotoWorth.keepReason(for: item, signals: found, rules: rules.worth) != nil)
-            }
-            .sorted { ($0.item.creationDate, $0.item.id) < ($1.item.creationDate, $1.item.id) }
-        // Each photo's distance to one fixed print. Two prints can't be closer
-        // to each other than their distances to a third differ, so most pairs
-        // are ruled out with one subtraction instead of a full comparison.
-        // Without this a whole library takes many seconds to group.
-        let reference = measured.first?.print ?? []
-        let fromReference: [Float] = measured.map { entry in
-            guard entry.print.count == reference.count else { return .nan }
-            var sum: Float = 0
-            for i in reference.indices {
-                let d = entry.print[i] - reference[i]
-                sum += d * d
-            }
-            return sum.squareRoot()
+        var measured: [MediaItem] = []
+        var prints: [[Float]] = []
+        for item in items {
+            guard let found = signals[item.id], !found.featurePrint.isEmpty else { continue }
+            measured.append(item)
+            prints.append(found.featurePrint)
         }
+        let order = measured.indices.sorted {
+            (measured[$0].creationDate, measured[$0].id) < (measured[$1].creationDate, measured[$1].id)
+        }
+        measured = order.map { measured[$0] }
+        prints = order.map { prints[$0] }
+        let count = measured.count
+        guard count > 1 else { return [] }
+
+        let dates = measured.map(\.creationDate.timeIntervalSinceReferenceDate)
+        let kinds = measured.map(\.category)
+        // Width over height, or NaN for a photo with no size, which matches nothing.
+        let shapes: [Double] = measured.map {
+            $0.pixelWidth > 0 && $0.pixelHeight > 0 ? Double($0.pixelWidth) / Double($0.pixelHeight) : .nan
+        }
+        // A photo worth keeping, whose near-duplicates must be the same frame.
+        let keepers: [Bool] = measured.map { item in
+            signals[item.id].map { PhotoWorth.keepReason(for: item, signals: $0, rules: rules.worth) != nil } ?? false
+        }
+
+        // Distances to a few prints that are far from each other: the first
+        // print, then each time the one farthest from those already picked.
+        // A print of another length (a different Vision version) gets NaN.
+        func distances(to pivot: [Float]) -> [Float] {
+            prints.map { print in
+                guard print.count == pivot.count else { return .nan }
+                var sum: Float = 0
+                for i in pivot.indices {
+                    let d = print[i] - pivot[i]
+                    sum += d * d
+                }
+                return sum.squareRoot()
+            }
+        }
+        let pivots = min(Self.pivotCount, count)
+        var toPivot: [[Float]] = [distances(to: prints[0])]
+        var nearestPivot = toPivot[0]
+        while toPivot.count < pivots {
+            var farthest = 0
+            var reach: Float = -1
+            for index in 0..<count where nearestPivot[index].isFinite && nearestPivot[index] > reach {
+                farthest = index
+                reach = nearestPivot[index]
+            }
+            // Every print left is one of the pivots already: more wouldn't tell anything apart.
+            guard reach > 0 else { break }
+            let next = distances(to: prints[farthest])
+            for index in 0..<count { nearestPivot[index] = min(nearestPivot[index], next[index]) }
+            toPivot.append(next)
+        }
+        let extra = toPivot.count - 1
+        /// Each photo's distances to the pivots after the first, side by side.
+        var extras = [Float](repeating: 0, count: count * extra)
+        /// Whether those are all ordinary numbers. If not, only the first pivot is used.
+        var plain = [Bool](repeating: true, count: count)
+        for index in 0..<count {
+            for pivot in 0..<extra {
+                let value = toPivot[pivot + 1][index]
+                extras[index * extra + pivot] = value
+                if !value.isFinite { plain[index] = false }
+            }
+            if !toPivot[0][index].isFinite { plain[index] = false }
+        }
+        let first = toPivot[0]
+
         let nearLimit = max(rules.sameDistance, rules.nearDistance)
+        let sameReach = rules.sameDistance + 0.001
+        let nearReach = nearLimit + 0.001
+
         // Each group holds indexes into `measured`.
         var groups: [[Int]] = []
         var exact: [Bool] = []
+        // What ruling a group out needs to know about its first photo, in group order.
+        var headDates: [Double] = []
+        var headFirst: [Float] = []
+        var headExtras: [Float] = []
+        var headPlain: [Bool] = []
+        headDates.reserveCapacity(count)
+        headFirst.reserveCapacity(count)
+        headExtras.reserveCapacity(count * extra)
+        headPlain.reserveCapacity(count)
 
-        for (position, entry) in measured.enumerated() {
+        /// Whether `position` is close to every photo already in the group.
+        func fits(_ position: Int, in members: [Int], allSame: inout Bool) -> Bool {
+            for member in members {
+                guard kinds[member] == kinds[position] else { return false }
+                let a = shapes[member], b = shapes[position]
+                // Same orientation and aspect ratio within 2%. A crop or rotation
+                // isn't a duplicate, and NaN fails this.
+                guard abs(a - b) / max(a, b) < 0.02 else { return false }
+                if distance(prints[position], prints[member], under: rules.sameDistance) != nil { continue }
+                allSame = false
+                let close = abs(dates[position] - dates[member]) <= rules.nearWindow
+                let limit = keepers[position] || keepers[member] ? min(rules.keeperNearDistance, rules.nearDistance) : rules.nearDistance
+                guard close, distance(prints[position], prints[member], under: limit) != nil else { return false }
+            }
+            return true
+        }
+
+        for position in 0..<count {
+            let date = dates[position]
+            let own = first[position]
+            let ownPlain = plain[position]
+            let ownExtras = position * extra
             var joined = false
-            for index in groups.indices {
-                // To join, the photo must at least be close to the group's first member.
-                let first = groups[index][0]
-                let inWindow = abs(entry.item.creationDate.timeIntervalSince(measured[first].item.creationDate)) <= rules.nearWindow
+            nextGroup: for index in 0..<groups.count {
+                // To join, the photo must at least be close to the group's first member:
+                // within reach of a near-duplicate if they were taken close together,
+                // and the same picture otherwise.
+                let reach = abs(date - headDates[index]) <= rules.nearWindow ? nearReach : sameReach
                 // NaN (prints of different lengths) never skips; the full check decides.
-                if abs(fromReference[position] - fromReference[first]) >= (inWindow ? nearLimit : rules.sameDistance) + 0.001 {
-                    continue
+                if abs(own - headFirst[index]) >= reach { continue }
+                if ownPlain, headPlain[index] {
+                    let head = index * extra
+                    for pivot in 0..<extra where abs(extras[ownExtras + pivot] - headExtras[head + pivot]) >= reach {
+                        continue nextGroup
+                    }
                 }
                 var allSame = exact[index]
-                let fits = groups[index].allSatisfy { member in
-                    let other = measured[member]
-                    guard other.item.category == entry.item.category, sameShape(other.item, entry.item) else { return false }
-                    if distance(entry.print, other.print, under: rules.sameDistance) != nil { return true }
-                    allSame = false
-                    let close = abs(entry.item.creationDate.timeIntervalSince(other.item.creationDate)) <= rules.nearWindow
-                    let limit = entry.keeper || other.keeper ? min(rules.keeperNearDistance, rules.nearDistance) : rules.nearDistance
-                    return close && distance(entry.print, other.print, under: limit) != nil
-                }
-                if fits {
+                if fits(position, in: groups[index], allSame: &allSame) {
                     groups[index].append(position)
                     exact[index] = allSame
                     joined = true
@@ -416,19 +556,30 @@ public enum JunkFinder {
             if !joined {
                 groups.append([position])
                 exact.append(true)
+                headDates.append(date)
+                headFirst.append(own)
+                headPlain.append(ownPlain)
+                headExtras.append(contentsOf: extras[ownExtras..<(ownExtras + extra)])
             }
         }
 
-        return zip(groups, exact)
-            .compactMap { members, isExact -> DuplicateGroup? in
-                guard members.count > 1 else { return nil }
-                let sorted = members.map { measured[$0].item }.sorted { isBetter($0, than: $1, signals: signals) }
-                // A favorite is never an extra copy to remove: it's the keeper, or it's left out.
-                let items = [sorted[0]] + sorted.dropFirst().filter { !$0.traits.contains(.favorite) }
-                return items.count > 1 ? DuplicateGroup(items: items, isExact: isExact) : nil
-            }
-            .sorted { ($0.savedBytes(keeping: $0.suggestedKeeper), $1.id) > ($1.savedBytes(keeping: $1.suggestedKeeper), $0.id) }
+        var found: [(saved: Int64, group: DuplicateGroup)] = []
+        for (members, isExact) in zip(groups, exact) where members.count > 1 {
+            let sorted = members.map { measured[$0] }.sorted { isBetter($0, than: $1, signals: signals) }
+            // A favorite is never an extra copy to remove: it's the keeper, or it's left out.
+            let items = [sorted[0]] + sorted.dropFirst().filter { !$0.traits.contains(.favorite) }
+            guard items.count > 1 else { continue }
+            let group = DuplicateGroup(items: items, isExact: isExact)
+            found.append((group.savedBytes(keeping: group.suggestedKeeper), group))
+        }
+        return found
+            .sorted { ($0.saved, $1.group.id) > ($1.saved, $0.group.id) }
+            .map(\.group)
     }
+
+    /// How many fixed prints every photo is measured against before grouping.
+    /// Each one rules out about half of the groups the ones before let through.
+    static let pivotCount = 6
 
     /// The copy to keep: a favorite, then an edited one, then clearly more
     /// pixels, then the one where faces came out better, then the sharper

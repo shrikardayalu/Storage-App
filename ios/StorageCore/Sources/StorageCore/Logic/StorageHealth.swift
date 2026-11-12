@@ -45,8 +45,10 @@ public struct PendingRestart: Codable, Equatable, Sendable {
     /// baseline is too old to say what the restart itself gave back.
     public static let expiry: TimeInterval = 3 * 86_400
 
-    /// Clock changes and rounding are allowed this much slack.
-    public static let tolerance: TimeInterval = 60
+    /// Clock changes and rounding are allowed this much slack. Kept short: the
+    /// in-app restart steps usually power the phone off within a minute of the
+    /// tap, and a longer slack missed those restarts entirely.
+    public static let tolerance: TimeInterval = 5
 
     /// Whether the phone started up after the baseline was taken.
     /// - Parameter uptime: time since the phone started, including time asleep.

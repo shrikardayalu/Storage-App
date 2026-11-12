@@ -328,9 +328,10 @@ struct ItemThumbnail: View {
         .frame(width: side, height: side)
         .clipShape(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: side * 0.18, style: .continuous).strokeBorder(Theme.ink.opacity(0.8), lineWidth: 1.25))
-        .task(id: id) {
-            image = PhotoThumbnailLoader.cached(id)
-            if image == nil { image = await PhotoThumbnailLoader.image(for: id, side: side) }
+        .task(id: "\(id)-\(Int(side))") {
+            // Always ask for this size: a smaller cached copy (from a denser
+            // grid) used to stick around and leave these tiles blurry.
+            image = await PhotoThumbnailLoader.image(for: id, side: side)
         }
         .accessibilityHidden(true)
     }

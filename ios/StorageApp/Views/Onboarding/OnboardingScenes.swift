@@ -1,7 +1,7 @@
 import SwiftUI
 
 // Ink drawings for onboarding. They boil: every stroke is pushed through a
-// gentle field that shifts at 12 frames a second (`Sketch.boil`), so lines
+// gentle field that shifts with the boil clock (`Sketch.boil`), so lines
 // shimmer like hand-drawn animation without changing shape.
 
 /// Draws a list of marks in `design` space, boiling each pose.

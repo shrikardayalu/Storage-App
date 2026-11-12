@@ -199,6 +199,8 @@ enum ScanCache {
     /// 2: items carry the favorite and edited traits.
     private static let version = 2
     private static let lock = NSLock()
+    /// Kept after the first decode, so a rescan doesn't read the file again.
+    private static var memory: [Entry]?
     private static var fileURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("library-scan.plist")
     }
@@ -206,14 +208,20 @@ enum ScanCache {
     static func load() -> [Entry] {
         lock.lock()
         defer { lock.unlock() }
+        if let memory { return memory }
         guard let fileURL, let data = try? Data(contentsOf: fileURL, options: .mappedIfSafe),
-              let file = try? PropertyListDecoder().decode(File.self, from: data), file.version == version else { return [] }
+              let file = try? PropertyListDecoder().decode(File.self, from: data), file.version == version else {
+            memory = []
+            return []
+        }
+        memory = file.entries
         return file.entries
     }
 
     static func save(_ entries: [Entry]) {
         lock.lock()
         defer { lock.unlock() }
+        memory = entries
         guard let fileURL else { return }
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .binary
@@ -280,9 +288,25 @@ enum PhotoThumbnailLoader {
         let scale = await UIScreen.main.scale
         let size = CGSize(width: side * scale, height: side * scale)
         return await withCheckedContinuation { continuation in
+            // PhotoKit can call back more than once; a second resume crashes.
+            let once = Once()
             manager.requestImage(for: asset, targetSize: size, contentMode: .aspectFill, options: options) { image, _ in
-                continuation.resume(returning: image)
+                if once.first() { continuation.resume(returning: image) }
             }
+        }
+    }
+
+    /// Resumes a continuation exactly once.
+    private final class Once: @unchecked Sendable {
+        private let lock = NSLock()
+        private var done = false
+
+        func first() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            guard !done else { return false }
+            done = true
+            return true
         }
     }
 }

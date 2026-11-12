@@ -83,6 +83,11 @@ public enum PhotoWorth {
         if item.traits.contains(.favorite) { return .favorite }
         if countEdits, item.traits.contains(.edited) { return .edited }
         guard let signals else { return nil }
+        return keepReason(for: signals, rules: rules)
+    }
+
+    /// Why a photo with these signals is worth keeping, from what's in the picture alone.
+    public static func keepReason(for signals: PhotoSignals, rules: WorthRules = .standard) -> KeepReason? {
         if signals.faceCount > 0, signals.faceArea >= rules.faceArea { return .people }
         if has(peopleWords, in: signals, rules: rules) { return .people }
         if has(animalWords, in: signals, rules: rules) { return .animals }

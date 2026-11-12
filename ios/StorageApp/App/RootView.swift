@@ -1,5 +1,7 @@
+import StorageCore
 import StoreKit
 import SwiftUI
+import UIKit
 
 /// Tab bar shell, with onboarding over it on first run. Error alerts live
 /// here so any tab can raise them.
@@ -109,11 +111,16 @@ struct RootView: View {
                 .environment(purchases)
                 .tint(Theme.accent)
         }
+        .onChange(of: model.isChanging) { _, busy in
+            // Long video exports and batches otherwise stop when the phone locks.
+            UIApplication.shared.isIdleTimerDisabled = busy
+        }
         .onChange(of: model.guide?.id) { old, new in
             if old != nil, new == nil { offerAfterWin(freed: model.lastGuide?.expectedBytes ?? 0) }
         }
         .onChange(of: model.guideFreedBytes) { _, bytes in
-            if bytes > 0 { otherAppFreed = bytes }
+            // Only a real win: free space moves a little on its own under the noise floor.
+            if bytes >= FreedLedger.noiseFloor { otherAppFreed = bytes }
         }
         .onChange(of: model.otherAppGuide) { old, new in
             guard old != nil, new == nil else { return }

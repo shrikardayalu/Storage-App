@@ -92,8 +92,11 @@ wsl -d Ubuntu-24.04 -- bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/io
 Or from a WSL shell:
 
 ```bash
-bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh"         # build, install, launch
-bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh" build   # compile only
+bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh"         # release build, install, launch
+bash "/mnt/c/Users/shrik/OneDrive/Desktop/SimpleShrink/ios/Tools/xtool-dev.sh" build   # compile only (release)
+# Default is release: photo scans are many times faster than debug. Package.swift
+# still defines DEBUG so simulated Pro purchases work on a sideloaded phone.
+# For an unoptimized build: XTOOL_CONFIGURATION=debug bash …/xtool-dev.sh
 ```
 
 `run` (the default) builds, signs with your Apple ID, installs on the connected iPhone, and launches the app. The built app is at `~/storage-app-ios/xtool/StorageApp.app`.
