@@ -1,15 +1,19 @@
 import Foundation
 
-/// Whether the paywall is live. While on, the shrink tools need Pro and
-/// onboarding ends on the paywall.
+/// Whether the paywall is live. While on, the Pro tools open the paywall.
 ///
-/// Launch with `-paywallEnabled NO` to try the app with nothing gated (it
-/// lands in UserDefaults' argument domain, like `ScreenshotRoute`).
+/// Debug builds only: launch with `-paywallEnabled NO` to try the app with
+/// nothing gated (it lands in UserDefaults' argument domain, like
+/// `ScreenshotRoute`). Release builds ignore it.
 enum PaywallConfig {
     static let isLaunched = true
 
     static var isEnabled: Bool {
+        #if DEBUG
         UserDefaults.standard.object(forKey: "paywallEnabled") as? Bool ?? isLaunched
+        #else
+        isLaunched
+        #endif
     }
 
     /// Debug builds fake a purchase when the App Store has no products to sell,
@@ -32,13 +36,16 @@ enum PaywallConfig {
     static let termsURL = siteURL.appending(path: "terms")
     static let privacyURL = siteURL.appending(path: "privacy")
     static let supportURL = siteURL.appending(path: "support")
+    static let supportEmail = "hello.simpleshrink@gmail.com"
+    static let supportEmailURL = URL(string: "mailto:\(supportEmail)")!
 }
 
 /// What Pro can be bought as. Prices match web/src/lib/pricing.ts and
 /// `Products.storekit`; on a real store the paywall shows `Product.displayPrice`.
 ///
 /// The main paywall shows only `weekly` and `annual`. `lifetime` is offered
-/// once, after someone dismisses the paywall without buying.
+/// once after someone dismisses the paywall without buying, and stays
+/// available in Settings > Pro.
 enum Plan: String, CaseIterable, Identifiable {
     case weekly
     case annual

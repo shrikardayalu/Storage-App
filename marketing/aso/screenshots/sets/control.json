@@ -1,0 +1,11 @@
+{
+  "note": "The original six. The baseline every test is compared against.",
+  "shots": [
+    { "layout": "phone", "theme": "cream", "headline": "Full iPhone?\n*shrink it,*\ndon't delete.", "screen": "onboarding-light", "doodle": "sparks", "phoneTop": 1010 },
+    { "layout": "phone", "theme": "mint", "headline": "See what's\n*eating*\nyour space", "screen": "reveal-light", "art": ["stack-large", "trash"], "blob": false },
+    { "layout": "phone", "theme": "cream", "headline": "Shrink videos,\n*keep*\nevery one", "screen": "paywall-light", "art": ["video", "compress"], "doodle": "arrow", "phoneWidth": 1180 },
+    { "layout": "hang", "theme": "soft", "headline": "Clean up\n*other*\napps too", "screen": "home-light", "note": "step-by-step guides, no guesswork", "art": ["empty-box", "umbrella", "reset"] },
+    { "layout": "phone", "theme": "cream", "headline": "See what\n*really*\ncame back", "screen": "results-light", "art": ["piggy", "phone-sparkle"] },
+    { "layout": "promises", "theme": "dark", "headline": "Your photos\n*never* leave\nyour iPhone", "items": ["No account", "No uploads, ever", "No data collected"] }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "storefronts": ["us", "gb", "ca", "au"],
+  "primary": "us",
+  "seeds": [
+    "storage cleaner",
+    "phone cleaner",
+    "photo cleaner",
+    "cleaner",
+    "clean up",
+    "cleanup",
+    "free up space",
+    "free up storage",
+    "storage full",
+    "storage",
+    "duplicate photos",
+    "duplicate photo remover",
+    "similar photos",
+    "delete photos",
+    "swipe photos",
+    "photo swipe",
+    "compress video",
+    "video compressor",
+    "shrink video",
+    "reduce video size",
+    "compress photos",
+    "photo compressor",
+    "resize video",
+    "live photo",
+    "burst photos",
+    "screenshot cleaner",
+    "blurry photos",
+    "junk cleaner",
+    "memory cleaner",
+    "clean storage",
+    "gallery cleaner",
+    "camera roll cleaner",
+    "large files",
+    "files cleaner"
+  ],
+  "relevant": [
+    "clean", "storage", "space", "photo", "video", "duplicate", "similar", "compress", "shrink",
+    "resize", "reduce", "size", "swipe", "delete", "remove", "junk", "memory", "gallery",
+    "camera roll", "screenshot", "blur", "burst", "live", "file", "free up", "full", "declutter", "trim"
+  ],
+  "irrelevant": [
+    "virus", "antivirus", "vpn", "robot", "vacuum", "house", "home clean", "car", "teeth", "ear",
+    "speaker", "water", "dust", "lens", "game", "keyboard", "screen clean", "ram", "battery",
+    "cloud", "google", "dropbox", "icloud", "ai photo", "editor", "background", "object", "eraser",
+    "contact", "email", "mail", "calendar", "wallet", "instagram", "tiktok", "whatsapp", "send", "transfer", "widget", "sound", "recover", "wallpaper", "pdf", "zip"
+  ]
+}

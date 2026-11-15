@@ -28,10 +28,10 @@ struct OtherAppGuideView: View {
             ZStack {
                 content
                     .id(page)
-                    .transition(.asymmetric(
+                    .transition(AnyTransition.asymmetric(
                         insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
                         removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)
-                    ))
+                    ).motionSafe)
             }
             .frame(maxHeight: .infinity, alignment: .top)
             .gesture(DragGesture(minimumDistance: 30).onEnded { value in
@@ -85,12 +85,12 @@ struct OtherAppGuideView: View {
                     .background(Theme.mintSoft, in: Capsule())
                     .overlay(Capsule().strokeBorder(Theme.ink, lineWidth: 1.2))
                     .accessibilityLabel("\(ByteFormatter.accessibilityString(freed, precision: .twoDecimals)) freed so far")
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(.scale.combined(with: .opacity).motionSafe)
             } else {
                 Color.clear.frame(width: 40, height: 40)
             }
         }
-        .animation(.snappy, value: freedCounts)
+        .animation(.snappy.motionSafe, value: freedCounts)
         .padding(.horizontal, 20)
         .padding(.top, 8)
     }
@@ -192,7 +192,7 @@ struct OtherAppGuideView: View {
                 if let warning = step.warning {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Theme.tomato)
+                            .foregroundStyle(Theme.tomatoInk)
                         Text(warning)
                             .font(.subheadline.weight(.semibold))
                             .fixedSize(horizontal: false, vertical: true)
@@ -218,7 +218,7 @@ struct OtherAppGuideView: View {
                     .buttonStyle(.sticker)
                 Button("Show the Steps Again") {
                     forward = false
-                    withAnimation(.snappy) { page = 1 }
+                    withAnimation(.snappy.motionSafe) { page = 1 }
                 }
                 .buttonStyle(.soft)
             } else if page > 0, steps[page - 1].opens {
@@ -259,7 +259,7 @@ struct OtherAppGuideView: View {
         let target = page + delta
         guard (0...measurePage).contains(target) else { return }
         forward = delta > 0
-        withAnimation(.snappy(duration: 0.35)) { page = target }
+        withAnimation(.snappy(duration: 0.35).motionSafe) { page = target }
     }
 }
 
@@ -294,7 +294,7 @@ private struct GuideMeasurePage: View {
                         .foregroundStyle(.secondary)
                     SizeText(bytes: freed, style: .largeTitle, unitStyle: .title2, precision: .twoDecimals)
                         .contentTransition(.numericText())
-                        .animation(.easeOut(duration: 0.8), value: freed)
+                        .animation(.easeOut(duration: 0.8).motionSafe, value: freed)
                         .accessibilityLabel(ByteFormatter.accessibilityString(freed, precision: .twoDecimals))
                     DrawnStroke(path: Sketch.scribble(width: 200, at: CGPoint(x: 6, y: 10), seed: 1300), design: CGSize(width: 220, height: 20), progress: progress, start: 0.3, length: 0.3)
                         .stroke(done ? Theme.mint : Theme.ink.opacity(0.2), style: StrokeStyle(lineWidth: 4, lineCap: .round))
@@ -366,7 +366,7 @@ private struct PageDots: View {
                     .frame(width: index == current ? 22 : 8, height: 8)
             }
         }
-        .animation(.snappy, value: current)
+        .animation(.snappy.motionSafe, value: current)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Step \(current + 1) of \(count)")
     }

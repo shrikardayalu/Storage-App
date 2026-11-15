@@ -362,7 +362,7 @@ struct DrawingClock: ViewModifier {
             }
             // One frame at zero so SwiftUI animates from blank.
             try? await Task.sleep(for: .milliseconds(30))
-            withAnimation(.linear(duration: duration)) { progress = 1 }
+            withAnimation(.linear(duration: duration).motionSafe) { progress = 1 }
         }
     }
 }
@@ -409,10 +409,10 @@ struct RubberStamp: View {
     var body: some View {
         VStack(spacing: 1) {
             Text(top.uppercased())
-                .font(.system(size: 10, weight: .heavy))
+                .font(.system(size: Font.displaySize(10, relativeTo: .caption2), weight: .heavy))
                 .tracking(0.6)
             Text(main.uppercased())
-                .font(.system(size: 21, weight: .black))
+                .font(.system(size: Font.displaySize(21, relativeTo: .title2), weight: .black))
                 .tracking(-0.3)
         }
         .foregroundStyle(color)
@@ -505,7 +505,7 @@ struct InkCheck: View {
         .frame(width: size, height: size)
         .onAppear { progress = isOn ? 1 : 0 }
         .onChange(of: isOn) { _, on in
-            withAnimation(on ? .easeOut(duration: 0.28) : .easeIn(duration: 0.12)) { progress = on ? 1 : 0 }
+            withAnimation((on ? Animation.easeOut(duration: 0.28) : .easeIn(duration: 0.12)).motionSafe) { progress = on ? 1 : 0 }
         }
         .accessibilityHidden(true)
     }

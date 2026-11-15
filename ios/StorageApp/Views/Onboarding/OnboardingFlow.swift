@@ -42,7 +42,7 @@ struct OnboardingFlow: View {
                 PaperBackground()
                 page(top: step == .paywall ? 0 : hero.maxY + 14)
                     .id(step)
-                    .transition(.onboardingPage)
+                    .transition(.onboardingPage.motionSafe)
                 HeroPhone(
                     drawProgress: drawProgress,
                     level: heroLevel,
@@ -60,7 +60,7 @@ struct OnboardingFlow: View {
                 }
             }
         }
-        .animation(.spring(response: 0.62, dampingFraction: 0.8), value: step)
+        .animation(.spring(response: 0.62, dampingFraction: 0.8).motionSafe, value: step)
         .sensoryFeedback(.impact(weight: .light), trigger: step)
         .sensoryFeedback(.impact(weight: .heavy), trigger: stampTick)
         .onAppear(perform: begin)
@@ -145,16 +145,16 @@ struct OnboardingFlow: View {
         }
         Task {
             try? await Task.sleep(for: .milliseconds(80))
-            withAnimation(.easeInOut(duration: 1.1)) { drawProgress = 1 }
+            withAnimation(.easeInOut(duration: 1.1).motionSafe) { drawProgress = 1 }
             try? await Task.sleep(for: .milliseconds(750))
-            withAnimation(.easeInOut(duration: 1.3)) { filled = true }
+            withAnimation(.easeInOut(duration: 1.3).motionSafe) { filled = true }
             // The photos start spilling over as the tank nears the top. Linear,
             // because each stroke already speeds up and slows down on its own.
             try? await Task.sleep(for: .milliseconds(700))
-            withAnimation(.linear(duration: 1.1)) { spilled = true }
+            withAnimation(.linear(duration: 1.1).motionSafe) { spilled = true }
             guard usedFraction >= 0.8 else { return }
             try? await Task.sleep(for: .milliseconds(700))
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) { stamped = true }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.55).motionSafe) { stamped = true }
             stampTick += 1
         }
     }
@@ -163,7 +163,7 @@ struct OnboardingFlow: View {
     /// rubbed out when the scan is over.
     private func drawLock(_ on: Bool) {
         guard on else {
-            withAnimation(.easeOut(duration: 0.25)) { locked = false }
+            withAnimation(.easeOut(duration: 0.25).motionSafe) { locked = false }
             return
         }
         guard !reduceMotion else {
@@ -173,7 +173,7 @@ struct OnboardingFlow: View {
         Task {
             try? await Task.sleep(for: .milliseconds(380))
             guard step == .scan else { return }
-            withAnimation(.linear(duration: 0.8)) { locked = true }
+            withAnimation(.linear(duration: 0.8).motionSafe) { locked = true }
         }
     }
 
@@ -181,7 +181,7 @@ struct OnboardingFlow: View {
     private func drain() {
         Task {
             try? await Task.sleep(for: .milliseconds(350))
-            withAnimation(.easeOut(duration: 1.6)) { drained = true }
+            withAnimation(.easeOut(duration: 1.6).motionSafe) { drained = true }
         }
     }
 
@@ -417,7 +417,7 @@ private struct PainPage: View {
                         .transition(.asymmetric(
                             insertion: .offset(y: -90).combined(with: .scale(scale: 0.5, anchor: .top)).combined(with: .opacity),
                             removal: .opacity
-                        ))
+                        ).motionSafe)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .top)
@@ -429,7 +429,7 @@ private struct PainPage: View {
             if let runway {
                 Text(runwayText(runway))
                     .font(.hand(20))
-                    .foregroundStyle(Theme.tomato)
+                    .foregroundStyle(Theme.tomatoInk)
                     .fixedSize(horizontal: false, vertical: true)
                     .handwritten(progress, start: 0.3, length: 0.4)
             }
@@ -471,7 +471,7 @@ private struct PainPage: View {
     private func play() async {
         try? await Task.sleep(for: .milliseconds(380))
         for index in Self.alerts.indices {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.68)) { shown = index + 1 }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.68).motionSafe) { shown = index + 1 }
             // A shorter beat after the last one, so the button isn't kept waiting.
             try? await Task.sleep(for: .milliseconds(index == Self.alerts.count - 1 ? 320 : 620))
         }
@@ -480,7 +480,7 @@ private struct PainPage: View {
             progress = 1
             return
         }
-        withAnimation(.linear(duration: 1.4)) { progress = 1 }
+        withAnimation(.linear(duration: 1.4).motionSafe) { progress = 1 }
     }
 }
 
@@ -494,7 +494,7 @@ private struct AlertCard: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: Font.displaySize(17, relativeTo: .body), weight: .semibold))
                 .foregroundStyle(Theme.ink)
                 .frame(width: 36, height: 36)
                 .background(Theme.well, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -556,7 +556,7 @@ private struct ScanPage: View {
                 receipt
                 if phase == .done, let bloat {
                     BloatSummary(bloat: bloat)
-                        .transition(.opacity.combined(with: .offset(y: 20)))
+                        .transition(.opacity.combined(with: .offset(y: 20)).motionSafe)
                 }
             case .denied:
                 notice(
@@ -586,7 +586,7 @@ private struct ScanPage: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
-        .animation(.spring(response: 0.42, dampingFraction: 0.78), value: phase)
+        .animation(.spring(response: 0.42, dampingFraction: 0.78).motionSafe, value: phase)
         .task(id: run) { await scan() }
         .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.6), trigger: printTick)
         .onChange(of: scenePhase) { _, phase in
@@ -627,7 +627,7 @@ private struct ScanPage: View {
                     if line.isTotal { DashedRule() }
                     ReceiptLine(title: line.title, detail: line.detail, bytes: line.bytes, isTotal: line.isTotal,
                                 isHighlighted: phase == .done && line.id == bloat?.group.rawValue)
-                        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity))
+                        .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity).motionSafe)
                 }
                 if phase == .printing, model.isAnalyzing, shown >= lines.count {
                     VStack(alignment: .leading, spacing: 8) {
@@ -646,15 +646,15 @@ private struct ScanPage: View {
                         .boilingShape(seed: 23)
                         .scaleEffect(0.8)
                         .offset(x: 8, y: 22)
-                        .transition(.scale(scale: 2.4).combined(with: .opacity))
+                        .transition(.scale(scale: 2.4).combined(with: .opacity).motionSafe)
                 }
             }
             .onReceipt(padding: 18)
             .padding(.horizontal, 8)
             .padding(.top, -5)
         }
-        .animation(.spring(response: 0.42, dampingFraction: 0.78), value: shown)
-        .animation(.spring(response: 0.42, dampingFraction: 0.6), value: phase)
+        .animation(.spring(response: 0.42, dampingFraction: 0.78).motionSafe, value: shown)
+        .animation(.spring(response: 0.42, dampingFraction: 0.6).motionSafe, value: phase)
     }
 
     private func notice(illustration: Illustration, title: String, message: String, primary: (String, () -> Void)?) -> some View {
@@ -772,9 +772,9 @@ private struct ReceiptLine: View {
         .padding(.horizontal, isHighlighted ? 8 : 0)
         .background(Theme.mintSoft.opacity(isHighlighted ? 1 : 0), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .padding(.horizontal, isHighlighted ? -8 : 0)
-        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isHighlighted)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7).motionSafe, value: isHighlighted)
         .onAppear {
-            withAnimation(.easeOut(duration: isTotal ? 0.9 : 0.4)) { shownBytes = Double(bytes) }
+            withAnimation(Animation.easeOut(duration: isTotal ? 0.9 : 0.4).motionSafe) { shownBytes = Double(bytes) }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(title), \(ByteFormatter.accessibilityString(bytes))")
@@ -986,7 +986,7 @@ private struct PickRow: View {
             }
         }
         .rotationEffect(.degrees(isOn ? tilt : 0))
-        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: isOn)
+        .animation(.spring(response: 0.32, dampingFraction: 0.55).motionSafe, value: isOn)
         .accessibilityElement(children: .combine)
         .accessibilityHint(isBest ? "Frees the most space." : "")
         .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)

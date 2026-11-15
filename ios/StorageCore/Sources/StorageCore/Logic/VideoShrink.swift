@@ -113,6 +113,7 @@ public enum VideoShrink {
         if item.format == .proRes { return "ProRes is kept at full quality for editing." }
         if item.traits.contains(.slowMotion) { return "Slo-mo is left alone, so its slow part stays editable." }
         if item.traits.contains(.cinematic) { return "Cinematic videos are left alone, so their focus stays editable." }
+        if item.traits.contains(.spatial) { return "Spatial videos are left alone, so they keep their depth." }
         if (item.duration ?? 0) < VideoTrim.minimumLength { return "Too short to shrink." }
         if item.currentBytes < minimumBytes { return "Already small." }
         return nil

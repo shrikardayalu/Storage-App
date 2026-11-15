@@ -150,6 +150,8 @@ final class AppModel {
     private(set) var isScanning = false
     /// Why the last scan didn't finish, shown on the scan card.
     private(set) var scanError: PhotoScanError?
+    /// When the library was last re-read on coming back to the app.
+    private var lastReturnScan = Date.distantPast
     var errorMessage: String?
 
     // MARK: Cleanup
@@ -169,6 +171,8 @@ final class AppModel {
     private var pendingGuide: CleanupGuide?
     /// Free space before the last cleanup, and since.
     private(set) var reclaim: ReclaimMeasurement?
+    /// The person closed Home's reminder about the latest cleanup's space.
+    private var waitingDismissed = false
     /// True while the guide is re-reading free space.
     private(set) var isCheckingReclaim = false
     /// The guide's latest check, so it can say whether anything changed.
@@ -515,9 +519,31 @@ final class AppModel {
         selection.clear()
     }
 
-    /// The picked items, biggest first.
+    /// The picked items, biggest first. Looked up by ID, so picking in a big
+    /// library doesn't walk every item on each redraw.
     var selectedItems: [MediaItem] {
-        libraryScan?.items.filter { selection.contains($0.id) } ?? []
+        selection.ids.compactMap { lists.itemsByID[$0] }
+            .sorted { ($0.currentBytes, $1.id) > ($1.currentBytes, $0.id) }
+    }
+
+    /// The scan's items in `group` (everything when nil), biggest first, sorted once per scan.
+    func items(in group: ScanGroup?) -> [MediaItem] {
+        guard let group else { return libraryScan?.items ?? [] }
+        return lists.itemsByGroup[group] ?? []
+    }
+
+    /// One scanned item by ID, if the latest scan has it.
+    func item(_ id: MediaItem.ID) -> MediaItem? { lists.itemsByID[id] }
+
+    /// Scans again when the app comes back to the front, so photos taken or
+    /// deleted in Photos meanwhile show up without a tap. Quiet: it never asks
+    /// for access, never runs during a change, and at most once every few seconds.
+    func rescanOnReturn() async {
+        guard libraryScan != nil, !isScanning, !isChanging, Date().timeIntervalSince(lastReturnScan) > 10 else { return }
+        await refreshPhotoAccess()
+        guard photoAccess.canRead else { return }
+        lastReturnScan = Date()
+        await scanLibrary()
     }
 
     var convertibleLivePhotos: [MediaItem] { lists.convertibleLivePhotos }
@@ -615,6 +641,13 @@ final class AppModel {
             guard !Task.isCancelled else { return }
         }
         let ids = lists.ids
+        // Photos kept on a swipe that have since left the library are forgotten,
+        // so the saved list doesn't grow for ever. Only with the whole library
+        // in view: with picked photos, a kept one may just not be shared any more.
+        if photoAccess == .granted, !ids.isEmpty, !swipeKept.isSubset(of: ids) {
+            swipeKept.formIntersection(ids)
+            swipeKeptDefaults?.set(Array(swipeKept), forKey: Self.swipeKeptKey)
+        }
         let savedCount = photoSignals.count
         photoSignals = photoSignals.filter { ids.contains($0.key) }
         let dropped = savedCount - photoSignals.count
@@ -912,6 +945,11 @@ final class AppModel {
         await change(approved) { changes in
             let results = try await changes.convertLivePhotosToStills(approved)
             let saved = results.reduce(Int64(0)) { $0 + $1.savedBytes }
+            // A nearly full phone only has room for some of the stills.
+            let left = approved.count - results.count
+            if left > 0 {
+                self.errorMessage = "Made \(results.count == 1 ? "1 still" : "\(results.count) stills"). There wasn't room for the other \(left) yet: empty Recently Deleted, then run it again."
+            }
             return CleanupGuide(kind: .convertedLivePhotos(results), removedIDs: results.map(\.originalID), expectedBytes: saved)
         }
     }
@@ -982,20 +1020,51 @@ final class AppModel {
     func shrinkVideos(_ qualities: [MediaItem.ID: VideoQuality]) async -> PhotoChangeError? {
         let videos = shrinkableVideos.filter { qualities[$0.id] != nil }
         guard !videos.isEmpty else { return .unsafe(SafetyCheck(approved: [])) }
+        guard videoBatchTask == nil else { return .cancelled }
         videoBatchProgress = (0, videos.count)
-        defer { videoBatchProgress = nil }
-        return await change(Set(videos.map(\.id))) { changes in
+        // Its own task, so Cancel (or iOS running out of background time) can stop it.
+        let task = Task { await self.runVideoBatch(videos, qualities) }
+        videoBatchTask = task
+        let result = await task.value
+        videoBatchTask = nil
+        videoBatchProgress = nil
+        return result
+    }
+
+    /// The running "shrink all at once", if any.
+    private var videoBatchTask: Task<PhotoChangeError?, Never>?
+
+    /// Stops "shrink all at once". The copy being made is dropped, the copies
+    /// already made are thrown away, and nothing in Photos changes.
+    func cancelVideoBatch() {
+        videoBatchTask?.cancel()
+    }
+
+    private func runVideoBatch(_ videos: [MediaItem], _ qualities: [MediaItem.ID: VideoQuality]) async -> PhotoChangeError? {
+        await change(Set(videos.map(\.id))) { changes in
             var prepared: [PreparedVideo] = []
             var skipped = 0
             var failed = 0
             var failure: PhotoChangeError?
+            // Every copy has to fit beside its original until Recently Deleted is
+            // emptied. Half of what's free is the most the copies may take; the
+            // videos that don't fit wait for the next run.
+            let budget = self.deviceStorage.map { max($0.availableBytes, $0.availableForImportantUsageBytes) / 2 }
+            var planned: Int64 = 0
+            var waiting = 0
             do {
                 for (index, item) in videos.enumerated() {
                     self.videoBatchProgress = (index, videos.count)
                     try Task.checkCancellation()
                     let edit = VideoEdit(quality: qualities[item.id] ?? .sameQuality, trim: .full(item.duration ?? 0))
+                    if let budget, !prepared.isEmpty, planned + VideoShrink.estimatedBytes(for: item, edit: edit) > budget {
+                        waiting = videos.count - index
+                        break
+                    }
                     do {
-                        prepared.append(try await changes.prepareVideo(item.id, edit: edit))
+                        let copy = try await changes.prepareVideo(item.id, edit: edit)
+                        planned += copy.newBytes
+                        prepared.append(copy)
                     } catch PhotoChangeError.videoNotSmaller {
                         skipped += 1
                     } catch PhotoChangeError.videoUnsupported {
@@ -1008,14 +1077,20 @@ final class AppModel {
                         failed += 1
                     }
                 }
+                try Task.checkCancellation()
                 self.videoBatchProgress = (videos.count, videos.count)
                 guard !prepared.isEmpty else { throw failure ?? PhotoChangeError.videoNotSmaller }
                 let results = try await changes.replaceVideos(with: prepared)
-                if failed > 0 {
-                    self.errorMessage = failed == 1
-                        ? "Couldn't shrink 1 of the videos; the ones that worked were swapped in."
-                        : "Couldn't shrink \(failed) of the videos; the ones that worked were swapped in."
+                var notes: [String] = []
+                if waiting > 0 {
+                    notes.append("\(waiting == 1 ? "1 more video is" : "\(waiting) more videos are") waiting for room: empty Recently Deleted, then shrink again.")
                 }
+                if failed > 0 {
+                    notes.append(failed == 1
+                        ? "Couldn't shrink 1 of the videos; the ones that worked were swapped in."
+                        : "Couldn't shrink \(failed) of the videos; the ones that worked were swapped in.")
+                }
+                if !notes.isEmpty { self.errorMessage = notes.joined(separator: " ") }
                 // The copies are made after the baseline, so emptying Recently
                 // Deleted only gives back originals minus copies.
                 return CleanupGuide(
@@ -1050,6 +1125,7 @@ final class AppModel {
                 saveFreed()
             }
             lastReclaimCheck = nil
+            waitingDismissed = false
             selection.deselect(approved)
             isSelecting = false
             lastGuide = guide
@@ -1064,6 +1140,8 @@ final class AppModel {
             return nil
         } catch let error as PhotoChangeError {
             return error
+        } catch is CancellationError {
+            return .cancelled
         } catch {
             return .verificationFailed(error.localizedDescription)
         }
@@ -1100,9 +1178,19 @@ final class AppModel {
     }
 
     /// Space still waiting in Recently Deleted from the latest cleanup, if any.
+    /// Nil once the person dismissed the reminder, or after 30 days, when iOS
+    /// has emptied Recently Deleted by itself. With iCloud Photos set to
+    /// Optimize iPhone Storage the full amount never comes back (part of it
+    /// was only in iCloud), so the reminder must not be able to stay for ever.
     var spaceWaiting: Int64? {
-        guard let reclaim, !reclaim.isDone, reclaim.expectedBytes > 0 else { return nil }
+        guard let reclaim, !reclaim.isDone, reclaim.expectedBytes > 0, !waitingDismissed,
+              Date().timeIntervalSince(reclaim.baseline.date) < 30 * 86_400 else { return nil }
         return reclaim.expectedBytes - reclaim.reclaimedBytes
+    }
+
+    /// Hides Home's "waiting in Recently Deleted" reminder until the next cleanup.
+    func dismissSpaceWaiting() {
+        waitingDismissed = true
     }
 
     func closeGuide() {
@@ -1295,6 +1383,9 @@ extension AppModel {
 /// What each tool works on in one scan, sorted and totalled once.
 struct LibraryLists: Sendable {
     var ids: Set<MediaItem.ID> = []
+    /// Every item by ID, and each Library group's items biggest first.
+    var itemsByID: [MediaItem.ID: MediaItem] = [:]
+    var itemsByGroup: [ScanGroup: [MediaItem]] = [:]
     var convertibleLivePhotos: [MediaItem] = []
     var resavableScreenshots: [MediaItem] = []
     var bursts: [Burst] = []
@@ -1310,8 +1401,14 @@ struct LibraryLists: Sendable {
     init(_ scan: LibraryScan) {
         var burstShots: [MediaItem] = []
         ids.reserveCapacity(scan.items.count)
+        itemsByID.reserveCapacity(scan.items.count)
+        // scan.items is already biggest first, so each group's list is too.
         for item in scan.items {
             ids.insert(item.id)
+            itemsByID[item.id] = item
+            for group in ScanGroup.allCases where group.includes(item) {
+                itemsByGroup[group, default: []].append(item)
+            }
             if item.isConvertibleLivePhoto {
                 convertibleLivePhotos.append(item)
                 livePhotoSaving += item.livePhotoVideoBytes

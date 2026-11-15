@@ -26,6 +26,10 @@ enum VideoExporter {
         } catch let error as PhotoChangeError {
             remove(url)
             throw error
+        } catch is CancellationError {
+            // Stopped on purpose (Cancel, or the app ran out of background time).
+            remove(url)
+            throw CancellationError()
         } catch {
             remove(url)
             throw PhotoChangeError.exportFailed(error.localizedDescription)
@@ -134,10 +138,21 @@ enum VideoExporter {
         // The copy's timeline starts where the trim starts.
         writer.startSession(atSourceTime: reader.timeRange.start)
 
-        await withTaskGroup(of: Void.self) { group in
-            for (index, pair) in pairs.enumerated() {
-                group.addTask { await pump(pair.0, into: pair.1, label: "VideoExporter.\(index)") }
+        // Cancelling stops the reader; each pump then runs out of samples and ends.
+        let stop = Stopper(reader)
+        await withTaskCancellationHandler {
+            await withTaskGroup(of: Void.self) { group in
+                for (index, pair) in pairs.enumerated() {
+                    group.addTask { await pump(pair.0, into: pair.1, label: "VideoExporter.\(index)") }
+                }
             }
+        } onCancel: {
+            stop.now()
+        }
+        if Task.isCancelled {
+            reader.cancelReading()
+            writer.cancelWriting()
+            throw CancellationError()
         }
 
         if reader.status == .failed || writer.status == .failed {
@@ -149,6 +164,13 @@ enum VideoExporter {
         guard writer.status == .completed else {
             throw PhotoChangeError.exportFailed(writer.error?.localizedDescription ?? "the copy couldn't be finished.")
         }
+    }
+
+    /// Lets a cancelled task stop the reader from wherever the cancel arrives.
+    private final class Stopper: @unchecked Sendable {
+        private let reader: AVAssetReader
+        init(_ reader: AVAssetReader) { self.reader = reader }
+        func now() { reader.cancelReading() }
     }
 
     /// Moves samples from one reader output to one writer input until either runs out.

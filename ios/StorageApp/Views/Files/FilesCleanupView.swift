@@ -52,7 +52,7 @@ struct FilesCleanupView: View {
                 if let message = (error ?? model.folderError)?.localizedDescription {
                     Text(message)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -363,7 +363,7 @@ private struct DuplicateFilesCard: View {
                         Spacer(minLength: 6)
                         Text(isOn ? (isKeeper ? "keep" : "delete") : " ")
                             .font(.hand(15))
-                            .foregroundStyle(isKeeper ? Theme.accent : Theme.tomato)
+                            .foregroundStyle(isKeeper ? Theme.accent : Theme.tomatoInk)
                     }
                     .padding(.vertical, 4)
                     .contentShape(Rectangle())

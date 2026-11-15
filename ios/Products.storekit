@@ -51,7 +51,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Shrink videos, trim, Live Photos to stills, burst picks.",
+              "description" : "Shrink videos, Live Photos to stills, one-tap cleanup.",
               "displayName" : "Pro Annual",
               "locale" : "en_US"
             }
@@ -79,7 +79,7 @@
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Shrink videos, trim, Live Photos to stills, burst picks.",
+              "description" : "Shrink videos, Live Photos to stills, one-tap cleanup.",
               "displayName" : "Pro Weekly",
               "locale" : "en_US"
             }

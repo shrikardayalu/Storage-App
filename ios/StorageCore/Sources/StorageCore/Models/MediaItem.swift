@@ -106,4 +106,6 @@ public struct MediaTraits: OptionSet, Hashable, Codable, Sendable {
     public static let favorite = MediaTraits(rawValue: 1 << 4)
     /// Edited in Photos (cropped, adjusted, Portrait mode), so someone cared about it.
     public static let edited = MediaTraits(rawValue: 1 << 5)
+    /// A spatial video (two views, for Vision Pro). Re-encoding would flatten it.
+    public static let spatial = MediaTraits(rawValue: 1 << 6)
 }

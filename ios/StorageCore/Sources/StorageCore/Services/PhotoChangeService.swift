@@ -1,6 +1,6 @@
 import Foundation
 
-public enum PhotoChangeError: LocalizedError, Equatable {
+public enum PhotoChangeError: LocalizedError, Equatable, Sendable {
     /// With limited access the app can't see albums, so a copy couldn't be put
     /// back where its original was. Changes need full access.
     case needsFullAccess

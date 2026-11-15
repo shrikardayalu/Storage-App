@@ -1,0 +1,103 @@
+{
+  "_": "Name 30, subtitle 30, keywords 100. Run `node marketing/aso/check.mjs` after every edit. Each localization is built around one theme, because Apple only combines words that sit in the same localization.",
+  "locales": {
+    "en-US": {
+      "theme": "Storage cleaner. The listing US shoppers see.",
+      "name": "SimpleShrink: Storage Cleaner",
+      "subtitle": "Free up space, keep memories",
+      "keywords": "phone,photo,clean,cleanup,video,compress,duplicate,delete,swipe,junk,full,shrink,files,clear,data",
+      "targets": ["storage cleaner", "phone storage cleaner", "free up space", "free up storage", "clean storage", "clean up storage", "photo cleaner", "phone cleaner", "junk cleaner", "storage full"]
+    },
+    "es-MX": {
+      "theme": "Video compression. Indexed by the US store.",
+      "name": "SimpleShrink: Video Compressor",
+      "subtitle": "Compress, shrink & trim videos",
+      "keywords": "photo,compression,4k,hd,mp4,mov,smaller,save,recording,movie,camera,cutter,trimmer,vid,film,footage",
+      "targets": ["video compressor", "compress videos", "shrink video", "trim video", "compress photos", "photo compressor"]
+    },
+    "ko": {
+      "theme": "Resize and reduce video size. Indexed by the US store.",
+      "name": "SimpleShrink: Resize Video",
+      "subtitle": "Reduce video size, save space",
+      "keywords": "resizer,reducer,shrinker,minimize,lower,file,large,long,clip,quality,1080p,big,gb,mb,megabyte,tiny",
+      "targets": ["resize video", "reduce video size", "video resizer", "video size reducer", "reduce video file size"]
+    },
+    "fr-FR": {
+      "theme": "Swipe photo cleaner. Indexed by the US store (and shown in France).",
+      "name": "SimpleShrink: Photo Cleaner",
+      "subtitle": "Swipe to delete, clean photos",
+      "keywords": "swiper,wipe,slide,picture,image,pic,album,library,trash,sort,tidy,declutter,cleanup,up,left,right",
+      "targets": ["photo cleaner", "swipe photos", "photo swipe", "delete photos", "swipe delete photos", "swipe to delete photos", "photo swiper", "clean up photos", "cleanup photos"]
+    },
+    "pt-BR": {
+      "theme": "Duplicate and similar photos. Indexed by the US store (and shown in Brazil).",
+      "name": "SimpleShrink: Duplicate Photos",
+      "subtitle": "Remove similar & blurry shots",
+      "keywords": "remover,finder,fixer,delete,double,copy,identical,same,selfie,find,scan,dupe,twin,repeat,merge,bulk",
+      "targets": ["duplicate photos", "duplicate photo remover", "remove duplicate photos", "delete duplicate photos", "similar photos", "duplicate photos fixer", "blurry photos"]
+    },
+    "ru": {
+      "theme": "Live Photos, bursts and screenshots. Indexed by the US store.",
+      "name": "SimpleShrink: Live Photos",
+      "subtitle": "Screenshot & burst cleaner",
+      "keywords": "still,convert,best,shot,delete,old,receipt,document,screen,capture,heic,motion,jpeg,format,frame",
+      "targets": ["live photo", "live photos", "screenshot cleaner", "burst photos", "delete screenshots"]
+    },
+    "ar-SA": {
+      "theme": "Free up space. Indexed by the US store.",
+      "name": "SimpleShrink: Free Up Space",
+      "subtitle": "Storage full? Get space back",
+      "keywords": "phone,clear,clean,manager,analyzer,usage,disk,more,room,low,check,device,mobile,capacity,gigabyte",
+      "targets": ["free up space", "free up storage", "storage full", "clear storage", "phone storage", "clean storage free"]
+    },
+    "vi": {
+      "theme": "Junk and large files. Indexed by the US store.",
+      "name": "SimpleShrink: Junk Cleaner",
+      "subtitle": "Clean large files & downloads",
+      "keywords": "folder,remove,storage,bin,empty,unused,memory,recently,deleted,heavy,huge,attachment,offload,space",
+      "targets": ["junk cleaner", "files cleaner", "large files", "memory cleaner", "clean storage"]
+    },
+    "zh-Hans": {
+      "theme": "Gallery and camera roll. Indexed by the US store.",
+      "name": "SimpleShrink: Gallery Cleaner",
+      "subtitle": "Camera roll cleanup in swipes",
+      "keywords": "photo,organize,organizer,keep,snap,moments,review,pick,favorite,undo,sorter,purge,manage,clutter",
+      "targets": ["gallery cleaner", "camera roll cleaner", "photo gallery cleaner", "cleanup photos"]
+    },
+    "zh-Hant": {
+      "theme": "Phone cleaner. Indexed by the US store.",
+      "name": "SimpleShrink: Phone Cleaner",
+      "subtitle": "Clean up storage and photos",
+      "keywords": "memory,smart,fast,easy,simple,pro,quick,optimize,tool,one,tap,safe,private,offline,secure,lifetime",
+      "targets": ["phone cleaner", "clean up storage", "clean storage", "clean up photos", "phone storage cleaner", "memory cleaner", "phone cleaner pro"]
+    },
+    "en-GB": {
+      "theme": "Storage cleaner. The listing UK shoppers see; Australia indexes it too.",
+      "name": "SimpleShrink: Storage Cleaner",
+      "subtitle": "Free up space, keep memories",
+      "keywords": "phone,photo,clean,cleanup,video,compress,duplicate,delete,swipe,junk,full,gallery,shrink,files,clear",
+      "targets": ["storage cleaner", "free up space", "free up storage", "clean storage", "clean up storage", "photo cleaner", "phone cleaner", "storage full", "gallery cleaner", "delete photos", "swipe photos", "duplicate photos", "compress video"]
+    },
+    "en-CA": {
+      "theme": "Storage cleaner. The listing Canadian shoppers see.",
+      "name": "SimpleShrink: Storage Cleaner",
+      "subtitle": "Free up space, keep memories",
+      "keywords": "phone,photo,clean,cleanup,delete,swipe,junk,full,similar,files,clear,duplicate,gallery,camera,roll",
+      "targets": ["storage cleaner", "free up space", "free up storage", "clean storage", "photo cleaner", "phone cleaner", "camera roll cleaner", "gallery cleaner", "swipe delete photos"]
+    },
+    "fr-CA": {
+      "theme": "Video compression. Indexed by the Canadian store.",
+      "name": "SimpleShrink: Video Compressor",
+      "subtitle": "Compress, shrink & trim videos",
+      "keywords": "reduce,size,resize,resizer,smaller,4k,hd,mp4,storage,space,save,large,long,recording,live,burst",
+      "targets": ["video compressor", "compress videos", "shrink video", "reduce video size", "resize video"]
+    },
+    "en-AU": {
+      "theme": "Photo cleaner and video compressor. The listing Australian shoppers see; the UK one adds storage cleaner.",
+      "name": "SimpleShrink: Photo Cleaner",
+      "subtitle": "Compress videos, free up space",
+      "keywords": "swipe,delete,duplicate,gallery,camera,roll,reduce,size,resize,compressor,live,burst,screenshot,trim",
+      "targets": ["photo cleaner", "compress videos", "video compressor", "free up space", "swipe photos", "delete photos", "duplicate photos", "camera roll cleaner", "gallery cleaner", "reduce video size", "resize video", "screenshot cleaner"]
+    }
+  }
+}

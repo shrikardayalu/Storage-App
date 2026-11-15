@@ -61,7 +61,7 @@ struct LivePhotoStillsView: View {
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -323,7 +323,7 @@ private struct LivePhotoRow: View {
                 if let blockedReason {
                     Text(blockedReason)
                         .font(.hand(14))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                 } else {
                     Text(item.creationDate.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)

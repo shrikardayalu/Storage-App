@@ -197,7 +197,7 @@ private struct CheckCard: View {
             row("Real change", (change >= 0 ? "+" : "\u{2212}") + ByteFormatter.string(abs(change), precision: .twoDecimals), caption: nil)
             row("Counted above", "+" + ByteFormatter.string(total, precision: .twoDecimals), caption: nil)
             HStack(alignment: .top, spacing: 10) {
-                InkCheck(isOn: matches, size: 22, tint: matches ? Theme.mint : Theme.tomato)
+                InkCheck(isOn: matches, size: 22, tint: matches ? Theme.mint : Theme.tomatoInk)
                 Text(matches
                      ? "They match. Nothing else changed free space much since then."
                      : change > total

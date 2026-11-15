@@ -105,7 +105,7 @@ struct HeroPhone: View {
         .overlay {
             GeometryReader { proxy in
                 let scale = DesignSpace.scale(Self.design, in: proxy.size)
-                RubberStamp(top: "storage", main: "almost full", color: Theme.tomato, angle: 11)
+                RubberStamp(top: "storage", main: "almost full", color: Theme.tomatoInk, angle: 11)
                     .scaleEffect(scale * 0.95 * (stamped ? 1 : 2.2))
                     .opacity(stamped ? 1 : 0)
                     .boilingShape(seed: 2)
@@ -252,7 +252,7 @@ struct InkConfetti: View {
         .onChange(of: trigger) { _, _ in
             guard !reduceMotion else { return }
             burst = 0
-            withAnimation(.easeOut(duration: 1.3)) { burst = 1 }
+            withAnimation(.easeOut(duration: 1.3).motionSafe) { burst = 1 }
         }
     }
 

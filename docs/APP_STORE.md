@@ -7,7 +7,10 @@ and the audit is in `docs/LAUNCH_AUDIT.md`. Test Mode was removed on
 
 Character limits are checked. The marketing copy (subtitle, promotional
 text, description, keywords) is a draft that uses only claims the app and
-site already make; edit it freely.
+site already make; edit it freely. The free and Pro lists follow
+`CleanupMethod.isPro` in the app (checked 2026-11-14): if that changes,
+change the description, the product descriptions, the paywall and `/terms`
+with it.
 
 ## Before you submit
 
@@ -23,7 +26,7 @@ site already make; edit it freely.
 
 | Field | Value |
 |---|---|
-| Name (30) | SimpleShrink |
+| Name (30) | SimpleShrink: Storage Cleaner (English (U.S.); every localization's name, subtitle and keywords are in `marketing/aso/metadata.md`) |
 | Subtitle (30) | Free up space, keep memories |
 | Primary category | Utilities |
 | Secondary category | Photo & Video |
@@ -56,7 +59,7 @@ duplicates, which is exempt.
 
 **Promotional text (170):**
 
-> See what fills your iPhone, then get space back without losing memories: delete duplicates and junk for free, or shrink videos and Live Photos with Pro.
+> See what fills your iPhone, then get space back without losing memories: swipe away junk for free, or shrink videos and Live Photos with Pro.
 
 **Description:**
 
@@ -64,7 +67,8 @@ duplicates, which is exempt.
 >
 > FREE
 > • See your real free space, and what takes it up: photos, videos, Live Photos, screenshots, bursts and big formats.
-> • Find duplicates, blurry and black shots, receipts, documents and old screenshots. You review every one; the best copy of each duplicate stays.
+> • Swipe to clean: extra copies, blurry and black shots, receipts, documents and old screenshots, one at a time, with undo. The best copy of each duplicate stays.
+> • Keep the best shot of every burst.
 > • Pick what to delete on a review screen. Nothing goes until you confirm.
 > • Clean up big files, duplicate copies and old downloads in a folder you pick in Files.
 > • Step-by-step guides for space only you can clear: Recently Deleted, WhatsApp, Messages, Safari and unused apps.
@@ -74,7 +78,9 @@ duplicates, which is exempt.
 > • Shrink 4K videos without deleting them.
 > • Trim long recordings to the part you want.
 > • Keep Live Photos as stills.
-> • Keep the best shot of every burst.
+> • Re-save screenshots at a fraction of the size.
+> • Clear duplicates, blurry shots and junk in bulk.
+> • Clean up all your photos in one tap.
 >
 > PRIVATE BY DESIGN
 > Everything is analysed on your iPhone. SimpleShrink has no account, collects no data and never uploads your photos.
@@ -84,26 +90,25 @@ duplicates, which is exempt.
 > Terms of Use: https://<your domain>/terms
 > Privacy Policy: https://<your domain>/privacy
 
-**Keywords (97 of 100):**
+**Keywords:** paste each localization's 100-character field from
+`marketing/aso/metadata.md`. There are 14 localizations, because the US store
+searches ten of them, and each carries a different set of words. They come
+from `marketing/aso/metadata.json`, checked by `node marketing/aso/check.mjs`
+(limits, repeats, trademarks). See `marketing/aso/README.md`.
 
-```
-storage,cleaner,space,free up,compress,video,photos,duplicate,cleanup,live photo,burst,files,full
-```
-
-The app's name is already indexed, so it isn't repeated here. Apple
-rejects brand names in keywords, so there's no "iphone".
-
-**Screenshots:** App Store Connect needs the 6.9" iPhone size, at 1320 × 2868
-or 1290 × 2796. CI's screenshots (the **Screenshots** artifact) come from a
-6.3" iPhone Pro, so take store screenshots on a 6.9" simulator or device.
-Take them from a build made after 2026-11-11, which has no Test Mode badge.
+**Screenshots:** upload `marketing/aso/screenshots/out/control/en-US/6.9/`
+(1320 × 2868, the 6.9" iPhone size App Store Connect asks for). Render them
+with `node marketing/aso/screenshots/render.mjs --all`; other sets in
+`marketing/aso/screenshots/sets/` are for Product Page Optimization tests.
+The app screens inside them live in `marketing/app-store/screens/`; replace
+those from a 6.9" simulator or device when the app's look changes.
 
 ## In-app purchases
 
 | Reference name | Product ID | Type | Price | Display name | Description |
 |---|---|---|---|---|---|
-| Pro Weekly | `com.simpleshrink.app.pro.weekly` | Auto-renewable, group "Pro", 1 week | $4.99 | Pro Weekly | Shrink videos, trim, Live Photos to stills, burst picks. |
-| Pro Annual | `com.simpleshrink.app.pro.annual` | Auto-renewable, group "Pro", 1 year | $24.99 | Pro Annual | Shrink videos, trim, Live Photos to stills, burst picks. |
+| Pro Weekly | `com.simpleshrink.app.pro.weekly` | Auto-renewable, group "Pro", 1 week | $4.99 | Pro Weekly | Shrink videos, Live Photos to stills, one-tap cleanup. |
+| Pro Annual | `com.simpleshrink.app.pro.annual` | Auto-renewable, group "Pro", 1 year | $24.99 | Pro Annual | Shrink videos, Live Photos to stills, one-tap cleanup. |
 | Pro Lifetime | `com.simpleshrink.app.pro.lifetime` | Non-consumable | $34.99 | Pro Lifetime | Every Pro feature, forever. One payment. |
 
 These match `ios/Products.storekit` and `Plan` in the app. The display names
@@ -113,7 +118,8 @@ file.
 
 **Subscription group "Pro":** put **Annual at level 1 and Weekly at level 2**,
 as in `Products.storekit`. Each product also needs a **review screenshot** of
-the paywall: use `paywall-light.png` from CI's Screenshots artifact.
+the paywall: use `paywall-light.png` from CI's Screenshots artifact. For
+Lifetime, take one of Settings → Pro → Get Lifetime, Pay Once.
 
 The first subscription has to be submitted together with an app version.
 
@@ -131,7 +137,9 @@ Paste this into **App Review Information → Notes**. No sign-in is needed.
 >
 > Every deletion is reviewed on screen and confirmed by iOS. Photos go to Recently Deleted, and the app then shows how to empty it and measures the space that comes back.
 >
-> Pro can be bought from the paywall (weekly, annual, or the one-time Lifetime offer shown after closing the paywall), restored from the paywall or Settings → Pro → Restore Purchases, and managed from Settings → Pro → Manage Subscription.
+> Pro can be bought from the paywall (weekly or annual). Lifetime is at Settings → Pro → Get Lifetime, Pay Once, and is also offered once after closing the paywall. Purchases are restored from the paywall or Settings → Pro → Restore Purchases, and managed from Settings → Pro → Manage Subscription.
+>
+> Photos access: the app needs Full Access to make changes. With "Limit Access" it shows the picked photos and says that cleanups need full access, with a button to Settings.
 >
 > The Files cleanup reads only a folder the reviewer picks in the Files picker.
 

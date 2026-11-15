@@ -48,7 +48,7 @@ struct ScreenshotResaveView: View {
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -269,7 +269,7 @@ private struct ScreenshotRow: View {
                     if let blockedReason {
                         Text(blockedReason)
                             .font(.hand(14))
-                            .foregroundStyle(Theme.tomato)
+                            .foregroundStyle(Theme.tomatoInk)
                     } else {
                         Text("\(ByteFormatter.string(item.currentBytes, precision: .twoDecimals)) as PNG")
                             .font(.caption)

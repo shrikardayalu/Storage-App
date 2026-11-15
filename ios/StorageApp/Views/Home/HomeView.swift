@@ -1,5 +1,6 @@
 import StorageCore
 import SwiftUI
+import UIKit
 
 /// Home, laid out like the best iPhone utilities: one summary at the top, one
 /// clear next step, then everything else in short grouped lists.
@@ -76,13 +77,16 @@ struct HomeView: View {
     @ViewBuilder
     private var upNext: some View {
         VStack(alignment: .leading, spacing: 16) {
-                if model.libraryScan == nil || model.libraryScan?.total.count == 0 {
+            if model.photoAccess == .limited {
+                LimitedAccessCard()
+            }
+            if model.libraryScan == nil || model.libraryScan?.total.count == 0 {
                 // Limited access with nothing picked, or a first scan that found
                 // nothing: still offer a scan, so they aren't stuck with only Library.
                 ScanCard()
             } else if showsPlan {
                 PlanCard(picks: OnboardingAnswers.load().picks)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
+                    .transition(.opacity.combined(with: .move(edge: .top)).motionSafe)
             } else if let best = PhotoToolsSection.best(model, hasPro: !purchases.requiresPro) {
                 BestNextCard(method: best, onPaywall: { showingPaywall = true })
             }
@@ -200,7 +204,7 @@ private struct StorageHealthCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Text("a restart sometimes gives some back")
                         .font(.hand(16))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                 }
             }
             Button("Show Me How") { model.isShowingRestartGuide = true }
@@ -342,6 +346,39 @@ private struct ScanCard: View {
     }
 }
 
+/// With "selected photos" access the app can look but can't change anything,
+/// so this says so up front instead of letting a cleanup fail at its last step.
+private struct LimitedAccessCard: View {
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                IllustrationView(.lock, size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cleanups need full Photos access")
+                        .font(.headline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("You shared only some photos, so SimpleShrink can show them but can't make changes. Nothing is ever changed without your OK.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Button("Allow Full Access in Settings") { PhotoAccessSettings.open(openURL) }
+                .buttonStyle(.soft)
+        }
+        .card(padding: 16)
+    }
+}
+
+/// Where Photos access is changed: the app's own page in Settings.
+enum PhotoAccessSettings {
+    static func open(_ openURL: OpenURLAction) {
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+    }
+}
+
 /// Space from the latest cleanup still sitting in Recently Deleted. Until
 /// it's emptied the cleanup isn't finished, so it comes before anything else.
 private struct SpaceWaitingCard: View {
@@ -363,9 +400,17 @@ private struct SpaceWaitingCard: View {
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    Spacer(minLength: 0)
                 }
                 Button("Show Me How") { model.reopenGuide() }
                     .buttonStyle(.sticker)
+                Text("Already emptied it? With iCloud Photos set to Optimize iPhone Storage, part of this was only in iCloud, so less comes back to this iPhone.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Hide This Reminder") { withAnimation(.snappy.motionSafe) { model.dismissSpaceWaiting() } }
+                    .font(.footnote.weight(.semibold))
+                    .frame(minHeight: 32)
             }
             .sticker(fill: Theme.mintSoft, padding: 16)
         }
@@ -421,9 +466,22 @@ private struct MethodLink<Label: View>: View {
     @ViewBuilder var label: Label
     @Environment(AppModel.self) private var model
     @Environment(PurchaseStore.self) private var purchases
+    @Environment(\.openURL) private var openURL
+    @State private var needsFullAccess = false
 
     var body: some View {
-        if method.isPro && purchases.requiresPro {
+        if model.photoAccess == .limited, method.guide == nil {
+            // Every photo tool ends in a change, and changes need full access.
+            // Said here, before the paywall and before any review.
+            Button { needsFullAccess = true } label: { label }
+                .buttonStyle(.plain)
+                .alert("Allow full Photos access first", isPresented: $needsFullAccess) {
+                    Button("Open Settings") { PhotoAccessSettings.open(openURL) }
+                    Button("Not Now", role: .cancel) {}
+                } message: {
+                    Text("You shared only some photos, so SimpleShrink can't make changes yet. In Settings, set Photos to Full Access. Nothing is changed without your OK.")
+                }
+        } else if method.isPro && purchases.requiresPro {
             Button(action: onPaywall) { label }
                 .buttonStyle(.plain)
         } else if let guide = method.guide {

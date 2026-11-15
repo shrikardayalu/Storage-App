@@ -11,10 +11,25 @@ struct PhotoCleanupView: View {
     @State private var blocked: Set<MediaItem.ID>?
     @State private var error: PhotoChangeError?
     @State private var confirming = false
+    /// Old screenshots are the one group people often still want (tickets,
+    /// codes, things to remember), so they get their own switch.
+    @AppStorage("photoCleanup.oldScreenshots") private var includeScreenshots = true
 
     private var plan: PhotoCleanupPlan? {
         guard let report = model.junkReport else { return nil }
-        return PhotoCleanupPlan(report: report, livePhotos: model.suggestedLivePhotos ?? [], blocked: blocked ?? [])
+        return PhotoCleanupPlan(report: report, livePhotos: model.suggestedLivePhotos ?? [], blocked: blocked ?? [],
+                                includeOldScreenshots: includeScreenshots)
+    }
+
+    /// Something to show: a cleanup, or old screenshots that are switched off.
+    private func hasFindings(_ plan: PhotoCleanupPlan) -> Bool {
+        !plan.isEmpty || plan.oldScreenshotCount > 0
+    }
+
+    /// Said in the confirmation, so old screenshots never go unmentioned.
+    private var screenshotClause: String {
+        guard let plan, plan.includesOldScreenshots, plan.oldScreenshotCount > 0 else { return "" }
+        return plan.oldScreenshotCount == 1 ? ", along with 1 old screenshot" : ", along with \(plan.oldScreenshotCount) old screenshots"
     }
 
     var body: some View {
@@ -24,19 +39,19 @@ struct PhotoCleanupView: View {
                 if model.isAnalyzing || plan == nil {
                     PhotoAnalysisLoader(caption: "Checking each photo, on this iPhone. Nothing leaves it.")
                 }
-                if let plan, plan.isEmpty, !model.isAnalyzing {
+                if let plan, !hasFindings(plan), !model.isAnalyzing {
                     EmptyStateView(
                         illustration: .shieldCheck,
                         title: "Already tidy",
                         message: "No Live Photos, duplicates or junk to clean in your library."
                     )
-                } else if let plan, !plan.isEmpty {
+                } else if let plan, hasFindings(plan) {
                     summary(plan)
                 }
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -57,7 +72,7 @@ struct PhotoCleanupView: View {
                 Task { await cleanUp() }
             }
         } message: {
-            Text("Live Photos become stills, extra copies and junk are removed. Everything replaced or removed goes to Recently Deleted, where you can recover it for 30 days. iOS may ask you to confirm each part.")
+            Text("Live Photos become stills, extra copies and junk are removed\(screenshotClause). Everything replaced or removed goes to Recently Deleted, where you can recover it for 30 days. iOS may ask you to confirm each part.")
         }
         .task {
             await model.findJunk()
@@ -97,8 +112,17 @@ struct PhotoCleanupView: View {
                 if plan.copyCount > 0 {
                     line("Extra copies", count: plan.copyCount, bytes: plan.copyBytes, note: "the best copy of each stays")
                 }
-                if plan.junkCount > 0 {
-                    line("Blurry, black and old shots", count: plan.junkCount, bytes: plan.junkBytes, note: "including screenshots over a month old")
+                if plan.blurryCount > 0 {
+                    line("Blurry and black shots", count: plan.blurryCount, bytes: plan.blurryBytes, note: "out of focus, or nearly all black")
+                }
+                if plan.oldScreenshotCount > 0 {
+                    Toggle(isOn: $includeScreenshots) {
+                        line("Old screenshots", count: plan.oldScreenshotCount,
+                             bytes: includeScreenshots ? plan.oldScreenshotBytes : 0,
+                             note: includeScreenshots ? "every screenshot over a month old" : "left alone")
+                    }
+                    .tint(Theme.accent)
+                    .disabled(model.isChanging)
                 }
             }
             .onReceipt()

@@ -11,6 +11,7 @@ import SwiftUI
 /// quality by hand; pressing and holding plays it.
 struct VideosView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     @State private var check: SafetyCheck?
     @State private var error: PhotoChangeError?
     @State private var progress: CGFloat = 0
@@ -71,7 +72,7 @@ struct VideosView: View {
                 if !videos.isEmpty { qualityPicker }
                 list(approvedCount: approved.count)
                 if leftAlone > 0 {
-                    Text("\(leftAlone == 1 ? "1 video is" : "\(leftAlone) videos are") left alone: slo-mo, Cinematic and ProRes stay editable, and very small videos aren't worth it.")
+                    Text("\(leftAlone == 1 ? "1 video is" : "\(leftAlone) videos are") left alone: slo-mo, Cinematic, spatial and ProRes videos stay as they are, and very small videos aren't worth it.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -79,7 +80,7 @@ struct VideosView: View {
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -98,15 +99,20 @@ struct VideosView: View {
         .drawing($progress, duration: 1.6)
         .overlay {
             if let batch = model.videoBatchProgress {
-                WorkingOverlay(message: batch.done < batch.total
-                    ? "Making smaller copies… \(batch.done + 1) of \(batch.total)"
-                    : "Swapping in your smaller videos…")
+                // Cancel is there while copies are being made; nothing in Photos has changed yet.
+                WorkingOverlay(
+                    message: batch.done < batch.total
+                        ? "Making smaller copies… \(batch.done + 1) of \(batch.total)"
+                        : "Swapping in your smaller videos…",
+                    cancelTitle: batch.done < batch.total ? "Cancel" : nil,
+                    onCancel: { model.cancelVideoBatch() }
+                )
             }
         }
         .confirmationDialog("Shrink \(approved.count == 1 ? "1 video" : "\(approved.count) videos")?", isPresented: $confirming, titleVisibility: .visible) {
             Button(Self.buttonTitle(approved.count)) { Task { await shrink(approved) } }
         } message: {
-            Text("SimpleShrink makes a smaller copy of each one first and only swaps the ones that come out clearly smaller. Copies keep their date, location and favorite. The originals go to Recently Deleted, where you can recover them for 30 days. Keep the app open while it works.")
+            Text("SimpleShrink makes a smaller copy of each one first and only swaps the ones that come out clearly smaller. Copies keep their date, location and favorite. The originals go to Recently Deleted, where you can recover them for 30 days. If there isn't room for every copy, it does as many as fit. Keep the app open while it works.")
         }
         .task(id: videos.map(\.id)) {
             chosen.formIntersection(videos.map(\.id))
@@ -130,7 +136,13 @@ struct VideosView: View {
                         setting = option
                     } label: {
                         HStack(spacing: 4) {
-                            if option == .smart { Image(systemName: "sparkles").font(.caption.weight(.bold)) }
+                            // With Differentiate Without Color on, a tick marks the choice
+                            // instead of only the fill and border color.
+                            if differentiateWithoutColor && setting == option {
+                                Image(systemName: "checkmark").font(.caption.weight(.bold))
+                            } else if option == .smart {
+                                Image(systemName: "sparkles").font(.caption.weight(.bold))
+                            }
                             Text(option.title)
                                 .font(.subheadline.weight(.semibold))
                                 .lineLimit(1)
@@ -289,7 +301,7 @@ private struct VideoRow: View {
             ItemThumbnail(id: item.id, side: 52)
                 .overlay(alignment: .bottomTrailing) {
                     Text(VideoTime.string(item.duration ?? 0))
-                        .font(.system(size: 10, weight: .bold).monospacedDigit())
+                        .font(.system(size: Font.displaySize(10, relativeTo: .caption2), weight: .bold).monospacedDigit())
                         .foregroundStyle(.white)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
@@ -304,7 +316,7 @@ private struct VideoRow: View {
                 if let blockedReason {
                     Text(blockedReason)
                         .font(.hand(14))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                 } else {
                     Text("\(VideoTime.resolution(item.pixelWidth, item.pixelHeight)) · \(item.creationDate.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
@@ -380,7 +392,7 @@ struct VideoShrinkView: View {
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }

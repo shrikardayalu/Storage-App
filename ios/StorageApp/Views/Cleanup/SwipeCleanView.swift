@@ -12,6 +12,9 @@ import UIKit
 struct SwipeCleanView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dismiss) private var dismiss
+    /// Asked on the way out when photos are swiped away but not deleted yet.
+    @State private var leaving = false
 
     @State private var queue: [SwipeCandidate] = []
     @State private var position = 0
@@ -39,7 +42,7 @@ struct SwipeCleanView: View {
                 Spacer(minLength: 8)
                 card(current)
                     .id(current.id)
-                    .transition(.asymmetric(insertion: .scale(scale: 0.92).combined(with: .opacity), removal: .opacity))
+                    .transition(.asymmetric(insertion: .scale(scale: 0.92).combined(with: .opacity), removal: .opacity).motionSafe)
                 Spacer(minLength: 8)
                 controls
             } else {
@@ -62,13 +65,35 @@ struct SwipeCleanView: View {
             if let error {
                 Text(error.localizedDescription)
                     .font(.footnote.weight(.medium))
-                    .foregroundStyle(Theme.tomato)
+                    .foregroundStyle(Theme.tomatoInk)
                     .padding(.horizontal, 20)
             }
         }
         .background(PaperBackground())
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        // Leaving used to drop every left swipe without a word. With photos
+        // swiped away, Back asks what to do with them first.
+        .navigationBarBackButtonHidden(!toDelete.isEmpty)
+        .toolbar {
+            if !toDelete.isEmpty {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        leaving = true
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                    }
+                    .disabled(model.isChanging)
+                    .confirmationDialog("You swiped \(countText) away", isPresented: $leaving, titleVisibility: .visible) {
+                        Button("Delete \(countText)", role: .destructive) { Task { await deleteMarked() } }
+                        Button("Leave Without Deleting") { dismiss() }
+                        Button("Keep Swiping", role: .cancel) {}
+                    } message: {
+                        Text("Nothing has been deleted yet. Deleted photos wait in Recently Deleted for 30 days.")
+                    }
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if !toDelete.isEmpty { deleteBar }
         }
@@ -135,7 +160,7 @@ struct SwipeCleanView: View {
                         .padding(14)
                 }
                 .overlay(alignment: .topTrailing) {
-                    RubberStamp(top: "swipe", main: "delete", color: Theme.tomato, angle: 12)
+                    RubberStamp(top: "swipe", main: "delete", color: Theme.tomatoInk, angle: 12)
                         .opacity(Double(max(0, -lean)))
                         .padding(14)
                 }
@@ -170,7 +195,7 @@ struct SwipeCleanView: View {
                     } else if reach > Self.swipeDistance {
                         decide(delete: false)
                     } else {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { drag = .zero }
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7).motionSafe) { drag = .zero }
                     }
                 }
         )
@@ -182,7 +207,7 @@ struct SwipeCleanView: View {
 
     private var controls: some View {
         HStack(spacing: 18) {
-            CircleAction(symbol: "trash", label: "Delete", tint: Theme.tomato) { decide(delete: true) }
+            CircleAction(symbol: "trash", label: "Delete", tint: Theme.tomatoInk) { decide(delete: true) }
             CircleAction(symbol: "arrow.uturn.backward", label: "Undo", tint: Theme.ink, small: true) { undo() }
                 .disabled(decisions.isEmpty)
                 .opacity(decisions.isEmpty ? 0.35 : 1)
@@ -249,7 +274,7 @@ struct SwipeCleanView: View {
 
     private func decide(delete: Bool) {
         guard let current else { return }
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8).motionSafe) {
             drag = .zero
             decisions.append(Decision(candidate: current, delete: delete))
             position += 1
@@ -258,7 +283,7 @@ struct SwipeCleanView: View {
 
     private func undo() {
         guard !decisions.isEmpty else { return }
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.8).motionSafe) {
             decisions.removeLast()
             position = max(0, position - 1)
             drag = .zero

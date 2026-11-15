@@ -1,0 +1,61 @@
+{
+  "caption": "Storage full again? It's usually these five, and videos are the big one. Save this for the next time the warning pops up.",
+  "hashtags": ["iphonetips", "iphonestorage", "storagefull", "iphonehacks", "techtok"],
+  "slides": [
+    {
+      "type": "hook",
+      "kicker": "iphone storage full?",
+      "title": "5 things *quietly* eating your storage",
+      "body": "Start with number 1. It's usually the biggest.",
+      "art": "phone-sparkle"
+    },
+    {
+      "type": "stat",
+      "kicker": "1. 4K video",
+      "value": "400 MB",
+      "label": "for one minute of 4K video at 60 fps",
+      "body": "A five-minute clip is about **2 GB**. The same clip at 1080p is about 300 MB.",
+      "source": "Apple's estimates in Settings → Camera → Record Video. They vary by iPhone."
+    },
+    {
+      "type": "point",
+      "number": 2,
+      "title": "Live Photos",
+      "body": "Each one saves a still **plus a short video**. Turning Live off in Edit doesn't free the space, because the video is kept.",
+      "tip": "keep the still, drop the clip"
+    },
+    {
+      "type": "point",
+      "number": 3,
+      "title": "Screenshots",
+      "body": "iPhone saves them as PNG, a format built for perfect copies, not small files. And most of us never delete one.",
+      "art": "screenshot"
+    },
+    {
+      "type": "point",
+      "number": 4,
+      "title": "Bursts and extra copies",
+      "body": "Hold the shutter and you get a dozen near-identical shots. You only need the best one.",
+      "art": "stack-large"
+    },
+    {
+      "type": "point",
+      "number": 5,
+      "title": "Chat attachments",
+      "body": "Photos and videos people send you in Messages and WhatsApp are stored on your phone too.",
+      "tip": "check Settings → General → iPhone Storage"
+    },
+    {
+      "type": "list",
+      "kicker": "fix it in this order",
+      "title": "Shrink first, delete second",
+      "items": [
+        "Shrink your biggest videos",
+        "Keep Live Photos as stills",
+        "Clear screenshots and extra copies",
+        "Empty Recently Deleted"
+      ]
+    },
+    { "type": "cta" }
+  ]
+}

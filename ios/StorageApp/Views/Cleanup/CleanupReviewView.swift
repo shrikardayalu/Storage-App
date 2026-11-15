@@ -31,7 +31,7 @@ struct CleanupReviewView: View {
                     if let error = changeError ?? checkError {
                         Text(error.localizedDescription)
                             .font(.footnote.weight(.medium))
-                            .foregroundStyle(Theme.tomato)
+                            .foregroundStyle(Theme.tomatoInk)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -120,7 +120,7 @@ struct CleanupReviewView: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(approved) { item in
                     ReceiptRow(item: item, flag: flag(for: item)) {
-                        withAnimation(.snappy) { approved.removeAll { $0.id == item.id } }
+                        withAnimation(.snappy.motionSafe) { approved.removeAll { $0.id == item.id } }
                         Task { await runCheck() }
                     }
                 }
@@ -159,10 +159,10 @@ struct CleanupReviewView: View {
                 .opacity(0.8)
         } else if isSafe {
             RubberStamp(top: "safety check", main: "passed", color: Theme.accent)
-                .transition(.scale(scale: 1.8).combined(with: .opacity))
+                .transition(.scale(scale: 1.8).combined(with: .opacity).motionSafe)
         } else if check != nil || checkError != nil {
-            RubberStamp(top: "safety check", main: "stopped", color: Theme.tomato, angle: 7)
-                .transition(.scale(scale: 1.8).combined(with: .opacity))
+            RubberStamp(top: "safety check", main: "stopped", color: Theme.tomatoInk, angle: 7)
+                .transition(.scale(scale: 1.8).combined(with: .opacity).motionSafe)
         }
     }
 
@@ -219,7 +219,7 @@ struct CleanupReviewView: View {
         let result = await model.safetyCheck(ids)
         // A newer check (after removing a row) wins.
         guard ids == approvedIDs else { return }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.55).motionSafe) {
             isChecking = false
             switch result {
             case .success(let value):
@@ -261,7 +261,7 @@ private struct ReceiptRow: View {
                 if let flag {
                     Text(flag)
                         .font(.hand(14))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                 } else {
                     Text("\(ScanGroup.kind(of: item).title) · \(item.creationDate.formatted(date: .abbreviated, time: .omitted))")
                         .font(.caption)
@@ -305,7 +305,7 @@ struct SafetyLine: View {
                 .padding(.top, 2)
         }
         .opacity(progress >= start - 0.1 ? 1 : 0)
-        .animation(.easeOut(duration: 0.3), value: progress >= start - 0.1)
+        .animation(.easeOut(duration: 0.3).motionSafe, value: progress >= start - 0.1)
         .accessibilityElement(children: .combine)
         .accessibilityValue(done ? "Passed" : "Not yet")
     }

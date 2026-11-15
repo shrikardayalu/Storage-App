@@ -191,10 +191,18 @@ struct PhotoCleanupPlan: Equatable {
     var copyBytes: Int64
     var junkCount: Int { remove.count - copyCount }
     var junkBytes: Int64 { removeBytes - copyBytes }
+    /// Screenshots over a month old that could go, whether or not they're included.
+    var oldScreenshotCount: Int
+    var oldScreenshotBytes: Int64
+    var includesOldScreenshots: Bool
+    /// Blurry and black shots: the junk that isn't an old screenshot.
+    var blurryCount: Int { junkCount - (includesOldScreenshots ? oldScreenshotCount : 0) }
+    var blurryBytes: Int64 { junkBytes - (includesOldScreenshots ? oldScreenshotBytes : 0) }
 
     /// - Parameter blocked: photos the album check won't let the app touch.
     ///   A duplicate with a blocked extra copy is left alone entirely.
-    init(report: JunkReport, livePhotos: [MediaItem], blocked: Set<MediaItem.ID> = []) {
+    /// - Parameter includeOldScreenshots: off leaves every old screenshot alone.
+    init(report: JunkReport, livePhotos: [MediaItem], blocked: Set<MediaItem.ID> = [], includeOldScreenshots: Bool = true) {
         var remove = Set<MediaItem.ID>()
         var removeBytes: Int64 = 0
         var keepers = Set<MediaItem.ID>()
@@ -209,10 +217,21 @@ struct PhotoCleanupPlan: Equatable {
         }
         let copyCount = remove.count
         let copyBytes = removeBytes
+        var screenshots = 0
+        var screenshotBytes: Int64 = 0
         for finding in report.findings where finding.reason.startsSelected && !blocked.contains(finding.id) {
+            if finding.reason == .oldScreenshot {
+                guard !remove.contains(finding.id) else { continue }
+                screenshots += 1
+                screenshotBytes += finding.item.currentBytes
+                guard includeOldScreenshots else { continue }
+            }
             remove.insert(finding.id)
             removeBytes += finding.item.currentBytes
         }
+        self.oldScreenshotCount = screenshots
+        self.oldScreenshotBytes = screenshotBytes
+        self.includesOldScreenshots = includeOldScreenshots
         let converting = livePhotos.filter { !remove.contains($0.id) && !blocked.contains($0.id) }
         self.remove = remove
         self.keepers = keepers

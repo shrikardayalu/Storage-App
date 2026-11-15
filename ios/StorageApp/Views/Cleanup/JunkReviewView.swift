@@ -153,7 +153,7 @@ struct JunkReviewView: View {
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -514,7 +514,7 @@ private struct DuplicateCard: View {
                             if let blockedReason {
                                 Text(blockedReason)
                                     .font(.hand(14))
-                                    .foregroundStyle(Theme.tomato)
+                                    .foregroundStyle(Theme.tomatoInk)
                                     .fixedSize(horizontal: false, vertical: true)
                             } else if let first = group.items.first {
                                 Text(first.creationDate.formatted(date: .abbreviated, time: .shortened))
@@ -573,7 +573,7 @@ private struct DuplicateCard: View {
                 }
             Text(active ? (isKeeper ? "keep" : "remove") : ByteFormatter.string(item.currentBytes))
                 .font(.hand(14))
-                .foregroundStyle(active ? (isKeeper ? Theme.accent : Theme.tomato) : Color.secondary)
+                .foregroundStyle(active ? (isKeeper ? Theme.accent : Theme.tomatoInk) : Color.secondary)
         }
         .accessibilityElement(children: .ignore)
         .tapAndHold(isEnabled: blockedReason == nil) {
@@ -607,7 +607,7 @@ private struct FindingTile: View {
                 }
             Text(isBlocked ? "not in your library" : ByteFormatter.string(item.currentBytes))
                 .font(.caption2.monospacedDigit())
-                .foregroundStyle(isBlocked ? Theme.tomato : .secondary)
+                .foregroundStyle(isBlocked ? Theme.tomatoInk : .secondary)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .ignore)

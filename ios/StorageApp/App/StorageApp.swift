@@ -21,6 +21,8 @@ struct StorageAppEntry: App {
         .onChange(of: scenePhase, initial: true) { _, phase in
             if phase == .active {
                 Task { await model.refreshDeviceStorage() }
+                // Photos taken or deleted while away show up without a tap.
+                Task { await model.rescanOnReturn() }
                 // Picks up a subscription cancelled, renewed or refunded while away.
                 Task { await purchases.refreshEntitlements() }
             }

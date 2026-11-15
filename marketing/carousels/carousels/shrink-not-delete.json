@@ -1,0 +1,52 @@
+{
+  "caption": "You don't have to pick which memories to delete. Most of the space is in how things are saved, not how many you have.",
+  "hashtags": ["iphonestorage", "iphonetips", "storagefull", "simpleshrink", "techtok"],
+  "slides": [
+    {
+      "type": "hook",
+      "kicker": "storage almost full?",
+      "title": "Free up space *without* deleting your memories",
+      "art": "compress"
+    },
+    {
+      "type": "screen",
+      "kicker": "step 1",
+      "title": "See where the space went",
+      "image": "reveal-light",
+      "note": "the scan is free"
+    },
+    {
+      "type": "point",
+      "number": 2,
+      "title": "Shrink the videos, keep the videos",
+      "body": "4K video is the biggest thing on most iPhones. A smaller copy looks the same on your phone screen and takes a fraction of the room.",
+      "art": "video",
+      "theme": "soft"
+    },
+    {
+      "type": "point",
+      "number": 3,
+      "title": "Keep Live Photos as stills",
+      "body": "Same picture, without the hidden video clip saved next to it.",
+      "tip": "favorite the ones you want to stay Live",
+      "theme": "cream"
+    },
+    {
+      "type": "point",
+      "number": 4,
+      "title": "Re-save your screenshots",
+      "body": "The ones you keep get saved again in a smaller format. They look the same.",
+      "art": "screenshot",
+      "theme": "soft"
+    },
+    {
+      "type": "screen",
+      "kicker": "step 5",
+      "title": "Watch the space come back",
+      "image": "results-light",
+      "note": "measured, not guessed",
+      "theme": "mint"
+    },
+    { "type": "cta" }
+  ]
+}

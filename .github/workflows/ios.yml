@@ -102,6 +102,43 @@ jobs:
           done
           xcrun simctl ui "$UDID" content_size large
           ls screenshots
+      - name: Screenshots on the smallest iPhone and an iPad
+        # App Review also runs iPhone apps on small phones and on iPad. These
+        # show whether the paywall, the Lifetime page and onboarding still fit.
+        # Never fails the run: the devices on the runner change with Xcode.
+        continue-on-error: true
+        working-directory: ios
+        run: |
+          APP=build/Build/Products/Debug-iphonesimulator/StorageApp.app
+          pick() {
+            xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          want = sys.argv[1]
+          devices = json.load(sys.stdin)["devices"]
+          found = [d for runtime in sorted(devices, reverse=True) if "iOS" in runtime
+                   for d in devices[runtime] if want in d["name"]]
+          print(found[0]["udid"] if found else "")
+          ' "$1"
+          }
+          for kind in "iPhone SE" "iPad"; do
+            UDID=$(pick "$kind")
+            if [ -z "$UDID" ]; then echo "::warning::No $kind simulator on this runner"; continue; fi
+            name=$(echo "$kind" | tr 'A-Z ' 'a-z-')
+            xcrun simctl boot "$UDID" || true
+            xcrun simctl bootstatus "$UDID" -b
+            xcrun simctl install "$UDID" "$APP"
+            for size in large accessibility-large; do
+              xcrun simctl ui "$UDID" content_size "$size"
+              for screen in onboarding paywall home settings; do
+                xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
+                sleep 4
+                xcrun simctl io "$UDID" screenshot "screenshots/$screen-$name-$size.png"
+                xcrun simctl terminate "$UDID" "$BUNDLE_ID" || true
+              done
+            done
+            xcrun simctl ui "$UDID" content_size large
+            xcrun simctl shutdown "$UDID" || true
+          done
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
         with:

@@ -151,10 +151,10 @@ struct RecentlyDeletedGuideView: View {
             ZStack {
                 page
                     .id(step)
-                    .transition(.asymmetric(
+                    .transition(AnyTransition.asymmetric(
                         insertion: .move(edge: forward ? .trailing : .leading).combined(with: .opacity),
                         removal: .move(edge: forward ? .leading : .trailing).combined(with: .opacity)
-                    ))
+                    ).motionSafe)
             }
             .frame(maxHeight: .infinity, alignment: .top)
             .gesture(DragGesture(minimumDistance: 30).onEnded { value in
@@ -172,7 +172,7 @@ struct RecentlyDeletedGuideView: View {
                 Task { await model.checkReclaim() }
             } else if step.isInPhotos {
                 forward = true
-                withAnimation(.snappy) { step = .measure }
+                withAnimation(.snappy.motionSafe) { step = .measure }
             }
         }
         .task(id: step) {
@@ -276,7 +276,7 @@ struct RecentlyDeletedGuideView: View {
                 showSteps = false
                 seeFullSteps = false
                 forward = true
-                withAnimation(.snappy) { step = .summary }
+                withAnimation(.snappy.motionSafe) { step = .summary }
             }
             .modifier(GuideLinkStyle())
             .accessibilityHint("Shows a one-page summary instead. You can turn the steps back on in Settings.")
@@ -287,7 +287,7 @@ struct RecentlyDeletedGuideView: View {
     private func showFullSteps(keepOn: Bool) {
         if keepOn { showSteps = true } else { seeFullSteps = true }
         forward = true
-        withAnimation(.snappy) { step = .why }
+        withAnimation(.snappy.motionSafe) { step = .why }
     }
 
     private func openPhotos() {
@@ -322,7 +322,7 @@ struct RecentlyDeletedGuideView: View {
                 if model.reclaim?.isDone != true {
                     Button(steps.contains(.summary) ? "Show the Summary Again" : "Show the Steps Again") {
                         forward = false
-                        withAnimation(.snappy) { step = steps.contains(.summary) ? .summary : .openPhotos }
+                        withAnimation(.snappy.motionSafe) { step = steps.contains(.summary) ? .summary : .openPhotos }
                     }
                     .buttonStyle(.soft)
                 }
@@ -343,7 +343,7 @@ struct RecentlyDeletedGuideView: View {
     private func go(_ delta: Int) {
         guard let index = steps.firstIndex(of: step), steps.indices.contains(index + delta) else { return }
         forward = delta > 0
-        withAnimation(.snappy(duration: 0.35)) { step = steps[index + delta] }
+        withAnimation(.snappy(duration: 0.35).motionSafe) { step = steps[index + delta] }
     }
 }
 
@@ -518,7 +518,7 @@ private struct DonePage: View {
         if !result.keptEverything {
             Text("Something didn't match. The original is in Recently Deleted, so you can recover it there instead of emptying it.")
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(Theme.tomato)
+                .foregroundStyle(Theme.tomatoInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         DashedRule()
@@ -553,7 +553,7 @@ private struct DonePage: View {
         if !results.allSatisfy(\.keptEverything) {
             Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(Theme.tomato)
+                .foregroundStyle(Theme.tomatoInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         if skipped > 0 {
@@ -582,7 +582,7 @@ private struct DonePage: View {
         if !results.allSatisfy(\.keptEverything) {
             Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(Theme.tomato)
+                .foregroundStyle(Theme.tomatoInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         if !receipt.skipped.isEmpty {
@@ -616,7 +616,7 @@ private struct DonePage: View {
         if !all {
             Text("\(results.filter { !$0.keptEverything }.count) didn't match exactly. The originals are in Recently Deleted, so you can recover them there instead of emptying it.")
                 .font(.footnote.weight(.medium))
-                .foregroundStyle(Theme.tomato)
+                .foregroundStyle(Theme.tomatoInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
         DashedRule()
@@ -675,7 +675,7 @@ private struct MeasurePage: View {
                                 .frame(width: max(0, (proxy.size.width - 8) * CGFloat(reclaim?.fraction ?? 0)))
                                 .padding(4)
                                 .offset(x: -2, y: 2)
-                                .animation(.spring(response: 0.9, dampingFraction: 0.75), value: reclaim?.fraction)
+                                .animation(.spring(response: 0.9, dampingFraction: 0.75).motionSafe, value: reclaim?.fraction)
                         }
                         DrawnStroke(path: Sketch.box(CGRect(x: 4, y: 4, width: 292, height: 40), radius: 12, seed: 301), design: CGSize(width: 300, height: 48), progress: progress, start: 0.1, length: 0.3)
                             .stroke(Theme.ink, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
@@ -706,7 +706,11 @@ private struct MeasurePage: View {
 
                 if !done {
                     checkStatus
-                        .animation(.snappy, value: model.isCheckingReclaim)
+                        .animation(.snappy.motionSafe, value: model.isCheckingReclaim)
+                    Text("Using iCloud Photos with Optimize iPhone Storage? Anything that was only in iCloud took no space here, so less than the full amount can come back.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Button {
@@ -744,7 +748,7 @@ private struct MeasurePage: View {
                      ? "Checked at \(check.date.formatted(date: .omitted, time: .standard)): \(ByteFormatter.string(check.gainedBytes, precision: .twoDecimals)) more came back. Still counting."
                      : "Checked at \(check.date.formatted(date: .omitted, time: .standard)): no change yet.")
                     .fontWeight(.semibold)
-                    .foregroundStyle(check.gainedBytes > 0 ? Theme.ink : Theme.tomato)
+                    .foregroundStyle(check.gainedBytes > 0 ? Theme.ink : Theme.tomatoInk)
                 Text("Open Recently Deleted in Photos. If the items are still there, they aren't erased yet: tap Select, pick them, then Delete From This iPhone. If it's empty, give iOS a minute and measure again.")
             } else {
                 Text("Empty Recently Deleted, then come back here. SimpleShrink measures again each time you return. iOS can take a minute to update free space.")
@@ -859,8 +863,8 @@ private struct CountingSize: View {
         Color.clear
             .frame(height: 0)
             .modifier(CountingText(value: shown))
-            .onAppear { withAnimation(.easeOut(duration: 1.2)) { shown = Double(bytes) } }
-            .onChange(of: bytes) { _, new in withAnimation(.easeOut(duration: 1.2)) { shown = Double(new) } }
+            .onAppear { withAnimation(.easeOut(duration: 1.2).motionSafe) { shown = Double(bytes) } }
+            .onChange(of: bytes) { _, new in withAnimation(.easeOut(duration: 1.2).motionSafe) { shown = Double(new) } }
             .accessibilityLabel(ByteFormatter.accessibilityString(bytes, precision: .twoDecimals))
     }
 }
@@ -912,7 +916,7 @@ private struct StepDots: View {
                     .frame(width: index == current ? 22 : 8, height: 8)
             }
         }
-        .animation(.snappy, value: current)
+        .animation(.snappy.motionSafe, value: current)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Step \(current + 1) of \(count)")
     }
@@ -989,7 +993,7 @@ struct LiveBadge: View {
             Image(systemName: "livephoto")
             Text("LIVE")
         }
-        .font(.system(size: 8, weight: .heavy))
+        .font(.system(size: Font.displaySize(8, relativeTo: .caption2), weight: .heavy))
         .foregroundStyle(Color(hex: 0x1A1A17))
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
@@ -1014,7 +1018,7 @@ private struct KeptVersusGoing: View {
                 .foregroundStyle(.tertiary)
                 .padding(.top, 40)
             column(
-                id: conversion.originalID, live: true, color: Theme.tomato,
+                id: conversion.originalID, live: true, color: Theme.tomatoInk,
                 heading: "IN RECENTLY DELETED", detail: "The old Live version: same photo plus its video"
             )
         }

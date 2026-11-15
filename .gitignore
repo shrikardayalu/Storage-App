@@ -90,3 +90,6 @@ $RECYCLE.BIN/
 
 # Downloaded CI screenshots and builds
 ios/ci-artifacts/
+
+# ASO research: cached App Store responses (re-fetched by research.mjs)
+marketing/aso/research/cache/

@@ -5,10 +5,13 @@ import UIKit
 /// Everything the library scan found, biggest first, with totals per group.
 struct LibraryView: View {
     @Environment(AppModel.self) private var model
+    /// The item opened big with a tap.
+    @State private var preview: MediaPreview?
 
     var body: some View {
         @Bindable var model = model
         content
+            .mediaPreview($preview)
             .scrollContentBackground(.hidden)
             .background(PaperBackground())
             .navigationTitle(model.isSelecting ? "Pick to Delete" : "Library")
@@ -16,7 +19,7 @@ struct LibraryView: View {
                 if model.libraryScan?.total.count ?? 0 > 0 {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(model.isSelecting ? "Cancel" : "Select") {
-                            withAnimation(.snappy) {
+                            withAnimation(.snappy.motionSafe) {
                                 if model.isSelecting { model.clearSelection() }
                                 model.isSelecting.toggle()
                             }
@@ -33,7 +36,7 @@ struct LibraryView: View {
             .safeAreaInset(edge: .bottom) {
                 if model.isSelecting {
                     SelectionBar()
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .transition(.move(edge: .bottom).combined(with: .opacity).motionSafe)
                 }
             }
             .overlay {
@@ -74,7 +77,7 @@ struct LibraryView: View {
                     Text("Each item is in one of the first five groups. Big Formats overlaps them.")
                 }
 
-                let items = scan.items(in: model.libraryGroup)
+                let items = model.items(in: model.libraryGroup)
                 Section {
                     if items.isEmpty {
                         Text("Nothing in \(model.libraryGroup?.title ?? "your library").")
@@ -91,7 +94,15 @@ struct LibraryView: View {
                             .buttonStyle(.plain)
                             .accessibilityAddTraits(model.selection.contains(item.id) ? [.isButton, .isSelected] : .isButton)
                         } else {
-                            ScanItemRow(item: item)
+                            // A tap shows it big: the photo, the Live Photo or the video.
+                            Button {
+                                preview = MediaPreview(item)
+                            } label: {
+                                ScanItemRow(item: item)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityHint("Shows it big.")
                         }
                     }
                 } header: {
@@ -143,7 +154,7 @@ private struct SelectionBar: View {
                     .font(.metric(.title3))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    .animation(.snappy, value: bytes)
+                    .animation(.snappy.motionSafe, value: bytes)
             }
             Spacer(minLength: 8)
             Button("Review") { model.isReviewing = true }
@@ -173,7 +184,7 @@ struct ScanErrorView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(error.localizedDescription)
                 .font(.footnote)
-                .foregroundStyle(Theme.tomato)
+                .foregroundStyle(Theme.tomatoInk)
                 .fixedSize(horizontal: false, vertical: true)
             if error == .accessDenied, let url = URL(string: UIApplication.openSettingsURLString) {
                 Button("Open Settings") { openURL(url) }
@@ -227,7 +238,7 @@ private struct ScanItemRow: View {
     var body: some View {
         HStack(spacing: 12) {
             if let isSelected {
-                InkCheck(isOn: isSelected, size: 26, tint: Theme.tomato)
+                InkCheck(isOn: isSelected, size: 26, tint: Theme.tomatoInk)
             }
             PhotoThumbnail(localIdentifier: item.id)
                 .frame(width: 52, height: 52)

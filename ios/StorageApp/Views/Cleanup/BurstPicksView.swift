@@ -82,7 +82,7 @@ struct BurstPicksView: View {
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
-                        .foregroundStyle(Theme.tomato)
+                        .foregroundStyle(Theme.tomatoInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -265,7 +265,7 @@ private struct BurstCard: View {
                             if let blockedReason {
                                 Text(blockedReason)
                                     .font(.hand(14))
-                                    .foregroundStyle(Theme.tomato)
+                                    .foregroundStyle(Theme.tomatoInk)
                                     .fixedSize(horizontal: false, vertical: true)
                             } else if let first = burst.shots.first {
                                 Text(first.creationDate.formatted(date: .abbreviated, time: .shortened))
@@ -325,7 +325,7 @@ private struct BurstCard: View {
                 }
             Text(isOn ? (isKeeper ? "keep" : "remove") : (shot.traits.contains(.burstPick) ? "camera's pick" : " "))
                 .font(.hand(14))
-                .foregroundStyle(isOn ? (isKeeper ? Theme.accent : Theme.tomato) : Color.secondary)
+                .foregroundStyle(isOn ? (isKeeper ? Theme.accent : Theme.tomatoInk) : Color.secondary)
         }
         .accessibilityElement(children: .ignore)
         .tapAndHold(isEnabled: blockedReason == nil) {

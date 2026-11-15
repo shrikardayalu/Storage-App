@@ -52,6 +52,9 @@ struct SafetyNote: View {
 /// Full-screen dimmed progress overlay for longer operations.
 struct WorkingOverlay: View {
     let message: String
+    /// Shown under the message when the work can be stopped.
+    var cancelTitle: String?
+    var onCancel: (() -> Void)?
 
     var body: some View {
         ZStack {
@@ -63,13 +66,18 @@ struct WorkingOverlay: View {
                     .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
+                if let cancelTitle, let onCancel {
+                    Button(cancelTitle, action: onCancel)
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minHeight: 36)
+                }
             }
             .padding(.horizontal, 26)
             .padding(.vertical, 22)
             .sticker(padding: 0)
             .frame(maxWidth: 280)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 

@@ -1,8 +1,8 @@
 // Plans and prices for the pricing page. Keep these in sync with the app's
 // ios/StorageApp/Purchases/Plans.swift and with App Store Connect.
 //
-// Lifetime is deliberately absent: the app offers it only once, after someone
-// dismisses the paywall, so it never undercuts the recurring plans here.
+// Lifetime is deliberately absent: the app offers it after someone dismisses
+// the paywall and in its Settings, so it never undercuts the recurring plans here.
 
 export const plans = {
   weekly: { price: 4.99, period: "week" },

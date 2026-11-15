@@ -47,10 +47,13 @@ enum Theme {
     /// Pale mint for secondary fills.
     static let mintSoft = dynamic(light: 0xCDEFDC, dark: 0x24493A)
     /// Accent for text and controls; darker than `mint` so it reads on light backgrounds.
-    static let accent = dynamic(light: 0x1C7D50, dark: 0x6FE0A8)
-    /// Destructive actions.
+    static let accent = dynamic(light: 0x1C7D50, dark: 0x6FE0A8, highLight: 0x0E5235, highDark: 0x9BF2C6)
+    /// Destructive fills, such as the Delete button behind dark text.
     static let tomato = dynamic(light: 0xEF6A4C, dark: 0xF07B5E)
-    static let hairline = dynamic(light: 0x1A1A17, dark: 0xEFEADF, alpha: 0.09)
+    /// Destructive text, icons and ticks. Matches `tomato` normally; with
+    /// Increase Contrast on it darkens (or lightens) so it reads on any surface.
+    static let tomatoInk = dynamic(light: 0xEF6A4C, dark: 0xF07B5E, highLight: 0x8F2A13, highDark: 0xFFA08A)
+    static let hairline = dynamic(light: 0x1A1A17, dark: 0xEFEADF, alpha: 0.09, highAlpha: 0.35)
     /// Light fills inside illustrations; matches the illustration generator's "paper".
     static let illustrationPaper = dynamic(light: 0xFBF8F1, dark: 0x23231F)
     /// Darker mint for illustration shading; the generator's "shade".
@@ -69,9 +72,19 @@ enum Theme {
     static let cardRadius: CGFloat = 22
     static let spacing: CGFloat = 16
 
-    private static func dynamic(light: UInt32, dark: UInt32, alpha: CGFloat = 1) -> Color {
+    /// A color that follows light/dark mode and, when given high-contrast
+    /// values, the iPhone's Increase Contrast setting. With that setting off the
+    /// app looks exactly as designed.
+    private static func dynamic(light: UInt32, dark: UInt32, alpha: CGFloat = 1,
+                                highLight: UInt32? = nil, highDark: UInt32? = nil,
+                                highAlpha: CGFloat? = nil) -> Color {
         Color(uiColor: UIColor { traits in
-            UIColor(hex: traits.userInterfaceStyle == .dark ? dark : light, alpha: alpha)
+            let isDark = traits.userInterfaceStyle == .dark
+            guard traits.accessibilityContrast == .high else {
+                return UIColor(hex: isDark ? dark : light, alpha: alpha)
+            }
+            let hex = isDark ? (highDark ?? dark) : (highLight ?? light)
+            return UIColor(hex: hex, alpha: highAlpha ?? alpha)
         })
     }
 }
@@ -154,13 +167,16 @@ struct StickerButtonStyle: ButtonStyle {
         let fill: Color
         let foreground: Color
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.colorSchemeContrast) private var contrast
 
         var body: some View {
             let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
             let pressed = configuration.isPressed
             configuration.label
                 .font(.headline)
-                .foregroundStyle(foreground)
+                // With Increase Contrast on, a disabled button's label switches to
+                // ink so it stays readable on the gray fill in dark mode.
+                .foregroundStyle(!isEnabled && contrast == .increased ? Theme.ink : foreground)
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .padding(.horizontal, 16)
                 .background(shape.fill(isEnabled ? fill : Theme.well))
@@ -168,7 +184,7 @@ struct StickerButtonStyle: ButtonStyle {
                 .background(shape.fill(Theme.ink).offset(x: pressed ? 0 : -3, y: pressed ? 0 : 4))
                 .offset(x: pressed ? -3 : 0, y: pressed ? 4 : 0)
                 .opacity(isEnabled ? 1 : 0.55)
-                .animation(.snappy(duration: 0.12), value: pressed)
+                .animation(.snappy(duration: 0.12).motionSafe, value: pressed)
         }
     }
 }

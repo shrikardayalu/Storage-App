@@ -70,6 +70,8 @@ final class VideoShrinkTests: XCTestCase {
         XCTAssertFalse(video(format: .proRes).isShrinkableVideo)
         XCTAssertFalse(video(traits: .slowMotion).isShrinkableVideo)
         XCTAssertFalse(video(traits: .cinematic).isShrinkableVideo)
+        // Re-encoding a spatial video would flatten it to one view.
+        XCTAssertFalse(video(traits: .spatial).isShrinkableVideo)
         XCTAssertFalse(video(bytes: 1_000_000).isShrinkableVideo)
         XCTAssertFalse(video(duration: 0.5).isShrinkableVideo)
         XCTAssertFalse(makeItem(id: "p", category: .photo, bytes: 50_000_000).isShrinkableVideo)

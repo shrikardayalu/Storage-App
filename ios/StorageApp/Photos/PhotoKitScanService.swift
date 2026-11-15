@@ -127,6 +127,7 @@ struct PhotoKitScanService: PhotoScanService {
         if asset.mediaSubtypes.contains(.photoLive) { traits.insert(.livePhoto) }
         if asset.mediaSubtypes.contains(.videoHighFrameRate) { traits.insert(.slowMotion) }
         if asset.mediaSubtypes.contains(.videoCinematic) { traits.insert(.cinematic) }
+        if asset.mediaSubtypes.contains(.spatialMedia) { traits.insert(.spatial) }
         if asset.burstIdentifier != nil, !asset.burstSelectionTypes.isDisjoint(with: [.userPick, .autoPick]) {
             traits.insert(.burstPick)
         }
@@ -196,8 +197,8 @@ enum ScanCache {
         var entries: [Entry]
     }
 
-    /// 2: items carry the favorite and edited traits.
-    private static let version = 2
+    /// 2: items carry the favorite and edited traits. 3: and the spatial trait.
+    private static let version = 3
     private static let lock = NSLock()
     /// Kept after the first decode, so a rescan doesn't read the file again.
     private static var memory: [Entry]?
@@ -390,6 +391,11 @@ enum PhotoLibrary {
     /// PhotoKit has no public size API. `fileSize` is the size the resource
     /// takes (or would take, if it's only in iCloud); 0 when unavailable.
     static func fileSize(of resource: PHAssetResource) -> Int64 {
-        (resource.value(forKey: "fileSize") as? NSNumber)?.int64Value ?? 0
+        // Asked for only if the resource still answers to it: reading a key
+        // that has gone away would crash every scan instead of giving 0.
+        guard hasFileSize else { return 0 }
+        return (resource.value(forKey: "fileSize") as? NSNumber)?.int64Value ?? 0
     }
+
+    private static let hasFileSize = PHAssetResource.instancesRespond(to: NSSelectorFromString("fileSize"))
 }

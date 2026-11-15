@@ -359,6 +359,30 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(receipt.onlyApprovedRemoved)
     }
 
+    func testPhotoCleanupCanLeaveOldScreenshotsAlone() {
+        let old = Date().addingTimeInterval(-90 * 86_400)
+        let shot = MediaItem(id: "shot", category: .screenshot, format: .png, filename: "shot.png", creationDate: old,
+                             pixelWidth: 1170, pixelHeight: 2532, duration: nil, originalBytes: 4_000_000, thumbnailSeed: 1)
+        let blur = MediaItem(id: "blur", category: .photo, format: .heic, filename: "blur.heic", creationDate: old,
+                             pixelWidth: 4032, pixelHeight: 3024, duration: nil, originalBytes: 2_000_000, thumbnailSeed: 2)
+        let report = JunkReport(duplicates: [], findings: [
+            JunkFinding(item: shot, reason: .oldScreenshot), JunkFinding(item: blur, reason: .blurry),
+        ])
+
+        let all = PhotoCleanupPlan(report: report, livePhotos: [])
+        XCTAssertEqual(all.remove, ["shot", "blur"])
+        XCTAssertEqual(all.oldScreenshotCount, 1)
+        XCTAssertEqual(all.blurryCount, 1)
+        XCTAssertEqual(all.blurryBytes, 2_000_000)
+
+        let without = PhotoCleanupPlan(report: report, livePhotos: [], includeOldScreenshots: false)
+        XCTAssertEqual(without.remove, ["blur"])
+        XCTAssertEqual(without.removeBytes, 2_000_000)
+        // Still counted, so the switch that brings them back stays on screen.
+        XCTAssertEqual(without.oldScreenshotCount, 1)
+        XCTAssertEqual(without.blurryCount, 1)
+    }
+
     func testOneTapPhotoCleanupRemovesJunkAndMakesStillsWithOneGuide() async throws {
         let items = [item("dog", bytes: 3_000_000), item("dog-copy", bytes: 900_000), item("blur"), item("live", bytes: 5_000_000, live: 3_000_000)]
         func signals(_ axis: Int, sharpness: Double = 400) -> PhotoSignals {

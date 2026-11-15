@@ -92,6 +92,9 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Version", value: AppInfo.versionString)
                 Link("Support", destination: PaywallConfig.supportURL)
+                Link(destination: PaywallConfig.supportEmailURL) {
+                    LabeledContent("Email", value: PaywallConfig.supportEmail)
+                }
                 Link("Privacy Policy", destination: PaywallConfig.privacyURL)
                 Link("Terms of Use", destination: PaywallConfig.termsURL)
             }
@@ -130,6 +133,7 @@ private struct ProSection: View {
     @Environment(PurchaseStore.self) private var purchases
     @Binding var showingPaywall: Bool
     @State private var showingManage = false
+    @State private var showingLifetime = false
     @State private var restoreMessage: String?
 
     var body: some View {
@@ -142,6 +146,14 @@ private struct ProSection: View {
                 }
             } else {
                 Button("Upgrade to Pro") { showingPaywall = true }
+            }
+            // Always here, so Lifetime can be bought after the one-time offer has gone.
+            if purchases.activePlan != .lifetime {
+                Button {
+                    showingLifetime = true
+                } label: {
+                    LabeledContent("Get Lifetime, Pay Once", value: purchases.displayPrice(.lifetime))
+                }
             }
             Button("Restore Purchases") {
                 Task {
@@ -162,6 +174,11 @@ private struct ProSection: View {
             Text(footer)
         }
         .manageSubscriptionsSheet(isPresented: $showingManage)
+        .fullScreenCover(isPresented: $showingLifetime) {
+            LifetimeOfferView(isOneTimeOffer: false, onClose: { showingLifetime = false }, onPurchased: { showingLifetime = false })
+                .background(PaperBackground())
+                .tint(Theme.accent)
+        }
         .alert(
             "Restore Purchases",
             isPresented: Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })
@@ -179,7 +196,10 @@ private struct ProSection: View {
         if purchases.activePlan == .lifetime && purchases.hasActiveSubscription {
             return "You have Lifetime, and a subscription that still renews. Cancel it in Manage Subscription so you aren't charged again. Pro stays on either way."
         }
-        return "Subscriptions renew automatically until cancelled. Cancel anytime in Manage Subscription; Pro stays on until the end of the period you paid for."
+if purchases.activePlan == .lifetime {
+            return "You have Lifetime: one payment, nothing renews."
+        }
+        return "Subscriptions renew automatically until cancelled. Cancel anytime in Manage Subscription; Pro stays on until the end of the period you paid for. Lifetime is one payment and never renews."
     }
 }
 

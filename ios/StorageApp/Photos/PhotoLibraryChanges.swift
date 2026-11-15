@@ -227,6 +227,9 @@ struct PhotoKitChanges: PhotoChangeService {
         if original.mediaSubtypes.contains(.videoHighFrameRate) || original.mediaSubtypes.contains(.videoCinematic) {
             throw PhotoChangeError.videoUnsupported("Slo-mo and Cinematic videos are left alone.")
         }
+        if original.mediaSubtypes.contains(.spatialMedia) {
+            throw PhotoChangeError.videoUnsupported("Spatial videos are left alone.")
+        }
         let originalBytes = Self.bytes(of: original)
         let copy = try await VideoExporter.export(try await Self.videoAsset(of: original), edit: edit)
         guard VideoShrink.isWorthReplacing(originalBytes: originalBytes, newBytes: copy.bytes) else {

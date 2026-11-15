@@ -6,7 +6,11 @@ What's ready in the repo, and the steps only the account holder can do.
 
 - Paywall on, StoreKit 2 purchases, restore, Manage Subscription, Terms and
   Privacy links on the paywall (`docs/PRICING.md`).
-- Onboarding ending on the paywall (`ios/StorageApp/Views/Onboarding/`).
+- Onboarding with no paywall: the paywall opens from a Pro tool, and once
+  after the first free cleanup. Lifetime is offered once after the paywall is
+  closed and is always in Settings > Pro.
+- Version 1.0.0 (`project.yml`, `xtool-Info.plist`). The launch switches
+  `-paywallEnabled` and `-screenshotScreen` work in debug builds only.
 - No wording claims to clean caches, boost RAM or clear system junk (checked
   2026-11-03 across the app and site; the site only lists those as things no
   app can do).
@@ -33,7 +37,7 @@ What's ready in the repo, and the steps only the account holder can do.
 
 ## Steps that need the paid Apple Developer account ($99/year)
 
-1. Enroll at developer.apple.com and note your **Team ID** (Membership page).
+1. **Done (2026-11-15): enrolled in the Apple Developer Program.** Still note your **Team ID** (Membership page); step 6 needs it.
 2. Register the bundle ID `com.simpleshrink.app` (set 2026-11-09 in `project.yml`, `xtool.yml`,
    `Plan.productID`, `Products.storekit` and the workflow's `BUNDLE_ID`).
 3. In App Store Connect: **Apps > +** to create the app with that bundle ID.

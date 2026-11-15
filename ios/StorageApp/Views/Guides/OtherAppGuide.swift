@@ -172,7 +172,7 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
                 note: "Tap Select, pick the videos and photos you don't need (or Select All), then tap Delete. Media is sorted newest first; tap the sort button to see the largest first.",
                 scene: OtherAppScenes.list("Larger than 5 MB", rows: [
                     .init("Video, 3:12", .check), .init("Video, 0:48", .check), .init("Photo", .none),
-                    .init("Video, 1:05", .check), .init("Delete Items", .none, color: Theme.tomato),
+                    .init("Video, 1:05", .check), .init("Delete Items", .none, color: Theme.tomatoInk),
                 ], target: 4, note: "gone right away", seed: 760),
                 warning: "WhatsApp deletes these straight away. There's no Recently Deleted to get them back."
             ),
@@ -215,7 +215,7 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
                 note: "Go to \(settingsPath(for: "Messages")) \u{2192} Keep Messages and pick 1 Year. iOS then deletes texts and attachments older than a year, now and from then on.",
                 scene: OtherAppScenes.list("Keep Messages", rows: [
                     .init("30 Days", .none), .init("1 Year", .check), .init("Forever", .none),
-                ], target: 1, note: "older texts are erased", noteColor: Theme.tomato, seed: 860),
+                ], target: 1, note: "older texts are erased", noteColor: Theme.tomatoInk, seed: 860),
                 warning: "iOS asks to delete older messages. That erases every text and attachment over a year old, for good. With Messages in iCloud on, they're erased on your other devices too."
             ),
             Step(
@@ -249,7 +249,7 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
                 title: "Or offload one app",
                 note: "Tap a big app you rarely use in the iPhone Storage list, then Offload App, and confirm. Its documents and data stay; it downloads again when you tap its icon.",
                 scene: OtherAppScenes.list("Game", rows: [
-                    .init("App Size", .text("3.1 GB")), .init("Documents & Data", .text("300 MB")), .init("Offload App", .none, color: Theme.accent), .init("Delete App", .none, color: Theme.tomato),
+                    .init("App Size", .text("3.1 GB")), .init("Documents & Data", .text("300 MB")), .init("Offload App", .none, color: Theme.accent), .init("Delete App", .none, color: Theme.tomatoInk),
                 ], target: 2, note: "not Delete App", seed: 940)
             ),
         ]
@@ -270,14 +270,14 @@ enum OtherAppGuide: String, CaseIterable, Identifiable {
                 note: "It's near the bottom. Pick All History and tap Clear History. Your bookmarks and Reading List stay.",
                 scene: OtherAppScenes.list("Safari", rows: [
                     .init("Search Engine"), .init("Passwords"), .init("Clear History and\nWebsite Data", .none, color: Theme.accent), .init("Advanced"),
-                ], target: 2, note: "signs you out of sites", noteColor: Theme.tomato, seed: 1020),
+                ], target: 2, note: "signs you out of sites", noteColor: Theme.tomatoInk, seed: 1020),
                 warning: "This signs you out of websites. If Safari syncs with iCloud, your history is cleared on your other devices too."
             ),
             Step(
                 title: "Or keep your history",
                 note: "Tap Advanced \u{2192} Website Data instead. It lists each site's data, biggest first: swipe left to delete one, or tap Remove All Website Data.",
                 scene: OtherAppScenes.list("Website Data", rows: [
-                    .init("news-site.com", .swipeDelete), .init("video-site.com", .text("84 MB")), .init("maps-site.com", .text("31 MB")), .init("Remove All", .none, color: Theme.tomato),
+                    .init("news-site.com", .swipeDelete), .init("video-site.com", .text("84 MB")), .init("maps-site.com", .text("31 MB")), .init("Remove All", .none, color: Theme.tomatoInk),
                 ], target: 3, note: "history stays", seed: 1040)
             ),
         ]

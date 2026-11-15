@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SimpleShrink carousel slides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Hanken+Grotesk:wght@500;700&family=Schibsted+Grotesk:wght@700;900&display=block" rel="stylesheet">
+<style>
+  /* Same design language as the site and the App Store art: paper, ink
+     outlines, mint printed slightly off-register, hand-written accents.
+     render.mjs fills this page with slides and screenshots them. */
+  :root {
+    --paper: #F4F1EA; --surface: #FFFDF8; --ink: #1A1A17; --ink-soft: #55534C;
+    --mint: #5ED49B; --mint-soft: #CDEFDC; --mint-deep: #1C7D50;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #d9d5cc; }
+  body.overview { display: flex; gap: 40px; padding: 40px; zoom: 0.25; width: max-content; }
+
+  /* Safe areas: TikTok covers the top bar, the bottom caption and the
+     right-hand buttons, so text stays clear of them. Instagram shows 4:5 whole. */
+  .tiktok    { --h: 1920px; --pt: 200px; --pb: 400px; --px: 120px; }
+  .instagram { --h: 1350px; --pt: 84px;  --pb: 96px;  --px: 84px; }
+
+  .slide {
+    --fit: 1;
+    width: 1080px; height: var(--h); flex: none; position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    padding: var(--pt) var(--px) var(--pb);
+    background: var(--bg); color: var(--fg);
+    font-family: "Hanken Grotesk", system-ui, sans-serif; font-weight: 500;
+  }
+  .cream { --bg: var(--paper);     --fg: var(--ink);   --soft: var(--ink-soft); --accent: var(--mint-deep); --pop: var(--mint);    --card: var(--surface); --blob: var(--mint-soft); }
+  .soft  { --bg: var(--mint-soft); --fg: var(--ink);   --soft: #3f4a43;         --accent: var(--mint-deep); --pop: var(--mint);    --card: var(--surface); --blob: #b4e6cb; }
+  .mint  { --bg: var(--mint);      --fg: var(--ink);   --soft: #1d3a2c;         --accent: var(--surface);   --pop: var(--surface); --card: var(--surface); --blob: #4ec78c; }
+  .dark  { --bg: var(--ink);       --fg: var(--paper); --soft: #b9b5a9;         --accent: var(--mint);      --pop: var(--mint);    --card: #262623;        --blob: #262623; }
+
+  /* Paper grain, as on the site. */
+  .slide::after {
+    content: ""; position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0.3;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .dark::after { opacity: 0; }
+
+  .blob { position: absolute; z-index: 0; border-radius: 50%; background: var(--blob); }
+  .blob.b0 { width: 760px; height: 760px; right: -300px; bottom: -200px; }
+  .blob.b1 { width: 620px; height: 620px; left: -260px; top: 34%; }
+  .blob.b2 { width: 700px; height: 700px; right: -280px; top: -220px; }
+
+  .top, .body, .foot { position: relative; z-index: 1; }
+  .top { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+  .brand { display: flex; align-items: center; gap: 18px; font: 700 34px "Schibsted Grotesk", sans-serif; letter-spacing: -0.02em; }
+  .brand img { width: 64px; height: 64px; border-radius: 16px; border: 3px solid var(--fg); }
+  .count { font: 400 46px "Gochi Hand", cursive; color: var(--accent); }
+
+  .body { flex: 1; min-height: 0; padding-top: 28px; display: flex; flex-direction: column; justify-content: center; }
+  .inner { display: flex; flex-direction: column; align-items: flex-start; gap: calc(38px * var(--fit)); }
+
+  .kicker {
+    font: 400 calc(62px * var(--fit)) / 1 "Gochi Hand", cursive; color: var(--accent);
+    transform: rotate(-2deg); transform-origin: left;
+  }
+  .title {
+    font: 900 calc(var(--ts) * var(--fit)) / 0.98 "Schibsted Grotesk", sans-serif;
+    letter-spacing: -0.04em; text-wrap: balance;
+  }
+  .hook   { --ts: 144px; }
+  .point  { --ts: 104px; }
+  .list   { --ts: 92px; }
+  .screen { --ts: 84px; }
+  .cta    { --ts: 104px; }
+
+  /* Inline marks: *hand*, ==highlight==, **bold**. */
+  .hand {
+    display: inline-block; font-family: "Gochi Hand", cursive; font-weight: 400;
+    font-size: 1.16em; line-height: 0.8; letter-spacing: 0; color: var(--accent);
+    transform: rotate(-3deg); margin: 0 0.04em;
+  }
+  .hl { background: linear-gradient(transparent 56%, var(--pop) 56% 92%, transparent 92%); padding: 0 0.05em; }
+  .mint .hl, .dark .hl { color: var(--ink); background: var(--pop); border-radius: 0.14em; padding: 0 0.12em; }
+  strong { color: var(--fg); font-weight: 700; }
+
+  .text { font-size: calc(48px * var(--fit)); line-height: 1.32; color: var(--soft); text-wrap: pretty; }
+  .source { font-size: calc(34px * var(--fit)); line-height: 1.3; color: var(--soft); opacity: 0.85; }
+
+  .num {
+    display: grid; place-items: center; width: calc(124px * var(--fit)); height: calc(124px * var(--fit));
+    border-radius: 50%; background: var(--fg); color: var(--bg);
+    font: 900 calc(66px * var(--fit)) / 1 "Schibsted Grotesk", sans-serif;
+    box-shadow: 7px 8px 0 var(--pop);
+  }
+  .sticker {
+    background: var(--card); color: var(--fg); border: 4px solid var(--fg);
+    border-radius: 36px 42px 34px 40px / 40px 34px 42px 36px;
+    box-shadow: 9px 11px 0 var(--fg); padding: calc(30px * var(--fit)) calc(40px * var(--fit));
+    font: 400 calc(54px * var(--fit)) / 1.05 "Gochi Hand", cursive; transform: rotate(-1.2deg);
+  }
+  .dark .sticker { box-shadow: 9px 11px 0 var(--mint); }
+  .art { width: calc(var(--art, 330px) * var(--fit)); align-self: flex-end; transform: rotate(4deg); }
+  .hook .art { --art: 380px; }
+
+  .value {
+    font: 900 calc(var(--vs, 280px) * var(--fit)) / 0.86 "Schibsted Grotesk", sans-serif;
+    letter-spacing: -0.06em; word-spacing: 0.12em; text-shadow: 10px 11px 0 var(--pop); white-space: nowrap;
+  }
+  .label { font: 700 calc(70px * var(--fit)) / 1.04 "Schibsted Grotesk", sans-serif; letter-spacing: -0.03em; text-wrap: balance; }
+
+  .items { display: flex; flex-direction: column; gap: calc(30px * var(--fit)); align-self: stretch; }
+  .item { display: flex; align-items: center; gap: 28px; font-size: calc(52px * var(--fit)); line-height: 1.15; font-weight: 700; }
+  .check {
+    flex: none; display: grid; place-items: center; width: calc(72px * var(--fit)); height: calc(72px * var(--fit));
+    border-radius: 48% 52% 50% 50%; background: var(--pop); border: 4px solid var(--fg); box-shadow: 4px 5px 0 var(--fg);
+  }
+  .check svg { width: 56%; fill: none; stroke: var(--ink); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Screen slides: the phone runs off the bottom edge, so no bottom padding. */
+  .slide.screen { padding-bottom: 0; }
+  .screen .body { justify-content: flex-start; padding-top: 44px; }
+  .screen .inner { flex: 1; min-height: 0; align-self: stretch; align-items: stretch; }
+  .stage { flex: 1; min-height: 0; position: relative; }
+  .phone {
+    position: absolute; top: 14px; left: 14px; width: 560px; padding: 14px;
+    background: #0d0d0b; border-radius: 86px; box-shadow: -14px 16px 0 var(--pop); transform: rotate(-1.5deg);
+  }
+  .phone img { display: block; width: 100%; border-radius: 72px; }
+  .note {
+    position: absolute; left: 610px; right: -10px; top: 150px;
+    font: 400 54px / 1 "Gochi Hand", cursive; color: var(--accent); transform: rotate(5deg);
+  }
+  .note svg { display: block; width: 120px; margin-top: 18px; fill: none; stroke: currentColor; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+
+  .cta .inner { align-items: center; text-align: center; align-self: stretch; }
+  .cta .icon { width: calc(230px * var(--fit)); border-radius: 23%; border: 4px solid var(--fg); box-shadow: 10px 12px 0 var(--pop); }
+  .button {
+    background: var(--pop); color: var(--ink); border: 4px solid var(--fg); border-radius: 999px;
+    box-shadow: 7px 8px 0 var(--fg); padding: calc(26px * var(--fit)) calc(56px * var(--fit));
+    font: 700 calc(50px * var(--fit)) / 1 "Schibsted Grotesk", sans-serif; letter-spacing: -0.02em;
+  }
+  .dark .button { box-shadow: 7px 8px 0 var(--surface); border-color: var(--surface); }
+  .url { font: 400 calc(56px * var(--fit)) / 1 "Gochi Hand", cursive; color: var(--accent); transform: rotate(-2deg); }
+
+  .foot { height: 84px; display: flex; align-items: center; justify-content: flex-end; gap: 18px;
+    font: 400 54px / 1 "Gochi Hand", cursive; color: var(--accent); }
+  .foot svg { width: 110px; fill: none; stroke: currentColor; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<script>
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = s => esc(s)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/==(.+?)==/g, '<span class="hl">$1</span>')
+    .replace(/\*(.+?)\*/g, '<span class="hand">$1</span>')
+    .replace(/\n/g, '<br>');
+  const opt = (cls, s) => (s ? `<div class="${cls}">${fmt(s)}</div>` : '');
+  const ARROW = '<svg viewBox="0 0 110 50"><path d="M6 28c22-10 54-12 92-4"/><path d="M78 8l22 16-24 16"/></svg>';
+  const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 13l5 5 9-12"/></svg>';
+
+  const bodies = {
+    hook: s => opt('kicker', s.kicker) + opt('title', s.title) + opt('text', s.body)
+      + (s.artUrl ? `<img class="art" src="${s.artUrl}" alt="">` : ''),
+    point: s => (s.number != null ? `<div class="num">${esc(s.number)}</div>` : '') + opt('kicker', s.kicker)
+      + opt('title', s.title) + opt('text', s.body) + opt('sticker', s.tip) + opt('source', s.source)
+      + (s.artUrl ? `<img class="art" src="${s.artUrl}" alt="">` : ''),
+    stat: s => opt('kicker', s.kicker)
+      + `<div class="value" style="--vs:${String(s.value).length > 6 ? 200 : String(s.value).length > 4 ? 250 : 300}px">${esc(s.value)}</div>`
+      + opt('label', s.label) + opt('text', s.body) + opt('source', s.source),
+    list: s => opt('kicker', s.kicker) + opt('title', s.title)
+      + `<div class="items">${s.items.map(i => `<div class="item"><span class="check">${CHECK}</span><span>${fmt(i)}</span></div>`).join('')}</div>`,
+    screen: s => opt('kicker', s.kicker) + opt('title', s.title)
+      + `<div class="stage"><div class="phone"><img src="${s.imageUrl}" alt=""></div>`
+      + (s.note ? `<div class="note">${fmt(s.note)}<svg viewBox="0 0 120 70"><path d="M108 8C92 46 58 60 14 54"/><path d="M36 36L12 54l26 12"/></svg></div>` : '')
+      + '</div>',
+    cta: s => `<img class="icon" src="${s.iconUrl}" alt="">` + opt('title', s.title) + opt('text', s.body)
+      + opt('button', s.button) + opt('url', s.url),
+  };
+
+  function slideHtml(c, i, format) {
+    const s = c.slides[i], last = i === c.slides.length - 1;
+    return `<section class="slide ${format} ${s.type} ${s.theme}">
+      <div class="blob b${i % 3}"></div>
+      <div class="top">
+        <div class="brand"><img src="${c.brand.iconUrl}" alt="">${esc(c.brand.name)}</div>
+        ${last ? '' : `<div class="count">${i + 1}/${c.slides.length}</div>`}
+      </div>
+      <div class="body"><div class="inner">${bodies[s.type](s)}</div></div>
+      ${i === 0 ? `<div class="foot">swipe ${ARROW}</div>` : ''}
+    </section>`;
+  }
+
+  // Shrinks a slide's type until its content fits the safe area. Returns the
+  // scale used, so render.mjs can warn when the copy is too long.
+  function fit(slide) {
+    if (slide.classList.contains('screen')) return 1;
+    const body = slide.querySelector('.body'), inner = slide.querySelector('.inner');
+    // The tall TikTok frame has room for larger type, so it starts bigger.
+    let f = slide.classList.contains('tiktok') ? 1.2 : 1;
+    slide.style.setProperty('--fit', f);
+    const room = body.clientHeight - parseFloat(getComputedStyle(body).paddingTop);
+    const value = slide.querySelector('.value'); // the big number must not run off the side
+    while ((inner.offsetHeight > room || (value && value.offsetWidth > inner.clientWidth)) && f > 0.5) {
+      f = Math.round((f - 0.04) * 100) / 100;
+      slide.style.setProperty('--fit', f);
+    }
+    return f;
+  }
+
+  // Called by render.mjs. `indexes` picks which slides to draw (one for a
+  // slide image, all of them for the contact sheet).
+  window.draw = async (carousel, format, indexes, overview) => {
+    document.body.className = overview ? 'overview' : '';
+    document.body.innerHTML = indexes.map(i => slideHtml(carousel, i, format)).join('');
+    await document.fonts.ready;
+    for (const f of ['900 20px "Schibsted Grotesk"', '500 20px "Hanken Grotesk"', '20px "Gochi Hand"'])
+      if (!document.fonts.check(f)) throw new Error(`Font did not load (${f}). The fonts come from Google Fonts, so this needs an internet connection.`);
+    await Promise.all([...document.images].map(img => img.decode()));
+    const fits = [...document.querySelectorAll('.slide')].map(fit);
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    return fits;
+  };
+</script>
+</body>
+</html>

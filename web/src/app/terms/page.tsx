@@ -81,9 +81,10 @@ export default function TermsPage() {
 
             <h2>4. {name} Pro</h2>
             <p>
-              Scanning, deleting, duplicates and junk, the Files cleanup and the guides are free. {name} Pro unlocks
-              shrinking videos, trimming them, turning Live Photos into stills, and keeping the best shot of each
-              burst. Pro is sold as:
+              Scanning, deleting what you pick, Swipe to clean, keeping the best shot of each burst, the Files
+              cleanup and the guides are free. {name} Pro unlocks shrinking and trimming videos, turning Live Photos
+              into stills, re-saving screenshots as smaller files, clearing duplicates and junk in bulk, and one-tap
+              Photo Cleanup. Pro is sold as:
             </p>
             <ul>
               <li>
@@ -93,7 +94,8 @@ export default function TermsPage() {
                 charged for the renewal within 24 hours before the period ends.
               </li>
               <li>
-                <strong>Pro Lifetime</strong>, a one-time purchase that doesn&apos;t renew.
+                <strong>Pro Lifetime</strong>, a one-time purchase that doesn&apos;t renew. It&apos;s offered in the
+                app, and is always available in the app&apos;s Settings.
               </li>
             </ul>
             <p>

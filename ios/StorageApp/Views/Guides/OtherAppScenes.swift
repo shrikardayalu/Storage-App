@@ -65,7 +65,7 @@ enum OtherAppScenes {
         }
         marks += [
             .label(app, at: CGPoint(x: target.midX, y: target.maxY + 9), 0.62, size: 9),
-            .stroke(Sketch.loop(around: target.insetBy(dx: -12, dy: -12), seed: seed + 30), 0.68, 0.14, color: Theme.tomato, width: 3),
+            .stroke(Sketch.loop(around: target.insetBy(dx: -12, dy: -12), seed: seed + 30), 0.68, 0.14, color: Theme.tomatoInk, width: 3),
             .stroke(Sketch.arrow(from: CGPoint(x: 262, y: 70), to: CGPoint(x: 182, y: 140), bend: -26, seed: seed + 31), 0.8, 0.1, width: 2.4),
             .label(note, at: CGPoint(x: 150, y: 302), 0.88, size: 16, angle: -2, color: Theme.accent),
         ]
@@ -88,7 +88,7 @@ enum OtherAppScenes {
             let start = 0.32 + CGFloat(index) * 0.06
             let rowSeed = seed + 10 + UInt64(index) * 7
             let isTarget = index == target
-            let textColor = isTarget && row.color == Theme.ink ? Theme.tomato : row.color
+            let textColor = isTarget && row.color == Theme.ink ? Theme.tomatoInk : row.color
             let size: CGFloat = row.text.contains("\n") ? 8 : 9.5
             var textX: CGFloat = 100
 
@@ -119,7 +119,7 @@ enum OtherAppScenes {
             marks.append(leftLabel(row.text, x: textX, y: mid, size: size, start: start, color: textColor))
             marks.append(.stroke(Sketch.line(CGPoint(x: 98, y: top + rowHeight), CGPoint(x: 202, y: top + rowHeight), wobble: 0.4, seed: rowSeed + 4), start + 0.02, 0.03, color: Theme.ink.opacity(0.25), width: 1))
             if isTarget {
-                marks.append(.stroke(Sketch.loop(around: CGRect(x: 94, y: top + 2, width: 112, height: rowHeight - 4), seed: rowSeed + 5), 0.72, 0.13, color: Theme.tomato, width: 3))
+                marks.append(.stroke(Sketch.loop(around: CGRect(x: 94, y: top + 2, width: 112, height: rowHeight - 4), seed: rowSeed + 5), 0.72, 0.13, color: Theme.tomatoInk, width: 3))
                 marks.append(.stroke(Sketch.arrow(from: CGPoint(x: 266, y: max(40, mid - 60)), to: CGPoint(x: 214, y: mid - 4), bend: -18, seed: rowSeed + 6), 0.84, 0.08, width: 2.4))
             }
         }

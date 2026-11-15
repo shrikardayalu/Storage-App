@@ -154,7 +154,7 @@ struct MediaPreviewSheet: View {
                 LazyHStack(spacing: 8) {
                     ForEach(preview.items) { item in
                         Button {
-                            withAnimation(.snappy) { current = item.id }
+                            withAnimation(.snappy.motionSafe) { current = item.id }
                         } label: {
                             ItemThumbnail(id: item.id, side: 50)
                                 .opacity(item.id == current ? 1 : 0.55)
@@ -178,7 +178,7 @@ struct MediaPreviewSheet: View {
             .scrollIndicators(.hidden)
             .frame(height: 66)
             .onChange(of: current) { _, id in
-                withAnimation(.snappy) { proxy.scrollTo(id, anchor: .center) }
+                withAnimation(.snappy.motionSafe) { proxy.scrollTo(id, anchor: .center) }
             }
             .onAppear { proxy.scrollTo(current, anchor: .center) }
         }

@@ -1,0 +1,10 @@
+{
+  "note": "Test against control: headlines use the words people search for (storage cleaner, compress videos, free up space), and the first shot shows a result instead of onboarding.",
+  "shots": [
+    { "layout": "phone", "theme": "cream", "headline": "Storage cleaner\n*that keeps*\nyour memories", "screen": "results-light", "doodle": "sparks", "phoneTop": 1010 },
+    { "layout": "phone", "theme": "mint", "headline": "See what's\n*filling*\nyour storage", "screen": "reveal-light", "art": ["stack-large", "trash"], "blob": false },
+    { "layout": "phone", "theme": "cream", "headline": "Compress videos,\n*keep*\nevery one", "screen": "paywall-light", "art": ["video", "compress"], "doodle": "arrow", "phoneWidth": 1180 },
+    { "layout": "hang", "theme": "soft", "headline": "Free up space\n*in other*\napps too", "screen": "home-light", "note": "step-by-step guides, no guesswork", "art": ["empty-box", "umbrella", "reset"] },
+    { "layout": "promises", "theme": "dark", "headline": "A *private*\nphoto cleaner", "items": ["No account", "No uploads, ever", "No data collected"] }
+  ]
+}

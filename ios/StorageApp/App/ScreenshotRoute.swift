@@ -4,7 +4,8 @@ import StorageCore
 /// Lets CI open a specific screen at launch so it can take screenshots without
 /// UI automation, e.g. `xcrun simctl launch <device> <bundle id> -screenshotScreen library`.
 /// Launch arguments land in UserDefaults' argument domain; nothing is written to disk.
-/// With no argument the app starts normally.
+/// With no argument the app starts normally. Debug builds only: a release
+/// build ignores the argument.
 enum ScreenshotRoute: String {
     case home
     case library
@@ -32,7 +33,11 @@ enum ScreenshotRoute: String {
     }
 
     static var current: ScreenshotRoute? {
+        #if DEBUG
         UserDefaults.standard.string(forKey: "screenshotScreen").flatMap(ScreenshotRoute.init(rawValue:))
+        #else
+        nil
+        #endif
     }
 
     @MainActor

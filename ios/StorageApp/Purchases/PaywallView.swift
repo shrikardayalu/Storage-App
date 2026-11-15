@@ -34,13 +34,13 @@ struct PaywallFlow: View {
             switch stage {
             case .paywall:
                 PaywallView(context: context, onClose: closePaywall, onPurchased: finish)
-                    .transition(.paperSwap)
+                    .transition(.paperSwap.motionSafe)
             case .lifetimeOffer:
                 LifetimeOfferView(onClose: finish, onPurchased: finish)
-                    .transition(.paperSwap)
+                    .transition(.paperSwap.motionSafe)
             }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.82), value: stage)
+        .animation(.spring(response: 0.5, dampingFraction: 0.82).motionSafe, value: stage)
         .interactiveDismissDisabled(purchases.isPurchasing)
     }
 
@@ -71,8 +71,8 @@ struct PaywallView: View {
     @State private var showsClose = false
     @State private var boughtTick = 0
 
-    var body: some View {
-        // One fixed composition: pitch, benefits, plans and buy all fit without scrolling.
+    /// One composition: pitch, benefits, plans and buy.
+    private var layout: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
             features
@@ -82,6 +82,17 @@ struct PaywallView: View {
         .padding(.horizontal, 20)
         .padding(.top, 40)
         .padding(.bottom, 6)
+    }
+
+    var body: some View {
+        // Fits without scrolling on most iPhones. Where it can't (a small
+        // phone, large text, an iPad running the iPhone app), it scrolls, so
+        // the price, the terms and Restore are never cut off.
+        ViewThatFits(in: .vertical) {
+            layout
+            ScrollView { layout }
+                .scrollIndicators(.hidden)
+        }
         .overlay(alignment: .topTrailing) {
             CloseButton(action: onClose)
                 .disabled(purchases.isPurchasing)
@@ -93,7 +104,7 @@ struct PaywallView: View {
         .task {
             // Short enough that App Review doesn't read it as a hidden close.
             try? await Task.sleep(for: .seconds(0.5))
-            withAnimation(.easeOut(duration: 0.4)) { showsClose = true }
+            withAnimation(.easeOut(duration: 0.4).motionSafe) { showsClose = true }
         }
         .sensoryFeedback(.selection, trigger: selected)
         .sensoryFeedback(.success, trigger: boughtTick)
@@ -160,7 +171,7 @@ struct PaywallView: View {
             HStack(spacing: 8) {
                 Image(systemName: "lock.shield")
                     .foregroundStyle(Theme.accent)
-                Text("Deleting, duplicates and junk stay free.")
+                Text("Swipe to clean, burst picks and deleting by hand stay free.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -339,14 +350,14 @@ private struct PlanOption: View {
         .sticker(fill: isSelected ? Theme.mintSoft : Theme.surface, padding: 12)
         .overlay(alignment: .topTrailing) {
             if plan == .annual {
-                RubberStamp(top: "save", main: "\(savingsPercent)%", color: Theme.tomato, angle: 8)
+                RubberStamp(top: "save", main: "\(savingsPercent)%", color: Theme.tomatoInk, angle: 8)
                     .scaleEffect(0.62)
                     .offset(x: 6, y: -14)
                     .boilingShape(0.35, seed: 9)
             }
         }
         .scaleEffect(isSelected ? 1 : 0.98)
-        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6).motionSafe, value: isSelected)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -359,8 +370,11 @@ private struct PlanOption: View {
     }
 }
 
-/// Shown once, after someone closes the paywall without buying.
+/// Shown once as an offer, after someone closes the paywall without buying,
+/// and any time from Settings > Pro, where it's a plain way to buy Lifetime.
 struct LifetimeOfferView: View {
+    /// False when opened from Settings: no "one-time offer" wording there.
+    var isOneTimeOffer = true
     @Environment(PurchaseStore.self) private var purchases
     @State private var progress: CGFloat = 0
     @State private var message: PaywallMessage?
@@ -369,7 +383,7 @@ struct LifetimeOfferView: View {
     let onClose: () -> Void
     let onPurchased: () -> Void
 
-    var body: some View {
+    private var layout: some View {
         VStack(spacing: 22) {
             Spacer(minLength: 24)
 
@@ -379,7 +393,7 @@ struct LifetimeOfferView: View {
                 .stamped(progress, at: 0.05)
 
             VStack(spacing: 10) {
-                Text("one-time offer")
+                Text(isOneTimeOffer ? "one-time offer" : "pay once")
                     .font(.hand(20))
                     .foregroundStyle(Theme.accent)
                     .handwritten(progress, start: 0.12, length: 0.15)
@@ -387,7 +401,9 @@ struct LifetimeOfferView: View {
                     .font(.display(32))
                     .multilineTextAlignment(.center)
                     .boiling()
-                Text("Every Pro feature, every future update, no renewals. You won't see this offer again.")
+                Text(isOneTimeOffer
+                     ? "Every Pro feature, every future update, no renewals. You can also find Lifetime in Settings."
+                     : "Every Pro feature, every future update, no renewals.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -423,7 +439,7 @@ struct LifetimeOfferView: View {
                 }
                 .buttonStyle(.sticker)
 
-                Button("No thanks", action: onClose)
+                Button(isOneTimeOffer ? "No thanks" : "Not now", action: onClose)
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
 
@@ -442,6 +458,15 @@ struct LifetimeOfferView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 8)
+    }
+
+    var body: some View {
+        // Scrolls where the page can't fit, so the price and terms are never cut off.
+        ViewThatFits(in: .vertical) {
+            layout
+            ScrollView { layout }
+                .scrollIndicators(.hidden)
+        }
         .drawing($progress, duration: 1.4)
         .sensoryFeedback(.success, trigger: boughtTick)
         .alert(item: $message) { message in

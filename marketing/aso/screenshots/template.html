@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SimpleShrink App Store screenshots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Schibsted+Grotesk:wght@700;900&display=block" rel="stylesheet">
+<style>
+  /* The App Store screenshot designs from ../../app-store/index.html, turned
+     into three layouts that render.mjs fills from a set file. Everything is
+     drawn on a 1320px-wide canvas and zoomed to the size being exported. */
+  :root {
+    --cream: #F4F1EA; --paper: #FFFDF8; --ink: #1A1A17; --mint: #5ED49B;
+    --mint-soft: #CDEFDC; --accent: #1C7D50; --H: 2868px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #d9d5cc; }
+  body.overview { display: flex; gap: 60px; padding: 60px; width: max-content; }
+
+  .shot {
+    width: 1320px; height: var(--H); position: relative; overflow: hidden; flex: none;
+    background: var(--bg); color: var(--fg);
+    font-family: "Schibsted Grotesk", system-ui, sans-serif;
+  }
+  .cream { --bg: var(--cream);     --fg: var(--ink);   --hand: var(--accent); --line: var(--accent); --shadow: var(--mint); --blob: var(--mint-soft); }
+  .mint  { --bg: var(--mint);      --fg: var(--ink);   --hand: var(--paper);  --line: var(--paper);  --shadow: var(--ink);  --blob: #4ec78c; }
+  .soft  { --bg: var(--mint-soft); --fg: var(--ink);   --hand: var(--accent); --line: var(--accent); --shadow: var(--mint); --blob: #b4e6cb; }
+  .dark  { --bg: var(--ink);       --fg: var(--cream); --hand: var(--mint);   --line: var(--mint);   --shadow: var(--mint); --blob: #24493A; }
+
+  h1 {
+    position: absolute; left: 40px; right: 40px; top: 150px; margin: 0; z-index: 3;
+    text-align: center; font-weight: 900; font-size: 172px; line-height: 0.93;
+    letter-spacing: -0.045em; white-space: nowrap;
+  }
+  h1 .hand {
+    display: inline-block; font-family: "Gochi Hand", cursive; font-weight: 400;
+    letter-spacing: -0.01em; font-size: 1.22em; line-height: 0.7;
+    color: var(--hand); transform: rotate(-4deg); margin: 0.04em 0.06em 0.1em;
+  }
+  .note {
+    position: absolute; left: 60px; right: 60px; z-index: 4; font-family: "Gochi Hand", cursive;
+    font-size: 74px; line-height: 0.95; color: var(--hand); text-align: center;
+  }
+  .mint .note { color: var(--ink); }
+
+  .phone {
+    position: absolute; left: 50%; z-index: 2; padding: 24px;
+    background: var(--ink); border-radius: 168px; box-shadow: -22px 26px 0 var(--shadow);
+  }
+  .mint .phone, .dark .phone { background: #0d0d0b; }
+  .phone img { display: block; width: 100%; border-radius: 146px; }
+
+  .blob { position: absolute; border-radius: 50%; z-index: 0; background: var(--blob); }
+  .art { position: absolute; z-index: 3; }
+  svg.doodle { position: absolute; z-index: 4; overflow: visible; fill: none;
+    stroke: var(--fg); stroke-width: 11; stroke-linecap: round; stroke-linejoin: round; }
+  svg.doodle.line { stroke: var(--line); }
+
+  .promises { position: absolute; left: 150px; right: 110px; z-index: 3;
+    font-family: "Gochi Hand", cursive; font-size: 118px; line-height: 1; }
+  .promises div { display: flex; align-items: center; gap: 44px; margin-bottom: 62px; }
+  .promises svg { flex: none; width: 120px; height: 120px; position: static; }
+  .brand { position: absolute; left: 0; right: 0; bottom: 150px; z-index: 3; display: flex;
+    justify-content: center; align-items: center; gap: 36px; font-weight: 900;
+    font-size: 96px; letter-spacing: -0.04em; }
+  .brand img { width: 150px; height: 150px; border-radius: 34px; }
+</style>
+</head>
+<body>
+<script>
+const SPARK = '<path d="M60 8 Q63 60 58 112"/><path d="M8 62 Q60 56 112 60"/>';
+const CHECK = '<svg class="doodle line" viewBox="0 0 120 120"><path d="M14 66 Q36 86 48 104 Q70 50 110 16"/></svg>';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// "*word*" is written in the hand-drawn font; a new line starts a new line.
+const headline = s => esc(s).replace(/'/g, '&rsquo;').replace(/\*([^*]+)\*/g, '<span class="hand">$1</span>').replace(/\n/g, '<br>');
+const el = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; };
+const art = (name, dark, style) => `<img class="art" src="${ASSETS}/art/ill-${name}${dark ? '-dark' : ''}.svg" style="${style}" alt="">`;
+const spark = (cls, size, style) => `<svg class="doodle ${cls}" style="${style}" width="${size}" height="${size}" viewBox="0 0 120 120">${SPARK}</svg>`;
+let ASSETS = '';
+
+/** Shrinks the headline until its widest line fits, and returns [scale, bottom edge]. */
+function fit(shot, h1, maxBottom) {
+  let size = parseFloat(getComputedStyle(h1).fontSize); const start = size;
+  const top = h1.offsetTop;
+  while (size > 70 && (h1.scrollWidth > h1.clientWidth || (maxBottom && top + h1.offsetHeight > maxBottom))) {
+    size -= 4; h1.style.fontSize = size + 'px';
+  }
+  return [size / start, top + h1.offsetHeight];
+}
+
+const LAYOUTS = {
+  // Headline on top, phone rising from below, an illustration either side.
+  phone(shot, s, H) {
+    const h1 = shot.appendChild(el(`<h1>${headline(s.headline)}</h1>`));
+    const [scale, bottom] = fit(shot, h1, 900);
+    const width = s.phoneWidth ?? 1060;
+    const hasArt = (s.art ?? []).length > 0 || s.note;
+    const top = Math.max(s.phoneTop ?? 0, bottom + (hasArt ? 300 : 150));
+    if (s.blob !== false) shot.appendChild(el(`<div class="blob" style="width:1500px;height:1500px;left:-90px;top:${top + 120}px"></div>`));
+    const [left, right] = s.art ?? [];
+    if (left) shot.insertAdjacentHTML('beforeend', art(left, s.theme === 'dark', `width:270px;left:10px;top:${top - 290}px;transform:rotate(-8deg)`));
+    if (right) shot.insertAdjacentHTML('beforeend', art(right, s.theme === 'dark', `width:270px;right:20px;top:${top - 290}px;transform:rotate(8deg)`));
+    if (s.note) shot.appendChild(el(`<div class="note" style="top:${top - 170}px;left:300px;right:300px">${esc(s.note)}</div>`));
+    if (s.doodle === 'sparks') {
+      shot.insertAdjacentHTML('beforeend', spark('', 120, 'left:60px;top:40px') + spark('', 90, `left:70px;top:${bottom}px`));
+      if (!right) shot.insertAdjacentHTML('beforeend', `<svg class="doodle line" style="right:120px;top:${top - 280}px" width="230" height="300" viewBox="0 0 230 300"><path d="M176 10 Q230 130 96 262"/><path d="M92 176 Q88 226 94 266 Q138 262 178 248"/></svg>`);
+    }
+    if (s.doodle === 'arrow' && left && right) shot.insertAdjacentHTML('beforeend', `<svg class="doodle line" style="left:356px;top:${top - 200}px" width="600" height="110" viewBox="0 0 600 110"><path d="M10 60 Q150 20 290 58 T580 50"/><path d="M528 14 Q560 34 584 50 Q556 74 530 100"/></svg>`);
+    shot.appendChild(el(`<div class="phone" style="width:${width}px;margin-left:${-width / 2}px;top:${top}px"><img src="${ASSETS}/screens/${s.screen}.png" alt=""></div>`));
+    return scale;
+  },
+  // Phone hanging from the top, headline underneath, three illustrations at the bottom.
+  hang(shot, s, H) {
+    const width = s.phoneWidth ?? 1240;
+    shot.appendChild(el(`<div class="phone" style="width:${width}px;margin-left:${-width / 2}px;top:-1420px"><img src="${ASSETS}/screens/${s.screen}.png" alt=""></div>`));
+    const h1 = shot.appendChild(el(`<h1 style="top:1440px">${headline(s.headline)}</h1>`));
+    const [scale, bottom] = fit(shot, h1, 2030);
+    shot.insertAdjacentHTML('beforeend', `<svg class="doodle line" style="left:90px;top:1262px" width="150" height="172" viewBox="0 0 200 230"><path d="M150 220 Q20 170 60 22"/><path d="M14 78 Q40 46 60 18 Q92 44 122 62"/></svg>`);
+    if (s.note) shot.appendChild(el(`<div class="note" style="top:${bottom + 40}px">${esc(s.note)}</div>`));
+    const [a, b, c] = s.art ?? [], dark = s.theme === 'dark';
+    if (a) shot.insertAdjacentHTML('beforeend', art(a, dark, `width:420px;left:60px;bottom:${H - 2680}px;transform:rotate(-7deg)`));
+    if (b) shot.insertAdjacentHTML('beforeend', art(b, dark, `width:400px;left:460px;bottom:${H - 2730}px`));
+    if (c) shot.insertAdjacentHTML('beforeend', art(c, dark, `width:380px;right:50px;bottom:${H - 2620}px;transform:rotate(9deg)`));
+    return scale;
+  },
+  // No phone: headline, one big illustration, a checklist, the app's name.
+  promises(shot, s, H) {
+    const h1 = shot.appendChild(el(`<h1>${headline(s.headline)}</h1>`));
+    const [scale, bottom] = fit(shot, h1, 760);
+    const top = bottom + 90;
+    shot.appendChild(el(`<div class="blob" style="width:820px;height:820px;left:250px;top:${top}px"></div>`));
+    shot.insertAdjacentHTML('beforeend', art(s.art?.[0] ?? 'lock', s.theme === 'dark', `width:760px;left:280px;top:${top + 30}px`));
+    shot.insertAdjacentHTML('beforeend', spark('line', 140, `left:150px;top:${top + 70}px`) + spark('line', 110, `right:150px;top:${top + 610}px`));
+    shot.appendChild(el(`<div class="promises" style="top:${top + 960}px">${(s.items ?? []).map(i => `<div>${CHECK}${esc(i)}</div>`).join('')}</div>`));
+    shot.appendChild(el(`<div class="brand"><img src="${ASSETS}/art/icon.png" alt="">${esc(s.brand ?? 'SimpleShrink')}</div>`));
+    return scale;
+  },
+};
+
+/**
+ * Draws the given shots at a target size and returns how much each headline
+ * was shrunk to fit (1 = not at all). `overview` lays them side by side.
+ */
+async function draw(shots, assets, w, h, overview) {
+  ASSETS = assets;
+  // Headlines are measured to fit, so both fonts have to be in before drawing.
+  await Promise.all([document.fonts.load('900 172px "Schibsted Grotesk"'), document.fonts.load('400 172px "Gochi Hand"')]);
+  if (!document.fonts.check('900 172px "Schibsted Grotesk"')) throw new Error('The fonts did not load. Check the internet connection.');
+  const zoom = overview ? 0.22 : w / 1320, H = Math.round(h / (w / 1320));
+  document.body.className = overview ? 'overview' : '';
+  document.body.style.zoom = zoom;
+  document.documentElement.style.setProperty('--H', H + 'px');
+  document.body.replaceChildren();
+  const scales = shots.map(s => {
+    const shot = document.body.appendChild(el(`<section class="shot ${s.theme}"></section>`));
+    return LAYOUTS[s.layout](shot, s, H);
+  });
+  await Promise.all([...document.images].map(i => i.decode().catch(() => {})));
+  return scales;
+}
+</script>
+</body>
+</html>

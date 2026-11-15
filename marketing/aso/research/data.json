@@ -1,0 +1,1670 @@
+{
+  "date": "2026-11-15",
+  "storefronts": [
+    "us",
+    "gb",
+    "ca",
+    "au"
+  ],
+  "primary": "us",
+  "phrases": [
+    {
+      "phrase": "delete photos",
+      "seed": "delete photos",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 4,
+        "ca": 2,
+        "au": 2
+      },
+      "inTitle": 0,
+      "medianRatings": 16730,
+      "demand": 100,
+      "difficulty": 34,
+      "score": 76
+    },
+    {
+      "phrase": "memory cleaner",
+      "seed": "memory cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 1,
+      "medianRatings": 13671,
+      "demand": 100,
+      "difficulty": 39,
+      "score": 72
+    },
+    {
+      "phrase": "screenshot cleaner",
+      "seed": "screenshot cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 6,
+        "gb": 5,
+        "ca": 2,
+        "au": 3
+      },
+      "inTitle": 7,
+      "medianRatings": 0,
+      "demand": 100,
+      "difficulty": 42,
+      "score": 70
+    },
+    {
+      "phrase": "swipe photos",
+      "seed": "swipe photos",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 2,
+      "medianRatings": 10549,
+      "demand": 100,
+      "difficulty": 44,
+      "score": 69
+    },
+    {
+      "phrase": "live photo",
+      "seed": "live photo",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 3,
+        "ca": 4,
+        "au": 3
+      },
+      "inTitle": 4,
+      "medianRatings": 256,
+      "demand": 100,
+      "difficulty": 43,
+      "score": 69
+    },
+    {
+      "phrase": "reduce video size",
+      "seed": "reduce video size",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 3,
+      "medianRatings": 2340,
+      "demand": 100,
+      "difficulty": 45,
+      "score": 68
+    },
+    {
+      "phrase": "photo swipe",
+      "seed": "photo swipe",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 3,
+        "ca": 2,
+        "au": 2
+      },
+      "inTitle": 2,
+      "medianRatings": 11773,
+      "demand": 100,
+      "difficulty": 45,
+      "score": 68
+    },
+    {
+      "phrase": "gallery cleaner",
+      "seed": "gallery cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 3,
+      "medianRatings": 5215,
+      "demand": 100,
+      "difficulty": 48,
+      "score": 66
+    },
+    {
+      "phrase": "camera roll cleaner",
+      "seed": "camera roll cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 1,
+        "ca": 1,
+        "au": 2
+      },
+      "inTitle": 3,
+      "medianRatings": 11773,
+      "demand": 100,
+      "difficulty": 51,
+      "score": 64
+    },
+    {
+      "phrase": "compress photos",
+      "seed": "compress photos",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 3,
+        "ca": 2,
+        "au": 2
+      },
+      "inTitle": 5,
+      "medianRatings": 1116,
+      "demand": 100,
+      "difficulty": 54,
+      "score": 61
+    },
+    {
+      "phrase": "photo compressor",
+      "seed": "photo compressor",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 2,
+        "ca": 1,
+        "au": 2
+      },
+      "inTitle": 6,
+      "medianRatings": 268,
+      "demand": 100,
+      "difficulty": 55,
+      "score": 61
+    },
+    {
+      "phrase": "duplicate photo remover",
+      "seed": "duplicate photo remover",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 1
+      },
+      "inTitle": 2,
+      "medianRatings": 3407,
+      "demand": 84,
+      "difficulty": 40,
+      "score": 60
+    },
+    {
+      "phrase": "free up space",
+      "seed": "free up space",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 3,
+      "medianRatings": 73663,
+      "demand": 100,
+      "difficulty": 57,
+      "score": 59
+    },
+    {
+      "phrase": "cleanup",
+      "seed": "cleanup",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 3,
+        "ca": 4,
+        "au": 4
+      },
+      "inTitle": 3,
+      "medianRatings": 85106,
+      "demand": 100,
+      "difficulty": 57,
+      "score": 59
+    },
+    {
+      "phrase": "shrink video",
+      "seed": "shrink video",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 5,
+      "medianRatings": 3709,
+      "demand": 100,
+      "difficulty": 59,
+      "score": 58
+    },
+    {
+      "phrase": "video compressor free",
+      "seed": "video compressor",
+      "isSeed": false,
+      "suggested": {
+        "us": 2,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 0,
+      "medianRatings": 3709,
+      "demand": 73,
+      "difficulty": 29,
+      "score": 58
+    },
+    {
+      "phrase": "junk cleaner",
+      "seed": "junk cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 2
+      },
+      "inTitle": 2,
+      "medianRatings": 13671,
+      "demand": 84,
+      "difficulty": 45,
+      "score": 57
+    },
+    {
+      "phrase": "free up storage",
+      "seed": "free up storage",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 1,
+        "ca": 1
+      },
+      "inTitle": 3,
+      "medianRatings": 102177,
+      "demand": 96,
+      "difficulty": 58,
+      "score": 56
+    },
+    {
+      "phrase": "burst photos",
+      "seed": "burst photos",
+      "isSeed": true,
+      "suggested": {
+        "us": 1
+      },
+      "inTitle": 3,
+      "medianRatings": 36,
+      "demand": 72,
+      "difficulty": 31,
+      "score": 56
+    },
+    {
+      "phrase": "camera roll cleaner free",
+      "seed": "camera roll cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 1,
+        "gb": 2,
+        "ca": 2,
+        "au": 1
+      },
+      "inTitle": 0,
+      "medianRatings": 16730,
+      "demand": 73,
+      "difficulty": 34,
+      "score": 55
+    },
+    {
+      "phrase": "video compressor",
+      "seed": "video compressor",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 3,
+        "ca": 2,
+        "au": 2
+      },
+      "inTitle": 6,
+      "medianRatings": 3709,
+      "demand": 100,
+      "difficulty": 65,
+      "score": 54
+    },
+    {
+      "phrase": "swipe delete photos",
+      "seed": "delete photos",
+      "isSeed": false,
+      "suggested": {
+        "us": 1,
+        "gb": 7,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 1,
+      "medianRatings": 10549,
+      "demand": 73,
+      "difficulty": 38,
+      "score": 53
+    },
+    {
+      "phrase": "clean storage free",
+      "seed": "clean storage",
+      "isSeed": false,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 0,
+      "medianRatings": 67118,
+      "demand": 73,
+      "difficulty": 39,
+      "score": 53
+    },
+    {
+      "phrase": "photo swiper",
+      "seed": "photo swipe",
+      "isSeed": false,
+      "suggested": {
+        "us": 7,
+        "gb": 4,
+        "ca": 3,
+        "au": 3
+      },
+      "inTitle": 0,
+      "medianRatings": 5215,
+      "demand": 68,
+      "difficulty": 30,
+      "score": 53
+    },
+    {
+      "phrase": "storage smart entry",
+      "seed": "storage",
+      "isSeed": false,
+      "suggested": {
+        "us": 3,
+        "gb": 3,
+        "ca": 4,
+        "au": 2
+      },
+      "inTitle": 2,
+      "medianRatings": 1836,
+      "demand": 71,
+      "difficulty": 38,
+      "score": 52
+    },
+    {
+      "phrase": "photo gallery cleaner",
+      "seed": "gallery cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 6,
+        "gb": 3,
+        "ca": 2,
+        "au": 3
+      },
+      "inTitle": 1,
+      "medianRatings": 6952,
+      "demand": 71,
+      "difficulty": 37,
+      "score": 52
+    },
+    {
+      "phrase": "delete duplicate photos",
+      "seed": "duplicate photos",
+      "isSeed": false,
+      "suggested": {
+        "us": 9,
+        "gb": 1,
+        "ca": 2,
+        "au": 5
+      },
+      "inTitle": 1,
+      "medianRatings": 22854,
+      "demand": 73,
+      "difficulty": 41,
+      "score": 52
+    },
+    {
+      "phrase": "photo cleaner",
+      "seed": "photo cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 2,
+        "au": 3
+      },
+      "inTitle": 6,
+      "medianRatings": 16730,
+      "demand": 100,
+      "difficulty": 70,
+      "score": 50
+    },
+    {
+      "phrase": "clean storage",
+      "seed": "clean storage",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 2,
+        "ca": 2,
+        "au": 2
+      },
+      "inTitle": 5,
+      "medianRatings": 113549,
+      "demand": 100,
+      "difficulty": 70,
+      "score": 50
+    },
+    {
+      "phrase": "duplicate photos",
+      "seed": "duplicate photos",
+      "isSeed": true,
+      "suggested": {
+        "us": 4,
+        "gb": 4,
+        "ca": 7,
+        "au": 3
+      },
+      "inTitle": 7,
+      "medianRatings": 3174,
+      "demand": 100,
+      "difficulty": 70,
+      "score": 50
+    },
+    {
+      "phrase": "storage smart",
+      "seed": "storage",
+      "isSeed": false,
+      "suggested": {
+        "us": 10,
+        "gb": 9,
+        "ca": 10,
+        "au": 4
+      },
+      "inTitle": 3,
+      "medianRatings": 94,
+      "demand": 66,
+      "difficulty": 34,
+      "score": 50
+    },
+    {
+      "phrase": "compress photos free",
+      "seed": "compress photos",
+      "isSeed": false,
+      "suggested": {
+        "us": 4,
+        "gb": 2,
+        "ca": 3
+      },
+      "inTitle": 0,
+      "medianRatings": 409,
+      "demand": 59,
+      "difficulty": 21,
+      "score": 50
+    },
+    {
+      "phrase": "clean up photos",
+      "seed": "clean up",
+      "isSeed": false,
+      "suggested": {
+        "us": 7,
+        "gb": 5,
+        "ca": 3,
+        "au": 5
+      },
+      "inTitle": 1,
+      "medianRatings": 22554,
+      "demand": 68,
+      "difficulty": 41,
+      "score": 48
+    },
+    {
+      "phrase": "storage cleaner",
+      "seed": "storage cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 2,
+        "au": 1
+      },
+      "inTitle": 6,
+      "medianRatings": 102177,
+      "demand": 100,
+      "difficulty": 76,
+      "score": 46
+    },
+    {
+      "phrase": "resize video",
+      "seed": "resize video",
+      "isSeed": true,
+      "suggested": {
+        "us": 1,
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 8,
+      "medianRatings": 2437,
+      "demand": 100,
+      "difficulty": 75,
+      "score": 46
+    },
+    {
+      "phrase": "duplicate photos fixer",
+      "seed": "duplicate photos",
+      "isSeed": false,
+      "suggested": {
+        "us": 7,
+        "gb": 6,
+        "ca": 6,
+        "au": 6
+      },
+      "inTitle": 1,
+      "medianRatings": 3407,
+      "demand": 61,
+      "difficulty": 34,
+      "score": 46
+    },
+    {
+      "phrase": "remove duplicate photos",
+      "seed": "duplicate photos",
+      "isSeed": false,
+      "suggested": {
+        "us": 8,
+        "gb": 7,
+        "ca": 4,
+        "au": 1
+      },
+      "inTitle": 2,
+      "medianRatings": 113549,
+      "demand": 73,
+      "difficulty": 52,
+      "score": 46
+    },
+    {
+      "phrase": "cleanup 5",
+      "seed": "cleanup",
+      "isSeed": false,
+      "suggested": {
+        "us": 9,
+        "gb": 7,
+        "ca": 7,
+        "au": 10
+      },
+      "inTitle": 1,
+      "medianRatings": 826,
+      "demand": 58,
+      "difficulty": 29,
+      "score": 46
+    },
+    {
+      "phrase": "storage wars",
+      "seed": "storage",
+      "isSeed": false,
+      "suggested": {
+        "gb": 2,
+        "ca": 3,
+        "au": 6
+      },
+      "inTitle": 3,
+      "medianRatings": 131,
+      "demand": 59,
+      "difficulty": 35,
+      "score": 44
+    },
+    {
+      "phrase": "cleaner guru free",
+      "seed": "cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 7,
+        "gb": 4,
+        "ca": 7,
+        "au": 7
+      },
+      "inTitle": 3,
+      "medianRatings": 8167,
+      "demand": 66,
+      "difficulty": 49,
+      "score": 43
+    },
+    {
+      "phrase": "swipe to delete photos",
+      "seed": "delete photos",
+      "isSeed": false,
+      "suggested": {
+        "gb": 1,
+        "ca": 4,
+        "au": 7
+      },
+      "inTitle": 2,
+      "medianRatings": 10549,
+      "demand": 61,
+      "difficulty": 44,
+      "score": 42
+    },
+    {
+      "phrase": "photo compressor free",
+      "seed": "photo compressor",
+      "isSeed": false,
+      "suggested": {
+        "us": 1,
+        "au": 1
+      },
+      "inTitle": 0,
+      "medianRatings": 297,
+      "demand": 49,
+      "difficulty": 20,
+      "score": 42
+    },
+    {
+      "phrase": "clean up",
+      "seed": "clean up",
+      "isSeed": true,
+      "suggested": {
+        "us": 4,
+        "gb": 2,
+        "ca": 6,
+        "au": 4
+      },
+      "inTitle": 7,
+      "medianRatings": 113549,
+      "demand": 100,
+      "difficulty": 82,
+      "score": 41
+    },
+    {
+      "phrase": "storage",
+      "seed": "storage",
+      "isSeed": true,
+      "suggested": {
+        "us": 6,
+        "gb": 4,
+        "ca": 8,
+        "au": 7
+      },
+      "inTitle": 7,
+      "medianRatings": 109049,
+      "demand": 100,
+      "difficulty": 82,
+      "score": 41
+    },
+    {
+      "phrase": "compress videos",
+      "seed": "compress video",
+      "isSeed": false,
+      "suggested": {
+        "us": 4,
+        "gb": 2,
+        "ca": 2,
+        "au": 2
+      },
+      "inTitle": 5,
+      "medianRatings": 4580,
+      "demand": 71,
+      "difficulty": 59,
+      "score": 41
+    },
+    {
+      "phrase": "cleanup free",
+      "seed": "cleanup",
+      "isSeed": false,
+      "suggested": {
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 1,
+      "medianRatings": 73663,
+      "demand": 61,
+      "difficulty": 45,
+      "score": 41
+    },
+    {
+      "phrase": "phone cleaner pro",
+      "seed": "phone cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 5,
+        "gb": 7,
+        "ca": 7,
+        "au": 9
+      },
+      "inTitle": 3,
+      "medianRatings": 11392,
+      "demand": 63,
+      "difficulty": 50,
+      "score": 40
+    },
+    {
+      "phrase": "live photo generator",
+      "seed": "live photo",
+      "isSeed": false,
+      "suggested": {
+        "us": 5,
+        "gb": 6,
+        "au": 6
+      },
+      "inTitle": 0,
+      "medianRatings": 4577,
+      "demand": 51,
+      "difficulty": 29,
+      "score": 40
+    },
+    {
+      "phrase": "panda video compressor",
+      "seed": "video compressor",
+      "isSeed": false,
+      "suggested": {
+        "gb": 10,
+        "ca": 5,
+        "au": 9
+      },
+      "inTitle": 0,
+      "medianRatings": 4580,
+      "demand": 51,
+      "difficulty": 29,
+      "score": 40
+    },
+    {
+      "phrase": "storage cleaner free",
+      "seed": "storage cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 5,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 2,
+      "medianRatings": 67118,
+      "demand": 61,
+      "difficulty": 51,
+      "score": 39
+    },
+    {
+      "phrase": "delete photos free",
+      "seed": "delete photos",
+      "isSeed": false,
+      "suggested": {
+        "us": 5,
+        "gb": 5,
+        "au": 6
+      },
+      "inTitle": 0,
+      "medianRatings": 16730,
+      "demand": 51,
+      "difficulty": 34,
+      "score": 39
+    },
+    {
+      "phrase": "cleaner",
+      "seed": "cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 2,
+        "gb": 5,
+        "ca": 5,
+        "au": 4
+      },
+      "inTitle": 8,
+      "medianRatings": 85106,
+      "demand": 100,
+      "difficulty": 87,
+      "score": 38
+    },
+    {
+      "phrase": "phone cleaner",
+      "seed": "phone cleaner",
+      "isSeed": true,
+      "suggested": {
+        "us": 3,
+        "gb": 5,
+        "ca": 4,
+        "au": 5
+      },
+      "inTitle": 8,
+      "medianRatings": 73663,
+      "demand": 100,
+      "difficulty": 87,
+      "score": 38
+    },
+    {
+      "phrase": "free phone cleaner",
+      "seed": "phone cleaner",
+      "isSeed": false,
+      "suggested": {
+        "gb": 8,
+        "ca": 5,
+        "au": 1
+      },
+      "inTitle": 3,
+      "medianRatings": 21641,
+      "demand": 61,
+      "difficulty": 53,
+      "score": 38
+    },
+    {
+      "phrase": "clean up storage",
+      "seed": "clean up",
+      "isSeed": false,
+      "suggested": {
+        "us": 3,
+        "gb": 10,
+        "ca": 10,
+        "au": 8
+      },
+      "inTitle": 5,
+      "medianRatings": 29889,
+      "demand": 68,
+      "difficulty": 66,
+      "score": 36
+    },
+    {
+      "phrase": "cleanup photos",
+      "seed": "cleanup",
+      "isSeed": false,
+      "suggested": {
+        "gb": 5,
+        "ca": 6,
+        "au": 6
+      },
+      "inTitle": 2,
+      "medianRatings": 9901,
+      "demand": 51,
+      "difficulty": 44,
+      "score": 35
+    },
+    {
+      "phrase": "storage treasures",
+      "seed": "storage",
+      "isSeed": false,
+      "suggested": {
+        "us": 2,
+        "ca": 6
+      },
+      "inTitle": 0,
+      "medianRatings": 31813,
+      "demand": 47,
+      "difficulty": 36,
+      "score": 35
+    },
+    {
+      "phrase": "resize videos",
+      "seed": "resize video",
+      "isSeed": false,
+      "suggested": {
+        "us": 7,
+        "gb": 4,
+        "ca": 4,
+        "au": 4
+      },
+      "inTitle": 6,
+      "medianRatings": 7841,
+      "demand": 66,
+      "difficulty": 67,
+      "score": 34
+    },
+    {
+      "phrase": "app to delete photos",
+      "seed": "delete photos",
+      "isSeed": false,
+      "suggested": {
+        "gb": 6,
+        "ca": 7,
+        "au": 8
+      },
+      "inTitle": 2,
+      "medianRatings": 9901,
+      "demand": 49,
+      "difficulty": 44,
+      "score": 34
+    },
+    {
+      "phrase": "phone storage cleaner free",
+      "seed": "storage cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 1,
+        "gb": 1
+      },
+      "inTitle": 1,
+      "medianRatings": 85106,
+      "demand": 49,
+      "difficulty": 45,
+      "score": 33
+    },
+    {
+      "phrase": "photo cleaner free",
+      "seed": "photo cleaner",
+      "isSeed": false,
+      "suggested": {
+        "us": 3,
+        "ca": 3
+      },
+      "inTitle": 0,
+      "medianRatings": 73663,
+      "demand": 44,
+      "difficulty": 39,
+      "score": 32
+    },
+    {
+      "phrase": "video compressor shrink video",
+      "seed": "shrink video",
+      "isSeed": false,
+      "suggested": {
+        "gb": 10,
+        "ca": 7,
+        "au": 7
+      },
+      "inTitle": 5,
+      "medianRatings": 125,
+      "demand": 46,
+      "difficulty": 47,
+      "score": 31
+    },
+    {
+      "phrase": "the photo cleaner",
+      "seed": "photo cleaner",
+      "isSeed": false,
+      "suggested": {
+        "gb": 5,
+        "ca": 6,
+        "au": 5
+      },
+      "inTitle": 6,
+      "medianRatings": 16730,
+      "demand": 51,
+      "difficulty": 70,
+      "score": 26
+    },
+    {
+      "phrase": "files cleaner",
+      "seed": "files cleaner",
+      "isSeed": true,
+      "suggested": {},
+      "inTitle": 1,
+      "medianRatings": 14642,
+      "demand": 35,
+      "difficulty": 39,
+      "score": 25
+    },
+    {
+      "phrase": "storage full",
+      "seed": "storage full",
+      "isSeed": true,
+      "suggested": {},
+      "inTitle": 2,
+      "medianRatings": 14642,
+      "demand": 35,
+      "difficulty": 45,
+      "score": 24
+    },
+    {
+      "phrase": "blurry photos",
+      "seed": "blurry photos",
+      "isSeed": true,
+      "suggested": {},
+      "inTitle": 2,
+      "medianRatings": 6524,
+      "demand": 35,
+      "difficulty": 43,
+      "score": 24
+    },
+    {
+      "phrase": "large files",
+      "seed": "large files",
+      "isSeed": true,
+      "suggested": {},
+      "inTitle": 3,
+      "medianRatings": 10312,
+      "demand": 35,
+      "difficulty": 50,
+      "score": 22
+    },
+    {
+      "phrase": "cleaner for iphone",
+      "seed": "cleaner",
+      "isSeed": false,
+      "suggested": {
+        "gb": 1,
+        "ca": 1,
+        "au": 1
+      },
+      "inTitle": 9,
+      "medianRatings": 21641,
+      "demand": 61,
+      "difficulty": 89,
+      "score": 22
+    },
+    {
+      "phrase": "similar photos",
+      "seed": "similar photos",
+      "isSeed": true,
+      "suggested": {},
+      "inTitle": 8,
+      "medianRatings": 10,
+      "demand": 35,
+      "difficulty": 56,
+      "score": 21
+    },
+    {
+      "phrase": "clean up iphone",
+      "seed": "clean up",
+      "isSeed": false,
+      "suggested": {
+        "us": 1,
+        "ca": 5
+      },
+      "inTitle": 7,
+      "medianRatings": 113549,
+      "demand": 49,
+      "difficulty": 82,
+      "score": 20
+    },
+    {
+      "phrase": "compress video",
+      "seed": "compress video",
+      "isSeed": true,
+      "suggested": {},
+      "inTitle": 6,
+      "medianRatings": 3709,
+      "demand": 35,
+      "difficulty": 65,
+      "score": 19
+    }
+  ],
+  "words": [
+    {
+      "word": "cleaner",
+      "apps": 22,
+      "titles": 20
+    },
+    {
+      "word": "storage",
+      "apps": 20,
+      "titles": 13
+    },
+    {
+      "word": "photo",
+      "apps": 15,
+      "titles": 8
+    },
+    {
+      "word": "space",
+      "apps": 14,
+      "titles": 3
+    },
+    {
+      "word": "clean",
+      "apps": 13,
+      "titles": 7
+    },
+    {
+      "word": "video",
+      "apps": 13,
+      "titles": 10
+    },
+    {
+      "word": "photos",
+      "apps": 12,
+      "titles": 4
+    },
+    {
+      "word": "delete",
+      "apps": 11,
+      "titles": 0
+    },
+    {
+      "word": "duplicate",
+      "apps": 11,
+      "titles": 4
+    },
+    {
+      "word": "free",
+      "apps": 10,
+      "titles": 3
+    },
+    {
+      "word": "size",
+      "apps": 9,
+      "titles": 1
+    },
+    {
+      "word": "cleanup",
+      "apps": 8,
+      "titles": 6
+    },
+    {
+      "word": "compress",
+      "apps": 8,
+      "titles": 6
+    },
+    {
+      "word": "compressor",
+      "apps": 8,
+      "titles": 7
+    },
+    {
+      "word": "reduce",
+      "apps": 8,
+      "titles": 1
+    },
+    {
+      "word": "save",
+      "apps": 7,
+      "titles": 2
+    },
+    {
+      "word": "shrink",
+      "apps": 5,
+      "titles": 4
+    },
+    {
+      "word": "swipe",
+      "apps": 4,
+      "titles": 1
+    },
+    {
+      "word": "videos",
+      "apps": 4,
+      "titles": 3
+    },
+    {
+      "word": "resize",
+      "apps": 4,
+      "titles": 3
+    },
+    {
+      "word": "duplicates",
+      "apps": 3,
+      "titles": 0
+    },
+    {
+      "word": "guru",
+      "apps": 3,
+      "titles": 3
+    },
+    {
+      "word": "clever",
+      "apps": 2,
+      "titles": 1
+    },
+    {
+      "word": "organizer",
+      "apps": 2,
+      "titles": 0
+    },
+    {
+      "word": "boost",
+      "apps": 2,
+      "titles": 1
+    },
+    {
+      "word": "image",
+      "apps": 2,
+      "titles": 0
+    },
+    {
+      "word": "remove",
+      "apps": 2,
+      "titles": 1
+    },
+    {
+      "word": "vids",
+      "apps": 2,
+      "titles": 1
+    }
+  ],
+  "competitors": [
+    {
+      "id": 1510944943,
+      "title": "Cleanup: Phone Storage Cleaner",
+      "ratings": 763513,
+      "seller": "DEEP FLOW SOFTWARE SERVICES - FZCO",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleanup-phone-storage-cleaner/id1510944943",
+      "appearances": 49,
+      "subtitle": "Photo Clean, Delete Duplicates",
+      "phrases": 49
+    },
+    {
+      "id": 1194582243,
+      "title": "Cleaner Kit - Clean Up Storage",
+      "ratings": 354721,
+      "seller": "BP Mobile LLC",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleaner-kit-clean-up-storage/id1194582243",
+      "appearances": 31,
+      "subtitle": "Free Up Space, Delete Photos",
+      "phrases": 31
+    },
+    {
+      "id": 1666645584,
+      "title": "Clever Cleaner: AI CleanUp App",
+      "ratings": 85106,
+      "seller": "CleverFiles Inc.",
+      "genre": "Productivity",
+      "url": "https://apps.apple.com/us/app/clever-cleaner-ai-cleanup-app/id1666645584",
+      "appearances": 27,
+      "subtitle": "Free Up Phone & Photo Storage",
+      "phrases": 27
+    },
+    {
+      "id": 1583884012,
+      "title": "Swipewipe: Photo Cleaner",
+      "ratings": 102177,
+      "seller": "MWM",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/swipewipe-photo-cleaner/id1583884012",
+      "appearances": 24,
+      "subtitle": "Delete Duplicates & Free Space",
+      "phrases": 24
+    },
+    {
+      "id": 984305203,
+      "title": "Slidebox: Photo Cleaner App",
+      "ratings": 16730,
+      "seller": "Slidebox LLC",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/slidebox-photo-cleaner-app/id984305203",
+      "appearances": 21,
+      "subtitle": "Photo Swipe, Delete, Organizer",
+      "phrases": 21
+    },
+    {
+      "id": 1463756032,
+      "title": "Cleaner Neat: Clean Up Storage",
+      "ratings": 113549,
+      "seller": "Smart Tool Studio",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleaner-neat-clean-up-storage/id1463756032",
+      "appearances": 14,
+      "subtitle": "Delete Duplicate Phone Photos",
+      "phrases": 14
+    },
+    {
+      "id": 1473857051,
+      "title": "Compress Videos & Resize Video",
+      "ratings": 17945,
+      "seller": "New Marketing Lab, Inc",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/compress-videos-resize-video/id1473857051",
+      "appearances": 13,
+      "subtitle": "Compress videos, save space",
+      "phrases": 13
+    },
+    {
+      "id": 6473627334,
+      "title": "Photo Cleaner ®",
+      "ratings": 5215,
+      "seller": "Lumi Software B.V.",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/photo-cleaner/id6473627334",
+      "appearances": 13,
+      "subtitle": "Swipe to Delete Camera Roll",
+      "phrases": 13
+    },
+    {
+      "id": 1163846234,
+      "title": "Video Compress - Shrink Videos",
+      "ratings": 11566,
+      "seller": "Shenzhen Jinxixi Technology Co., Ltd.",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compress-shrink-videos/id1163846234",
+      "appearances": 12,
+      "subtitle": "Video Compressor, Reduce Size",
+      "phrases": 12
+    },
+    {
+      "id": 6763913041,
+      "title": "Clean up iPhone .",
+      "ratings": 292,
+      "seller": "Free AI APPS ONE MEMBER LIMITED LIABILITY COMPANY",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/clean-up-iphone/id6763913041",
+      "appearances": 12,
+      "subtitle": "AI Cleanup & Free Up Storage",
+      "phrases": 12
+    },
+    {
+      "id": 6449484412,
+      "title": "Phone Storage Cleaner: Free up",
+      "ratings": 73663,
+      "seller": "LUNAPARK MEDYA INTERNET TEKNOLOJILERI SANAYI VE TICARET ANONIM SIRKETI",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/phone-storage-cleaner-free-up/id6449484412",
+      "appearances": 11,
+      "subtitle": "Clean iPhone Duplicate Photos",
+      "phrases": 11
+    },
+    {
+      "id": 6444738335,
+      "title": "Photo & Video Cleaner: Slider",
+      "ratings": 11773,
+      "seller": "June Ninth LLC",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/photo-video-cleaner-slider/id6444738335",
+      "appearances": 11,
+      "subtitle": "Swipe to Delete & Save Space",
+      "phrases": 11
+    },
+    {
+      "id": 1476380919,
+      "title": "Cleaner Guru: Clean Up Storage",
+      "ratings": 148476,
+      "seller": "GM UniverseApps Limited",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleaner-guru-clean-up-storage/id1476380919",
+      "appearances": 10,
+      "subtitle": "Delete duplicate phone photos",
+      "phrases": 10
+    },
+    {
+      "id": 1133417726,
+      "title": "Video Compressor-Shrink videos",
+      "ratings": 9712,
+      "seller": "丽譞 牛",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compressor-shrink-videos/id1133417726",
+      "appearances": 10,
+      "subtitle": "Compress videos & photos",
+      "phrases": 10
+    },
+    {
+      "id": 1475887456,
+      "title": "Boost Cleaner - Clean Up Smart",
+      "ratings": 67118,
+      "seller": "CELESTIAN GOLDEN APPS SL.",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/boost-cleaner-clean-up-smart/id1475887456",
+      "appearances": 9,
+      "subtitle": "Clean Phone Storage",
+      "phrases": 9
+    },
+    {
+      "id": 6766554931,
+      "title": "Photo Cleaner: Swipe & Cleanup",
+      "ratings": 60,
+      "seller": "Ekaterina Firsanova",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/photo-cleaner-swipe-cleanup/id6766554931",
+      "appearances": 8,
+      "subtitle": "Delete Photos & Clean Up Phone",
+      "phrases": 8
+    },
+    {
+      "id": 6448330325,
+      "title": "AI Cleaner: Clean Up Storage",
+      "ratings": 211048,
+      "seller": "GRIMLAX TRADE,S.L.",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/ai-cleaner-clean-up-storage/id6448330325",
+      "appearances": 7,
+      "subtitle": "Delete Duplicate Photo & Video",
+      "phrases": 7
+    },
+    {
+      "id": 1277110040,
+      "title": "CleanMy®Phone: Cleanup Storage",
+      "ratings": 22854,
+      "seller": "MacPaw Way Ltd",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleanmy-phone-cleanup-storage/id1277110040",
+      "appearances": 7,
+      "subtitle": "Duplicate Photos Cleaner App",
+      "phrases": 7
+    },
+    {
+      "id": 1449007043,
+      "title": "Compress Photos & Pictures",
+      "ratings": 22654,
+      "seller": "New Marketing Lab, Inc",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/compress-photos-pictures/id1449007043",
+      "appearances": 7,
+      "subtitle": "Reduce image size, free space",
+      "phrases": 7
+    },
+    {
+      "id": 1343754771,
+      "title": "Phone Cleaner for iPhone, iPad",
+      "ratings": 21641,
+      "seller": "AlgoTwist Ltd",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/phone-cleaner-for-iphone-ipad/id1343754771",
+      "appearances": 7,
+      "subtitle": "Free up space & clean storage",
+      "phrases": 7
+    },
+    {
+      "id": 1422359394,
+      "title": "Video compressor - save space",
+      "ratings": 4580,
+      "seller": "俐 马",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compressor-save-space/id1422359394",
+      "appearances": 7,
+      "subtitle": "save storage and disk space",
+      "phrases": 7
+    },
+    {
+      "id": 1546946937,
+      "title": "Video Compressor - HQ Compress",
+      "ratings": 2187,
+      "seller": "LightByte Co., Ltd.",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compressor-hq-compress/id1546946937",
+      "appearances": 7,
+      "subtitle": "Reduce video size dramatically",
+      "phrases": 7
+    },
+    {
+      "id": 1066797785,
+      "title": "Remo Duplicate Photos Remover",
+      "ratings": 13556,
+      "seller": "Remo Software Private Limited",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/remo-duplicate-photos-remover/id1066797785",
+      "appearances": 6,
+      "subtitle": "Photo & Video",
+      "phrases": 6
+    },
+    {
+      "id": 1185398417,
+      "title": "Duplicate Cleaner: Storage",
+      "ratings": 3407,
+      "seller": "Softices Consultancy Private Limited",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/duplicate-cleaner-storage/id1185398417",
+      "appearances": 6,
+      "subtitle": "Remove Photo, Video & Contact",
+      "phrases": 6
+    },
+    {
+      "id": 966475595,
+      "title": "Duplicate Photos Fixer",
+      "ratings": 3174,
+      "seller": "Shrishail Rana",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/duplicate-photos-fixer/id966475595",
+      "appearances": 6,
+      "subtitle": "Regain Storage Space",
+      "phrases": 6
+    },
+    {
+      "id": 6756351762,
+      "title": "Free Cleaner Guru",
+      "ratings": 1913,
+      "seller": "TERMUX LIMITED LIABILITY COMPANY",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/free-cleaner-guru/id6756351762",
+      "appearances": 6,
+      "subtitle": "Clean up your phone",
+      "phrases": 6
+    },
+    {
+      "id": 6759891604,
+      "title": "Free Cleanup Guru Cleaner AI",
+      "ratings": 807,
+      "seller": "Free AI MIT LABS LLC",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/free-cleanup-guru-cleaner-ai/id6759891604",
+      "appearances": 6,
+      "subtitle": "Ai Cleanup Phone Clever App",
+      "phrases": 6
+    },
+    {
+      "id": 1537135259,
+      "title": "Public Storage",
+      "ratings": 103621,
+      "seller": "Public Storage",
+      "genre": "Business",
+      "url": "https://apps.apple.com/us/app/public-storage/id1537135259",
+      "appearances": 5,
+      "subtitle": "Easy Self-Storage Management",
+      "phrases": 5
+    },
+    {
+      "id": 1488957920,
+      "title": "Extra Space Storage",
+      "ratings": 27170,
+      "seller": "Extra Space Management, INC",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/extra-space-storage/id1488957920",
+      "appearances": 5,
+      "subtitle": "Utilities",
+      "phrases": 5
+    },
+    {
+      "id": 997699744,
+      "title": "Video Compress - Shrink Vids",
+      "ratings": 3709,
+      "seller": "Brachmann Online Marketing GmbH & Co. KG",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compress-shrink-vids/id997699744",
+      "appearances": 5,
+      "subtitle": "Reduce size, save memory space",
+      "phrases": 5
+    },
+    {
+      "id": 1520371417,
+      "title": "Video Compressor - resize all",
+      "ratings": 1010,
+      "seller": "LANARS LLC",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compressor-resize-all/id1520371417",
+      "appearances": 5,
+      "subtitle": "Simple batch vids size reducer",
+      "phrases": 5
+    },
+    {
+      "id": 1597695980,
+      "title": "Remove Duplicate Photos",
+      "ratings": 45,
+      "seller": "WEBDIA INC.",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/remove-duplicate-photos/id1597695980",
+      "appearances": 5,
+      "subtitle": "Cleaning up similar images",
+      "phrases": 5
+    },
+    {
+      "id": 1575903244,
+      "title": "Clean Up Phone Storage: CleanX",
+      "ratings": 29889,
+      "seller": "TAPSUITE YAZILIM HIZMETLERI ANONIM SIRKETI",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/clean-up-phone-storage-cleanx/id1575903244",
+      "appearances": 4,
+      "subtitle": "Duplicate photo, email cleaner",
+      "phrases": 4
+    },
+    {
+      "id": 6445917429,
+      "title": "Cleaner ・Phone Storage Cleanup",
+      "ratings": 9901,
+      "seller": "Seven Mile Apps LLC",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleaner-phone-storage-cleanup/id6445917429",
+      "appearances": 4,
+      "subtitle": "Delete Duplicate Photos Videos",
+      "phrases": 4
+    },
+    {
+      "id": 926090192,
+      "title": "Cleansmith: Photo Cleaner",
+      "ratings": 4085,
+      "seller": "Monocraft",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/cleansmith-photo-cleaner/id926090192",
+      "appearances": 4,
+      "subtitle": "Organizer, Cleanup Duplicates",
+      "phrases": 4
+    },
+    {
+      "id": 966242098,
+      "title": "Photo Compress - Shrink Pics",
+      "ratings": 3538,
+      "seller": "Brachmann Online Marketing GmbH & Co. KG",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/photo-compress-shrink-pics/id966242098",
+      "appearances": 4,
+      "subtitle": "Reduce image size & save space",
+      "phrases": 4
+    },
+    {
+      "id": 1135183644,
+      "title": "Video Compressor & Reduce size",
+      "ratings": 1319,
+      "seller": "Tran Thi Hong Thanh",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compressor-reduce-size/id1135183644",
+      "appearances": 4,
+      "subtitle": "Compress Photo & Clean Storage",
+      "phrases": 4
+    },
+    {
+      "id": 1528281985,
+      "title": "Video Compressor : Save Space",
+      "ratings": 520,
+      "seller": "Inverse.AI",
+      "genre": "Photo & Video",
+      "url": "https://apps.apple.com/us/app/video-compressor-save-space/id1528281985",
+      "appearances": 4,
+      "subtitle": "Reduce Size, Resize & Shrink",
+      "phrases": 4
+    },
+    {
+      "id": 1580297933,
+      "title": "Photo Compressor & Resize",
+      "ratings": 297,
+      "seller": "Sahil Verma",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/photo-compressor-resize/id1580297933",
+      "appearances": 4,
+      "subtitle": "Reduce Size and Save Space",
+      "phrases": 4
+    },
+    {
+      "id": 6813776797,
+      "title": "Storage Cleaner for Phone",
+      "ratings": 52,
+      "seller": "PHP SOFTWARE COMPANY LIMITED",
+      "genre": "Utilities",
+      "url": "https://apps.apple.com/us/app/storage-cleaner-for-phone/id6813776797",
+      "appearances": 4,
+      "subtitle": "Al Free Up Space & Boost Speed",
+      "phrases": 4
+    }
+  ]
+}

@@ -12,7 +12,7 @@ fall back to simulated purchases. Release builds never simulate.
 | -------- | ------------- | -------------------------------------------------- |
 | Weekly   | $4.99/week    | Main paywall, site                                 |
 | Annual   | $24.99/year   | Main paywall (selected by default), site ("save 90%") |
-| Lifetime | $34.99 once   | App only: one-time offer after the paywall is closed without buying, shown once ever |
+| Lifetime | $34.99 once   | App only: offered once after the paywall is closed without buying, and always in Settings > Pro |
 
 Free does it by hand; Pro does the heavy hitters, and does them in one tap.
 
@@ -57,7 +57,7 @@ Prices are placeholders, kept in two places: `web/src/lib/pricing.ts` and
 - Site: `web/src/app/pricing/page.tsx`, linked from the header, footer, and sitemap.
 - App: `ios/StorageApp/Purchases/` (`PaywallConfig`, `PurchaseStore`,
   `PaywallFlow`), and onboarding in `ios/StorageApp/Views/Onboarding/`.
-  Launch with `-paywallEnabled NO` to try the app with nothing gated.
+  Launch a debug build with `-paywallEnabled NO` to try the app with nothing gated.
 - Product IDs: `com.simpleshrink.app.pro.weekly`, `.pro.annual` (one
   subscription group) and `.pro.lifetime` (non-consumable), in `Plan.productID`
   and `ios/Products.storekit`. Change both if the bundle ID changes.

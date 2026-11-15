@@ -19,12 +19,11 @@ export const siteConfig = {
   locale: "en_US",
   /**
    * Where people reach a human for support, privacy and legal requests. Shown
-   * on /support, /privacy and /terms. App Store Connect needs a working
-   * support contact, so set this before launch.
+   * on /support, /privacy and /terms. Can be overridden for a deployment.
    */
-  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "",
+  supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "hello.simpleshrink@gmail.com",
   /** Date /privacy and /terms last changed. Update it with any change to either page. */
-  legalUpdated: "2026-11-04",
+  legalUpdated: "2026-11-14",
 };
 
 export function absoluteUrl(path = "/") {

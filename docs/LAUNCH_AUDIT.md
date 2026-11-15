@@ -1,5 +1,13 @@
 # Pre-launch audit (iOS)
 
+> **Read this first (2026-11-14).** This is the audit from 2026-11-04 and
+> parts of it are out of date. Since then: the bundle ID is
+> `com.simpleshrink.app`; prices are $4.99, $24.99 and $34.99; Test Mode is
+> gone; duplicates and junk in bulk, screenshots and one-tap cleanup are Pro
+> and burst picks are free (`CleanupMethod.isPro` is the source of truth);
+> and Lifetime is always available in Settings > Pro. A second audit on
+> 2026-11-14 is at the bottom of this file.
+
 Audit of `ios/` on branch `pre-launch-audit`, started from `main` at `e435ee9`
 (2026-11-04). Everything below was checked by reading the code. Builds and
 tests were checked by CI (`.github/workflows/ios.yml` on macOS 15), because
@@ -146,3 +154,29 @@ haven't looked at the screenshots myself. Please open the **Screenshots**
 artifact on the run above, especially the four `*-largetext.png` files, to
 confirm the onboarding, reveal and paywall pages still fit at large text
 sizes, and check the dark-mode shots. Nothing ran on a real device.
+
+## Second audit (2026-11-14)
+
+Read through the app, the release docs and the legal pages. Fixed:
+
+| What | Where |
+|---|---|
+| **Limited Photos access was a dead end.** Tools showed with savings, then every change failed at the last step. Home now says cleanups need full access, and each photo tool asks for it before opening (and before the paywall). | `HomeView.swift` |
+| **iCloud Photos with Optimize Storage.** Sizes include originals that are only in iCloud, so less space can come back than expected. The guide and Home now say so, and Home's "waiting in Recently Deleted" reminder can be hidden and ends after 30 days. | `AppModel.spaceWaiting`, `HomeView.swift`, `RecentlyDeletedGuideView.swift` |
+| **Swipe to clean dropped left swipes on Back.** Back now asks: delete them, leave without deleting, or keep swiping. | `SwipeCleanView.swift` |
+| **The library went stale.** It's re-read when the app comes back to the front. | `AppModel.rescanOnReturn`, `StorageApp.swift` |
+| **Library rows did nothing when tapped.** A tap now shows the item big. | `LibraryView.swift` |
+| **Shrink all on a full phone.** Copies are capped to half the free space and the rest wait for the next run; there is a Cancel button; iOS is asked for background time, and the batch stops cleanly when that runs out. | `AppModel.shrinkVideos`, `VideoExporter.swift`, `RootView.swift` |
+| **One-tap Photo Cleanup removed old screenshots without much notice.** They have their own line with a switch, and the confirmation counts them. | `PhotoCleanupView.swift`, `PhotoCleanupPlan` |
+| **Fewer stills than approved, silently.** The app now says how many there wasn't room for. | `AppModel.convertToStills` |
+| **Spatial videos** are left alone, like Cinematic and slo-mo. | `VideoShrink.unsupportedReason`, `PhotoKitScanService.swift` |
+| **The free/Pro split was described four ways.** The paywall footnote, `/terms`, the App Store description and the product descriptions now follow `CleanupMethod.isPro`. | `PaywallView.swift`, `web/src/app/terms/page.tsx`, `docs/APP_STORE.md`, `Products.storekit` |
+| **Lifetime could be found only once.** It is now in Settings > Pro. | `SettingsView.swift`, `PaywallView.swift` |
+| **The undocumented file-size key could crash a scan** if iOS dropped it. It's now asked for only if the resource answers to it. | `PhotoLibrary.fileSize` |
+| **The paywall and the Lifetime page couldn't scroll.** They scroll when they don't fit (small phone, large text, iPad). CI also screenshots them on the smallest iPhone and an iPad. | `PaywallView.swift`, `.github/workflows/ios.yml` |
+| **Version 1.0.0**, and the debug launch switches are ignored by release builds. | `project.yml`, `xtool-Info.plist`, `Plans.swift`, `ScreenshotRoute.swift` |
+| **Picking in a big library** no longer walks every item on each redraw, and the kept-on-swipe list is pruned to photos still in the library. | `AppModel.swift` |
+
+Still open: the support inbox address on the site, the legal name and
+governing law on `/privacy` and `/terms`, and everything that needs the paid
+account or a real device (above).

@@ -20,6 +20,9 @@ struct RootView: View {
     /// Home drawing itself in after onboarding; 1 when there's nothing to draw.
     @State private var drawIn: CGFloat = 1
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Extra running time iOS grants while a change is going, so a quick
+    /// switch to another app doesn't break a video copy part-way.
+    @State private var backgroundTime = UIBackgroundTaskIdentifier.invalid
 
     var body: some View {
         ZStack {
@@ -29,10 +32,10 @@ struct RootView: View {
                                sampleSuggestions: ScreenshotRoute.current?.onboardingStart == nil ? nil : Suggestion.sample) {
                     // Onboarding can be reopened from Settings; always land on Home after it.
                     model.selectedTab = .home
-                    withAnimation(.easeInOut(duration: 0.45)) { onboardingDone = true }
+                    withAnimation(.easeInOut(duration: 0.45).motionSafe) { onboardingDone = true }
                     drawHome()
                 }
-                .transition(.opacity.combined(with: .scale(scale: 1.04)))
+                .transition(.opacity.combined(with: .scale(scale: 1.04)).motionSafe)
                 .zIndex(1)
             }
         }
@@ -46,13 +49,13 @@ struct RootView: View {
     /// Draws Home onto the page as onboarding fades off it.
     private func drawHome() {
         guard !reduceMotion else {
-            withAnimation(.easeOut(duration: 0.3)) { drawIn = 1 }
+            withAnimation(.easeOut(duration: 0.3).motionSafe) { drawIn = 1 }
             return
         }
         Task {
             // Let onboarding start fading so the first strokes are seen.
             try? await Task.sleep(for: .milliseconds(200))
-            withAnimation(.linear(duration: DrawIn.duration)) { drawIn = 1 }
+            withAnimation(.linear(duration: DrawIn.duration).motionSafe) { drawIn = 1 }
         }
     }
 
@@ -114,6 +117,7 @@ struct RootView: View {
         .onChange(of: model.isChanging) { _, busy in
             // Long video exports and batches otherwise stop when the phone locks.
             UIApplication.shared.isIdleTimerDisabled = busy
+            keepRunningInBackground(busy)
         }
         .onChange(of: model.guide?.id) { old, new in
             if old != nil, new == nil { offerAfterWin(freed: model.lastGuide?.expectedBytes ?? 0) }
@@ -131,6 +135,26 @@ struct RootView: View {
             ScreenshotRoute.current?.apply(to: model)
             await model.scanIfAllowed()
         }
+    }
+
+    /// Asks iOS for a little more time when the app leaves the screen mid-change.
+    /// When that time runs out, a video batch is stopped cleanly: its copies are
+    /// thrown away and nothing in Photos changes.
+    private func keepRunningInBackground(_ busy: Bool) {
+        if busy, backgroundTime == .invalid {
+            backgroundTime = UIApplication.shared.beginBackgroundTask(withName: "cleanup") {
+                model.cancelVideoBatch()
+                endBackgroundTime()
+            }
+        } else if !busy {
+            endBackgroundTime()
+        }
+    }
+
+    private func endBackgroundTime() {
+        guard backgroundTime != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTime)
+        backgroundTime = .invalid
     }
 
     /// Opens the paywall once ever, right after a free cleanup gave space back,
