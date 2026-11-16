@@ -29,7 +29,7 @@ enum PaywallConfig {
     /// The website that hosts the legal and support pages (`web/`): the same
     /// origin as the site's `NEXT_PUBLIC_SITE_URL`. Change both together if
     /// the site moves to a custom domain.
-    static let siteURL = URL(string: "https://simpleshrink.vercel.app")!
+    static let siteURL = URL(string: "https://www.simpleshrink.com")!
 
     /// Links App Review requires on a subscription paywall, plus support.
     /// The site's /terms page applies Apple's Standard EULA and adds to it.

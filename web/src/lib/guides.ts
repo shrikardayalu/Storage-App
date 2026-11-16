@@ -17,7 +17,16 @@ const GUIDES_DIR = path.join(process.cwd(), "content", "guides");
 export const CTA_MARKER = "<!-- cta -->";
 
 /** Site routes that are not guides; internal links may point at these. */
-const STATIC_ROUTES = new Set(["/", "/guides", "/about", "/privacy", "/pricing"]);
+const STATIC_ROUTES = new Set(["/", "/guides", "/about", "/privacy", "/pricing", "/support", "/terms"]);
+
+/**
+ * Publishing pace. A young site that adds pages faster than it earns trust
+ * looks like a content farm, so the build refuses more than `maxPerWeek` new
+ * guides in any 7 days, or two on one day. Guides published before `since`
+ * (the launch batch) are exempt. Raise `maxPerWeek` once search traffic is
+ * real; see automation/README.md.
+ */
+export const PUBLISHING_PACE = { since: "2026-11-16", maxPerWeek: 5 };
 
 export type FaqItem = { q: string; a: string };
 
@@ -155,8 +164,37 @@ export function isKnownRoute(href: string, guideSlugs: Set<string> = new Set(loa
   return Boolean(compare && competitors.some((c) => c.slug === compare[1] && c.ready));
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Fails the build if new guides are being published faster than PUBLISHING_PACE allows. */
+function checkPace(guides: RawGuide[]) {
+  const recent = guides
+    .filter((g) => g.meta.published >= PUBLISHING_PACE.since)
+    .sort((a, b) => a.meta.published.localeCompare(b.meta.published));
+
+  recent.forEach((guide, i) => {
+    const day = guide.meta.published;
+    const next = recent[i + 1];
+    if (next && next.meta.published === day) {
+      throw new Error(
+        `${next.meta.slug}.md: ${guide.meta.slug}.md was already published on ${day}. One new guide a day at most.`,
+      );
+    }
+    const weekEnd = Date.parse(day) + 6 * DAY_MS;
+    const inWeek = recent.slice(i).filter((g) => Date.parse(g.meta.published) <= weekEnd);
+    if (inWeek.length > PUBLISHING_PACE.maxPerWeek) {
+      throw new Error(
+        `${inWeek.length} guides are published in the 7 days from ${day} (${inWeek.map((g) => g.meta.slug).join(", ")}). ` +
+          `The limit is ${PUBLISHING_PACE.maxPerWeek}; give the newest a later "published" date or mark it "draft: true".`,
+      );
+    }
+  });
+}
+
 /** Cross-guide checks: unique keywords, and every internal link resolves. */
 function validate(guides: RawGuide[]) {
+  checkPace(guides);
+
   const slugs = new Set(guides.map((g) => g.meta.slug));
   const keywords = new Map<string, string>();
   const known = (href: string) => isKnownRoute(href, slugs);

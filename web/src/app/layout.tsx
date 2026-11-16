@@ -17,7 +17,7 @@ const THEME_SCRIPT = `document.documentElement.classList.add('js');var t='light'
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: `${siteConfig.name}: ${siteConfig.tagline}`,
+    default: `${siteConfig.storeName} for iPhone`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,

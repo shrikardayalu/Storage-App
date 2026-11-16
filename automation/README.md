@@ -1,122 +1,99 @@
-# Automation
+# SEO engine
 
-The plan for an AI-assisted SEO and content loop, modeled on how Vaultaire grew through search: find queries Google already associates with the site, publish one genuinely useful answer at a time, link it into the existing library, and measure which pages turn readers into installs. Nothing here runs yet: no scripts, scheduled jobs, API calls, or credentials. The plan is a daily Claude Code scheduled task using gum for Search Console data (see "How it runs").
+How the site grows through search: publish one genuinely useful answer at a time, link it into the library, and measure which pages turn readers into installs. Modeled on how Vaultaire grew.
 
-## What the website already provides
+The engine is three things:
 
-The loop only writes Markdown files. Everything else is handled by `web/`:
+| Piece | Where | What it does |
+| --- | --- | --- |
+| The skill | [`.claude/skills/seo/SKILL.md`](../.claude/skills/seo/SKILL.md) | The whole method: picking a keyword, checking the search results, writing, structure, internal links, verifying, publishing. Run it with `/seo` |
+| The backlog | [`backlog.md`](backlog.md) | Candidate topics by cluster, with the keyword and how each ties back to the app |
+| The log | [`log.md`](log.md) | What was published or changed, when, why, and what to check later |
+
+Everything else is the website (`web/`), which already handles the technical side:
 
 | Need | Where it lives |
 | --- | --- |
 | Authoring format and quality rules | [`web/content/README.md`](../web/content/README.md) |
 | Guides | `web/content/guides/*.md`, one file per URL |
-| Build-time checks | `web/src/lib/guides.ts` fails the build on broken internal links, missing related guides, bad frontmatter, or a duplicate `primaryKeyword` |
+| Build-time checks | `web/src/lib/guides.ts` fails the build on broken internal links, missing related guides, bad frontmatter, a duplicate `primaryKeyword`, or publishing faster than the pace below |
 | Discovery | `/sitemap.xml`, `/robots.txt` (search and AI crawlers allowed), `/guides/feed.xml`, `/llms.txt` |
 | Structured data | Organization, WebSite, MobileApplication, Article, BreadcrumbList, FAQPage, CollectionPage (`web/src/lib/schema.ts`) |
 | Conversion | Quick-answer box, inline CTAs at `<!-- cta -->` markers, sidebar, end-of-page CTA, mobile sticky bar |
 | Attribution | Waitlist signups record the page and CTA position as `source`. After launch, App Store links carry a campaign token (`ct`) per page and position, visible in App Store Connect → App Analytics |
 
-## The daily loop
+The canonical site is `https://www.simpleshrink.com`. `simpleshrink.com` and the old `simpleshrink.vercel.app` both redirect to it.
 
-1. **Pull data.** Last 28 days of Google Search Console queries and pages (impressions, clicks, CTR, position), via [gum](https://github.com/ehmo/gum). Until the site has impressions (the first few weeks after launch), work from a planned topic list instead.
-2. **Pick one action.** Prefer, in order:
-   - a query with meaningful impressions where we rank below ~10 and no page targets it (new guide),
-   - a page with impressions but low CTR (rewrite `seoTitle` / `description` / `quickAnswer`),
-   - a page ranking 5–20 that could be more complete (expand it, add FAQ),
-   - missing internal links between related guides,
-   - a comparison page (see "Comparison articles") when no data-driven action stands out.
-3. **Draft on a branch.** Write or edit files in `web/content/guides/`. Run `npm run build` in `web/`. It must pass. Push a `claude/` branch and open a pull request.
-4. **Human review.** A person checks every step against a real iPhone before merging. Nothing auto-publishes. Merging to `main` deploys the site.
-5. **Measure.** Track each page's impressions, position, CTR, and conversions (waitlist `source` now, App Store `ct` campaign after launch), and feed results into the next run.
+## Pace: 3 to 5 new pages a week
 
-One focused page a day is plenty. Improving existing pages counts as much as adding new ones.
+The site is new and has no search history, so it publishes **3 to 5 new guides a week, never two on one day, on uneven days and times**. The build enforces the ceiling (`PUBLISHING_PACE` in `web/src/lib/guides.ts`): a sixth guide in any 7 days fails the build.
+
+Google has no rule against publishing daily. What it acts on is many pages made mainly to rank, with little original value ("scaled content abuse"). A brand-new domain that adds a page every day at 6:07 looks like that, and it also means each page gets less care. A slower, uneven pace with pages that are each clearly worth reading is the safe way to start.
+
+Raise the pace when the site has earned it. Signs it has: most published guides are indexed, impressions are growing week over week, and a few pages hold top-20 positions. Then move `maxPerWeek` to 7. If new pages stop getting indexed, slow down and improve existing pages instead.
+
+Improving an existing page (a better title, a new section, a refreshed fact, more internal links) doesn't count toward the pace and is often worth more than a new page.
+
+## What to write about
+
+Not only "how to free up iPhone storage". The site covers what people with a full phone also search for, as long as each page has an honest route back to the app:
+
+| Ring | Topics (`web/src/lib/topics.ts`) | Why |
+| --- | --- | --- |
+| Core | Free up space, Photos & screenshots, Videos, Privacy & safety | The problems the app solves. Fewer searches, most installs |
+| Adjacent | Camera & formats, iCloud & backup, Sharing & transfer | Same reader, one step earlier or later: "video too large to send", "HEIC vs JPEG", "iCloud storage full". More searches, and each leads to a core guide |
+| Comparisons | `/compare/*`, "best … apps", "… alternatives" | People already choosing an app. Fewest searches, highest conversion |
+
+A typical week: two core, one or two adjacent, and a comparison every week or two. Never off-topic filler (general iPhone news, Android, unrelated how-tos): it earns nothing and dilutes what the site is about.
+
+The tie-back rule: a page belongs if a reader who finishes it plausibly has a storage, photo, or video problem the app helps with, and the page can link to at least two core guides without forcing it.
+
+## A run, start to finish
+
+The skill has the detail. In short:
+
+1. **Check the pace.** Count guides published in the last 7 days. If the week is full, improve an existing page instead.
+2. **Pick one action.** With Search Console data: a query we show up for but don't answer, a page with impressions and a weak click rate, or a page at positions 5 to 20 that could be more complete. Without data yet: the best open row in the backlog.
+3. **Check the search results** for the keyword: what kind of page ranks, what those pages miss, and whether a small site can compete.
+4. **Write** the guide to `web/content/README.md`: answer first, built-in iPhone tools before the app, every fact traced to Apple or checked on the device.
+5. **Link it in.** Two to four links out, and at least one link in from an existing guide.
+6. **Build** (`npm run build` in `web/`). It must pass.
+7. **Publish.** Commit to `main` and push; the host deploys. No branches or pull requests.
+8. **Log it** in `log.md` and update the backlog row.
+
+A run that can't trace a claim to a source leaves it out. A guide whose steps couldn't be confirmed is committed as `draft: true` (skipped by the build) with a note in the log, for a person to check on a real iPhone.
 
 ## Comparison articles
 
-Vaultaire also grew by comparing itself with other encrypted-file apps. We do the same for iPhone storage and cleaner apps. These searches come from people already choosing an app, so they convert well. Formats:
+One page per competitor in `web/src/lib/comparisons.ts`, plus roundups ("best duplicate photo cleaners") and "alternatives to X" pages.
 
-- **"[Our app] vs [competitor]"**: one page per major cleaner/storage app.
-- **"Best [category] apps for iPhone"**: roundups such as best duplicate photo cleaners or best video compressors, with our app included and ranked honestly.
-- **"[Competitor] alternatives"**: for people unhappy with a specific app (subscriptions, ads, privacy).
+- Verify every competitor fact (price, subscription terms, features, privacy label) from the App Store listing or the competitor's own site during the run, and cite it. If it can't be verified, leave it out.
+- Be fair: say where a competitor is better and where the built-in iOS tools are enough. Claims about our app must match what it ships.
+- Competitor details go stale. Re-check and bump `updated` at least every quarter.
 
-Rules for every comparison:
+## Measuring
 
-- Verify every competitor fact (price, subscription terms, features, privacy policy, what data leaves the phone) from the App Store listing or the competitor's own site during the run, and cite it. If it can't be verified, leave it out.
-- Put a "last checked" date on the page; competitor details go stale, so refresh comparisons regularly.
-- Be fair: say where a competitor is better or where the built-in iOS tools are enough. Claims about our app must match what it actually ships.
-- Use a comparison table plus a short "who should pick which" section, and a `<!-- cta -->` after the verdict.
-- Before launch, keep the topic list of competitors in `automation/` and add one comparison a week alongside the regular guides.
+- **Search Console** (once set up): impressions, clicks, click rate, and position per page and query. Read through [gum](https://github.com/ehmo/gum) if it's installed, otherwise from the Search Console website.
+- **Conversions:** the waitlist table's `source` column (page and CTA position) now; App Store campaign tokens after launch.
+- Give a new page four weeks before judging it. Then: indexed? Impressions for the target keyword? If it has impressions and few clicks, rewrite the title and description. If it sits at positions 8 to 20, make it more complete and link to it from more pages.
 
-## How it runs
+## Setup checklist
 
-The loop runs as a [Claude Code scheduled task](https://code.claude.com/docs/en/routines) (formerly "routines") in Anthropic's cloud, so no laptop needs to be on and no API credits are used. Runs draw from the Claude subscription's normal usage; there is no separate per-day run cap, only hourly limits far above one or two runs a day. No n8n or other orchestrator is needed: the scheduled task provides the schedule, and GitHub is the publish step because the site reads guides straight from the repo.
+**Done**
 
-```text
-6:07 am daily scheduled task   (avoid :00, on-the-hour runs can start late)
-  ├─ clones shrikardayalu/Storage-App
-  ├─ setup script installs gum (cached between runs)
-  ├─ gum reads the last 28 days of Search Console data
-  ├─ Claude picks ONE action and writes/edits web/content/guides/*.md
-  ├─ npm run build in web/ (the validation in guides.ts is the safety net)
-  └─ pushes a claude/ branch and opens a pull request
-Review on a phone → merge → host deploys main
-```
+- [x] Domain live: `www.simpleshrink.com`, with the apex and the old vercel.app address redirecting to it.
+- [x] Waitlist: site → n8n webhook → data table (see `web/.env.example`).
 
-Notes:
+**To do (needs the owner's accounts)**
 
-- **Auth.** gum's default OAuth login opens a browser and stores the token in the OS keychain, which a cloud run doesn't have. Use a Google service account with read access to the Search Console property, and give the run its JSON key through the cloud environment (use a private environment; its variables are visible to anyone who uses it).
-- **Network.** The default cloud environment only allows an allowlist of domains. If gum's calls fail with `403 host_not_allowed`, add `*.googleapis.com` and `oauth2.googleapis.com` (and gum's release download host, for the setup script) under the environment's network access.
-- **Prompt.** The scheduled task's prompt is the agent instruction below, plus: "Use gum to fetch Search Console data. Open a pull request with the change and a one-paragraph summary of why this action was picked."
-- **Fallback.** A Desktop scheduled task on a local machine also works (gum's browser login works there) but only runs while that machine is on.
-
-## Agent instruction (starting point)
-
-```text
-You are the SEO and answer-engine agent for an iPhone storage utility.
-
-Inputs: the last 28 days of Google Search Console data, and the guides in
-web/content/guides/ (read web/content/README.md first; follow it exactly).
-
-Recommend and prepare ONE action for today: a new guide, an improvement to an
-existing guide, new internal links, or a comparison page (our app vs a
-competitor, a "best apps" roundup, or "alternatives to X"). For a new guide include a quickAnswer
-that fully answers the query, verified step-by-step instructions using built-in
-iOS tools first, a table or FAQ where it helps, 2–4 internal links out and at
-least one link in from an existing guide, a <!-- cta --> where the app is
-genuinely relevant, and a one-line measurement plan. For a comparison, verify
-every competitor fact from its App Store listing or website during this run,
-cite it, add a "last checked" date, and say honestly where a competitor or
-the built-in iOS tools are the better choice.
-
-Never invent statistics, test results, app capabilities, or competitor facts.
-Never claim any app can clear System Data or other apps' caches. Never
-duplicate an existing primaryKeyword. Run `npm run build` in web/ and fix any
-error. Leave the change on a branch for human review.
-```
-
-## Setup checklist (when we build it)
-
-**Search Console**
-
-- [ ] Set `NEXT_PUBLIC_SITE_URL` to the production domain and deploy the site.
-- [ ] Add the domain as a property in Google Search Console and verify it.
-- [ ] Submit `https://<domain>/sitemap.xml` in Search Console (and Bing Webmaster Tools).
-- [ ] In Google Cloud: create a project, enable the Search Console API, create a service account, and download its JSON key.
-- [ ] In Search Console → Settings → Users and permissions, add the service account's email with Restricted (read-only) access.
-
-**Scheduled task**
-
-- [ ] Connect GitHub to claude.ai so cloud runs can clone this repo and open pull requests.
-- [ ] Create a private cloud environment: setup script installs gum and runs `npm ci` in `web/`; add the service account key; allow `*.googleapis.com` if needed.
-- [ ] At claude.ai/code/routines: new scheduled task, daily at 6:07 am, this repo, that environment, the prompt from "How it runs". Remove connectors it doesn't need.
-- [ ] Click **Run now** once and read the transcript to confirm gum returned data and a pull request opened.
-
-**Other**
-
-- [ ] Point `WAITLIST_WEBHOOK_URL` at an email tool or n8n webhook that stores `{ email, source, joinedAt }`.
+- [ ] In Vercel → Settings → Environment Variables: remove `NEXT_PUBLIC_SITE_URL` or set it to `https://www.simpleshrink.com`, and remove `NEXT_PUBLIC_APP_NAME` if it's set.
+- [ ] Google Search Console: add `simpleshrink.com` as a Domain property (verified by a DNS TXT record), then submit `https://www.simpleshrink.com/sitemap.xml`.
+- [ ] Bing Webmaster Tools: import the site from Search Console and submit the same sitemap.
+- [ ] Optional, for automatic data: install gum and sign in, so runs can read Search Console themselves.
 - [ ] After launch: set `NEXT_PUBLIC_APP_STORE_URL` and `NEXT_PUBLIC_APP_STORE_PROVIDER_TOKEN` so every CTA becomes an attributed App Store link.
 
-## Guidelines
+## Running it on a schedule
 
-- Keep this independent of the website's runtime. It only produces content files and reports.
-- Store credentials in the scheduled task's private cloud environment or local, Git-ignored env files (e.g. `automation/.env`), never in code.
+The skill can be run by hand (`/seo`) or by a scheduled task whose prompt is "Run the seo skill". A schedule should fire on four days a week at different times (for example Monday 9:40, Wednesday 14:15, Friday 11:05, Saturday 16:30), not daily on the hour. The build's pace check is the backstop if a schedule misfires.
+
+Never store credentials in the repo. It's public.

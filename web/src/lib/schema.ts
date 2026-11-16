@@ -40,7 +40,8 @@ export function appSchema() {
   return {
     "@type": "MobileApplication",
     "@id": APP_ID,
-    name: siteConfig.name,
+    name: siteConfig.storeName,
+    alternateName: siteConfig.name,
     description: siteConfig.description,
     operatingSystem: "iOS 17 or later",
     applicationCategory: "UtilitiesApplication",

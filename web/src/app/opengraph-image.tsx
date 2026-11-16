@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { OgCard, ogSize } from "@/components/og/og-card";
 import { siteConfig } from "@/lib/site";
 
-export const alt = `${siteConfig.name}: ${siteConfig.tagline}`;
+export const alt = `${siteConfig.storeName}. ${siteConfig.tagline}`;
 export const size = ogSize;
 export const contentType = "image/png";
 

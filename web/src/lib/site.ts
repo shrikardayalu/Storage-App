@@ -1,13 +1,16 @@
 // Public site configuration. NEXT_PUBLIC_* values are inlined at build time,
 // so each variable must be referenced directly (no dynamic lookups).
 
-const productionUrl = "https://simpleshrink.vercel.app";
+// The apex (simpleshrink.com) redirects here, so www is the one canonical host.
+const productionUrl = "https://www.simpleshrink.com";
 const rawUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   (process.env.NODE_ENV === "production" ? productionUrl : "http://localhost:3000");
 
 export const siteConfig = {
   name: process.env.NEXT_PUBLIC_APP_NAME || "SimpleShrink",
+  /** The full App Store name. Used where the listing is named: page title, app schema, llms.txt. */
+  storeName: "SimpleShrink: Storage Cleaner",
   /** Canonical origin with no trailing slash. Used for canonicals, sitemap, and schema. */
   url: rawUrl.replace(/\/+$/, ""),
   tagline: "Free up iPhone storage without deleting your memories",
@@ -23,7 +26,7 @@ export const siteConfig = {
    */
   supportEmail: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "hello.simpleshrink@gmail.com",
   /** Date /privacy and /terms last changed. Update it with any change to either page. */
-  legalUpdated: "2026-11-14",
+  legalUpdated: "2026-11-16",
 };
 
 export function absoluteUrl(path = "/") {

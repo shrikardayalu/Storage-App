@@ -2,7 +2,9 @@
 
 Guides live in `guides/` as one Markdown file per page. The file name is the URL slug: `guides/compress-videos-iphone.md` → `/guides/compress-videos-iphone`. Every guide is prerendered at build time, added to the sitemap, RSS feed, `/llms.txt`, the guides hub, and the footer, with no extra wiring.
 
-The build **fails** if a guide is malformed, links to a page that doesn't exist, lists a missing related guide, or targets a `primaryKeyword` another guide already owns. A failed build means nothing broken ships.
+The build **fails** if a guide is malformed, links to a page that doesn't exist, lists a missing related guide, targets a `primaryKeyword` another guide already owns, or would be the sixth new guide in 7 days (or the second in one day). A failed build means nothing broken ships.
+
+How topics are chosen, researched, and written is in the `seo` skill (`.claude/skills/seo/SKILL.md`) and `automation/README.md`.
 
 ## Frontmatter
 

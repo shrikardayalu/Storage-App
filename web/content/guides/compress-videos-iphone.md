@@ -67,7 +67,7 @@ The free **Shortcuts** app (built into iOS) can re-encode a video at a lower res
 Go to **Settings → Camera**:
 
 - **Record Video:** choose **1080p HD at 30 fps** for everyday clips. Switch to 4K only when you need it.
-- **Formats:** choose **High Efficiency**, which records HEVC video that's much smaller than the older "Most Compatible" format.
+- **Formats:** choose **High Efficiency**, which records HEVC video that's much smaller than the older "Most Compatible" format. Here's [how High Efficiency and Most Compatible differ](/guides/high-efficiency-vs-most-compatible-iphone).
 - **Record Slo-mo:** a lower setting also helps if you use slo-mo a lot.
 
 ## Don't forget Recently Deleted

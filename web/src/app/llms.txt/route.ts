@@ -10,7 +10,7 @@ import { topics } from "@/lib/topics";
 export function GET() {
   const guides = getAllGuides();
   const lines = [
-    `# ${siteConfig.name}`,
+    `# ${siteConfig.storeName}`,
     "",
     `> ${siteConfig.description}`,
     "",
