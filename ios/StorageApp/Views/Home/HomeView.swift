@@ -864,7 +864,7 @@ private struct SafetyFootnote: View {
             Image(systemName: "lock.shield")
                 .foregroundStyle(Theme.accent)
                 .accessibilityHidden(true)
-            Text("SimpleShrink reads your photos, your free space and a folder you pick. Nothing changes without your OK, and nothing leaves your iPhone.")
+            Text("SimpleShrink reads your photos, your free space and a folder you pick. Nothing changes without your OK. Your photos, files and storage readings stay on your iPhone.")
                 .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)

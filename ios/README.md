@@ -2,7 +2,7 @@
 
 Native iPhone app, built with Swift and SwiftUI for iOS 17 and later.
 
-The app measures the phone's real free space and scans the photo library: the whole library with full Photos access, or only the picked photos with limited access. It changes only the items the person approves on a review screen (changes need full access), and makes no network requests.
+The app measures the phone's real free space and scans the photo library: the whole library with full Photos access, or only the picked photos with limited access. It changes only the items the person approves on a review screen (changes need full access). Photos, files and storage readings stay on the phone. The optional final onboarding survey sends only a chosen discovery channel to TelemetryDeck; see [acquisition reporting](../docs/ACQUISITION_REPORTING.md).
 
 ## Project layout
 
@@ -31,7 +31,7 @@ ios/
 ├── StorageAppTests/            App-level tests for AppModel (need Xcode)
 └── Tools/
     ├── illustrations/generate.py   Generates the hand-inked SVG illustrations
-    └── check-no-device-access.sh   Fails on any change/delete/network API, or Photos outside StorageApp/Photos
+    └── check-no-device-access.sh   Enforces approved device changes and optional-survey-only networking
 ```
 
 ## Architecture
@@ -100,7 +100,7 @@ xcodebuild test -project StorageApp.xcodeproj -scheme StorageApp -destination 'p
 
 Or press **⌘U** in Xcode.
 
-**Safety check:** `bash ios/Tools/check-no-device-access.sh` fails if any code changes photos, deletes files, exports video, or uses `URLSession`, or if Photos APIs appear outside `StorageApp/Photos/`.
+**Safety check:** `bash ios/Tools/check-no-device-access.sh` enforces approved Photos changes, scoped video exports and file removal, and confines networking to `AcquisitionReporter.swift` for the optional survey. Photos APIs may appear only in `StorageApp/Photos/`.
 
 ### Continuous integration
 

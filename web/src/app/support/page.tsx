@@ -49,7 +49,7 @@ const faq = [
   },
   {
     q: `Does ${name} upload my photos?`,
-    a: `No. Everything is analysed on your iPhone, and the app has no account and collects no data. See our [Privacy Policy](/privacy).`,
+    a: `No. Photos, videos and files are analysed on your iPhone and never uploaded. The optional onboarding question can share how you found us for anonymous channel totals; skipping sends nothing. See our [Privacy Policy](/privacy).`,
   },
 ];
 

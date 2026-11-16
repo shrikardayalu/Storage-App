@@ -21,7 +21,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Nothing changes without your OK")
                             .font(.headline)
-                        Text("SimpleShrink reads your photo library and your free space. It changes only the items you approve on a review screen, and nothing leaves your iPhone.")
+                        Text("SimpleShrink reads your photo library and your free space. It changes only the items you approve on a review screen. Your photos, files and storage readings stay on your iPhone.")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }

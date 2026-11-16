@@ -5,14 +5,20 @@ import XCTest
 /// The first-run funnel, the picks it keeps, the suggestions it shows, and
 /// the order Home's plan walks through them.
 final class OnboardingTests: XCTestCase {
-    func testTwoScreensThenTheScanThenThePicksAndNoPaywall() {
+    func testSurveyFollowsTheScanAndPicksWithNoPaywall() {
         var step: OnboardingStep? = .hook
         var seen: [OnboardingStep] = []
         while let current = step {
             seen.append(current)
             step = current.next
         }
-        XCTAssertEqual(seen, [.hook, .pain, .scan, .picks])
+        XCTAssertEqual(seen, [.hook, .pain, .scan, .picks, .source])
+    }
+
+    func testSkippedOrEmptyScanStillReachesTheSurvey() {
+        XCTAssertEqual(OnboardingStep.scan.next(hasSuggestions: false), .source)
+        XCTAssertEqual(OnboardingStep.scan.next(hasSuggestions: true), .picks)
+        XCTAssertNil(OnboardingStep.source.next)
     }
 
     func testBackNeverReturnsIntoTheScan() {
@@ -20,12 +26,14 @@ final class OnboardingTests: XCTestCase {
         XCTAssertEqual(OnboardingStep.pain.previous, .hook)
         XCTAssertNil(OnboardingStep.scan.previous)
         XCTAssertNil(OnboardingStep.picks.previous)
+        XCTAssertNil(OnboardingStep.source.previous)
     }
 
-    func testProgressRisesAndFinishesAtThePicks() {
+    func testProgressRisesAndFinishesAtTheSurvey() {
         let values = OnboardingStep.tracked.map(\.progress)
         XCTAssertEqual(values, values.sorted())
-        XCTAssertEqual(OnboardingStep.picks.progress, 1)
+        XCTAssertLessThan(OnboardingStep.picks.progress, 1)
+        XCTAssertEqual(OnboardingStep.source.progress, 1)
     }
 
     func testPicksSurviveARelaunch() throws {
@@ -38,6 +46,31 @@ final class OnboardingTests: XCTestCase {
         XCTAssertFalse(OnboardingAnswers.isCompleted(in: defaults))
         OnboardingAnswers.markCompleted(in: defaults)
         XCTAssertTrue(OnboardingAnswers.isCompleted(in: defaults))
+    }
+
+    func testEverySourceSurvivesARelaunchAndSkipClearsIt() throws {
+        let name = "OnboardingSourceTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        for source in AcquisitionSource.allCases {
+            let answers = OnboardingAnswers(picks: [.swipe], source: source)
+            answers.save(to: defaults)
+            XCTAssertEqual(OnboardingAnswers.load(from: defaults), answers)
+        }
+        OnboardingAnswers(picks: [.swipe]).save(to: defaults)
+        XCTAssertEqual(OnboardingAnswers.load(from: defaults), OnboardingAnswers(picks: [.swipe]))
+    }
+
+    func testExistingInstallWithoutASourceKeepsItsPicks() throws {
+        let name = "OnboardingLegacyTests.\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set([CleanupMethod.swipe.rawValue], forKey: OnboardingAnswers.picksKey)
+        OnboardingAnswers.markCompleted(in: defaults)
+        XCTAssertEqual(OnboardingAnswers.load(from: defaults), OnboardingAnswers(picks: [.swipe]))
+        XCTAssertTrue(OnboardingAnswers.isCompleted(in: defaults))
+        defaults.set("unknown_future_source", forKey: "onboarding.source")
+        XCTAssertNil(OnboardingAnswers.load(from: defaults).source)
     }
 
     // MARK: Free and Pro

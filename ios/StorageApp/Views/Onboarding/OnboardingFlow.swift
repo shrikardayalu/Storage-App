@@ -3,7 +3,8 @@ import SwiftUI
 import UIKit
 
 /// First run: two screens that say "we get it", a live scan that shows where
-/// the space went, then "which ones do you want to try?". No paywall: see
+/// the space went, then "which ones do you want to try?" and an optional
+/// "How did you hear about us?". No paywall: see
 /// `OnboardingStep` for why. Every number shown is the person's own: real free space
 /// on the first two screens, a real scan, real estimates on the picks.
 ///
@@ -80,15 +81,15 @@ struct OnboardingFlow: View {
         case .scan:
             ScanPage(top: top) { found in
                 suggestions = found ?? []
-                if suggestions.isEmpty {
-                    // No access, an empty album, or nothing to suggest: straight to Home.
-                    finish()
-                } else {
-                    advance()
-                }
+                advance()
             }
         case .picks:
             PicksPage(top: top, suggestions: suggestions, picks: $answers.picks, onNext: advance)
+        case .source:
+            AcquisitionPage(top: top, source: $answers.source, onNext: advance) {
+                answers.source = nil
+                advance()
+            }
         case .paywall:
             PaywallFlow(context: PaywallContext(proBytes: model.proSaving), onDone: finish)
         }
@@ -103,7 +104,7 @@ struct OnboardingFlow: View {
         case .hook: share = 0.42
         case .pain: share = 0.19
         case .scan: share = 0.12
-        case .picks: share = 0.1
+        case .picks, .source: share = 0.1
         case .paywall: share = 0.1
         }
         let height = size.height * share
@@ -133,6 +134,7 @@ struct OnboardingFlow: View {
     /// it, then stamps it. Later steps (screenshot routes) start with all of
     /// that already drawn.
     private func begin() {
+        answers = OnboardingAnswers.load()
         step = startAt
         if let sampleSuggestions { suggestions = sampleSuggestions }
         guard startAt == .hook, !reduceMotion else {
@@ -188,7 +190,7 @@ struct OnboardingFlow: View {
     // MARK: Moving through
 
     private func advance() {
-        if let next = step.next {
+        if let next = step.next(hasSuggestions: !suggestions.isEmpty) {
             step = next
         } else {
             finish()
@@ -202,6 +204,10 @@ struct OnboardingFlow: View {
     private func finish() {
         answers.save()
         OnboardingAnswers.markCompleted()
+        if step == .source, ScreenshotRoute.current == nil {
+            AcquisitionReporter.shared.record(answers.source)
+            Task { await AcquisitionReporter.shared.flush() }
+        }
         onFinish()
     }
 }
@@ -885,7 +891,7 @@ private struct PicksPage: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .padding(.bottom, 8)
-            Button("Let's do it", action: onNext)
+            Button("Continue", action: onNext)
                 .buttonStyle(.sticker)
                 .disabled(picks.isEmpty)
                 .opacity(picks.isEmpty ? 0.5 : 1)
@@ -918,6 +924,90 @@ private struct PicksPage: View {
             let order = suggestions.map(\.method)
             picks = order.filter { picks.contains($0) || $0 == method }
         }
+    }
+}
+
+// MARK: - 5. How did you hear about us?
+
+private struct AcquisitionPage: View {
+    let top: CGFloat
+    @Binding var source: AcquisitionSource?
+    let onNext: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: top)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("one quick question (optional)")
+                        .font(.hand(20))
+                        .foregroundStyle(Theme.accent)
+                    Text("How did you hear about us?")
+                        .font(.display(34))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text("Where did you first find SimpleShrink? Pick one.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    ForEach(AcquisitionSource.allCases) { option in
+                        Button {
+                            source = option
+                        } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(option.title)
+                                        .font(.subheadline.weight(.semibold))
+                                    if let detail = option.detail {
+                                        Text(detail)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 4)
+                                Image(systemName: source == option ? "largecircle.fill.circle" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(source == option ? Theme.accent : Theme.ink)
+                                    .accessibilityHidden(true)
+                            }
+                            .foregroundStyle(Theme.ink)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(source == option ? Theme.mintSoft : Theme.surface,
+                                        in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.ink.opacity(0.4)))
+                            .contentShape(RoundedRectangle(cornerRadius: 14))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(source == option ? [.isSelected] : [])
+                    }
+                    Text("If you share an answer, we send just your choice to TelemetryDeck to count how people find us. No name, device ID, photos or files. Skipping sends nothing.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Link("Privacy Policy", destination: PaywallConfig.privacyURL)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+                .padding(.vertical, 12)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            VStack(spacing: 6) {
+                Button("Share & get started", action: onNext)
+                    .buttonStyle(.sticker)
+                    .disabled(source == nil)
+                Button("Skip for now", action: onSkip)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .padding(.top, 12)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 12)
+        .sensoryFeedback(.selection, trigger: source)
     }
 }
 
@@ -1002,6 +1092,13 @@ private struct PickRow: View {
 
 #Preview("Picks") {
     OnboardingFlow(startAt: .picks, sampleSuggestions: Suggestion.sample, onFinish: {})
+        .environment(AppModel.preview())
+        .environment(PurchaseStore(defaults: UserDefaults(suiteName: "preview")!))
+        .tint(Theme.accent)
+}
+
+#Preview("Acquisition") {
+    OnboardingFlow(startAt: .source, onFinish: {})
         .environment(AppModel.preview())
         .environment(PurchaseStore(defaults: UserDefaults(suiteName: "preview")!))
         .tint(Theme.accent)

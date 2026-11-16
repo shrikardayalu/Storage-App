@@ -2,7 +2,8 @@ import Foundation
 import StorageCore
 
 /// The first-run funnel: the hook and the pain (two screens), a live scan
-/// that shows where the space went, then "which ones do you want to try?"
+/// that shows where the space went, then "which ones do you want to try?",
+/// followed by an optional acquisition survey just before Home.
 ///
 /// The person already knows their phone is full, so the funnel gets to their
 /// own numbers fast and lets them pick what to do. Nothing in onboarding asks
@@ -14,13 +15,14 @@ enum OnboardingStep: Int, CaseIterable, Comparable {
     case pain
     case scan
     case picks
+    case source
     /// Only for the `paywall` screenshot route; the funnel never goes here.
     case paywall
 
     static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
 
     /// Steps that show in the pencil progress line at the top.
-    static let tracked: [OnboardingStep] = [.hook, .pain, .scan, .picks]
+    static let tracked: [OnboardingStep] = [.hook, .pain, .scan, .picks, .source]
 
     /// Share of the tracked steps done, 0 to 1.
     var progress: Double {
@@ -40,11 +42,17 @@ enum OnboardingStep: Int, CaseIterable, Comparable {
 
     /// The step after this one; nil means onboarding is done.
     var next: OnboardingStep? {
+        next(hasSuggestions: true)
+    }
+
+    /// Even an empty or skipped scan reaches the optional survey.
+    func next(hasSuggestions: Bool) -> OnboardingStep? {
         switch self {
         case .hook: .pain
         case .pain: .scan
-        case .scan: .picks
-        case .picks, .paywall: nil
+        case .scan: hasSuggestions ? .picks : .source
+        case .picks: .source
+        case .source, .paywall: nil
         }
     }
 }
@@ -53,19 +61,25 @@ enum OnboardingStep: Int, CaseIterable, Comparable {
 struct OnboardingAnswers: Equatable {
     /// Ticked on "Which ones do you want to try?", in the order shown.
     var picks: [CleanupMethod] = []
+    var source: AcquisitionSource?
 
     private enum Keys {
         static let picks = "onboarding.picks"
         static let completed = "onboarding.completed"
+        static let source = "onboarding.source"
     }
 
     static func load(from defaults: UserDefaults = .standard) -> OnboardingAnswers {
         let raw = defaults.stringArray(forKey: Keys.picks) ?? []
-        return OnboardingAnswers(picks: raw.compactMap(CleanupMethod.init(rawValue:)))
+        return OnboardingAnswers(
+            picks: raw.compactMap(CleanupMethod.init(rawValue:)),
+            source: defaults.string(forKey: Keys.source).flatMap(AcquisitionSource.init(rawValue:))
+        )
     }
 
     func save(to defaults: UserDefaults = .standard) {
         defaults.set(picks.map(\.rawValue), forKey: Keys.picks)
+        defaults.set(source?.rawValue, forKey: Keys.source)
     }
 
     static func isCompleted(in defaults: UserDefaults = .standard) -> Bool {

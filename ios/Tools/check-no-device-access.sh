@@ -9,7 +9,8 @@
 #    which writes and removes only its own copies in the app's temporary folder
 #    (Build Plan step 6). Removing files is allowed there and in
 #    StorageApp/Files/PickedFolderFiles.swift, which removes only files inside the
-#    folder the person picked in Files (Build Plan step 8). Nothing may use the network.
+#    folder the person picked in Files (Build Plan step 8).
+#    Only AcquisitionReporter may send the optional marketing-source survey.
 # 3. Reading Photos is allowed only in StorageApp/Photos/. Everywhere else,
 #    Photos APIs are off limits.
 #
@@ -49,7 +50,7 @@ if [ "$performs" -lt 1 ] || [ "$gates" -lt "$performs" ]; then
   status=1
 fi
 # Test Mode is gone: nothing may be tied to the old test album.
-matches=$(grep -rEn 'TestMode|Storage App Test' StorageApp StorageCore/Sources || true)
+matches=$(grep -rEn '(^|[^[:alnum:]_])TestMode([^[:alnum:]_]|$)|Storage App Test' StorageApp StorageCore/Sources || true)
 if [ -n "$matches" ]; then
   echo "$matches"
   echo "error: Test Mode was removed for release; don't bring the test album back." >&2
@@ -83,10 +84,11 @@ if ! grep -q 'deletingLastPathComponent() == folder.standardizedFileURL' "$expor
   status=1
 fi
 
-matches=$(grep -rEn 'URLSession' StorageApp StorageCore/Sources | strip_comments || true)
+reporter='StorageApp/Services/AcquisitionReporter.swift'
+matches=$(grep -rEn 'URLSession|import Network|NWConnection|WKWebView' StorageApp StorageCore/Sources | grep -v "^$reporter:" | strip_comments || true)
 if [ -n "$matches" ]; then
   echo "$matches"
-  echo "error: the app must not use the network yet." >&2
+  echo "error: only $reporter may use the network for the optional survey." >&2
   status=1
 fi
 
@@ -98,5 +100,5 @@ if [ -n "$matches" ]; then
   status=1
 fi
 
-[ "$status" -eq 0 ] && echo "OK: Photos changes only in $changes_file, by approved ID behind the safety gate; re-encoding only in $exporter; file removal only there and in $folder_files; no network."
+[ "$status" -eq 0 ] && echo "OK: approved Photos changes, scoped exports and file removal; networking only in $reporter for the optional survey."
 exit "$status"

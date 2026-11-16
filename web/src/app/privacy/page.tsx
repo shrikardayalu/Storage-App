@@ -8,14 +8,12 @@ import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: `How the ${siteConfig.name} iPhone app and website handle your information. The app collects no data: everything it looks at stays on your iPhone.`,
+  description: `How the ${siteConfig.name} iPhone app and website handle your information. Photos and files stay on your iPhone. Sharing how you found us is optional.`,
   alternates: { canonical: "/privacy" },
 };
 
-// Covers the iOS app and this website. Keep it true to the code: the app has no
-// networking (ios/Tools/check-no-device-access.sh fails CI if any appears),
-// and ios/StorageApp/Resources/PrivacyInfo.xcprivacy declares no collected data.
-// If either changes, update this page, the manifest, and App Store Connect's
+// Covers the iOS app and this website. Only the optional acquisition survey
+// uses networking. Keep this page, PrivacyInfo.xcprivacy, and App Store Connect's
 // App Privacy answers together, and bump siteConfig.legalUpdated.
 export default function PrivacyPage() {
   const name = siteConfig.name;
@@ -38,10 +36,10 @@ export default function PrivacyPage() {
           <p className="mt-4 text-ink-soft">Last updated {updated}</p>
           <div className="prose-guide mt-10">
             <p>
-              <strong>The short version:</strong> the {name} app doesn&apos;t collect any data. It looks at your
-              photos, videos and files on your iPhone, and nothing it looks at ever leaves your iPhone. There&apos;s no
-              account, no analytics, no ads and no tracking. The website collects your email address only if you join
-              the waitlist.
+              <strong>The short version:</strong> the {name} app analyses your photos, videos and files on your
+              iPhone and never uploads them. There&apos;s no account, no ads and no tracking. If you choose to share
+              how you found us during onboarding, we send that answer to TelemetryDeck for anonymous channel totals.
+              You can skip the question. The website collects your email address only if you join the waitlist.
             </p>
 
             <h2>The {name} app</h2>
@@ -62,11 +60,32 @@ export default function PrivacyPage() {
                 measure what each cleanup gave back. These readings are saved on your iPhone only.
               </li>
               <li>
-                <strong>Your choices.</strong> Your settings and onboarding answers are saved on your iPhone only.
+                <strong>Your choices.</strong> Your settings and cleanup choices are saved on your iPhone only.
+                Your optional answer about how you found us is also saved locally and, if you choose to share it,
+                sent as described below.
               </li>
             </ul>
             <p>
-              The app has no servers to send any of this to. Deleting the app deletes everything it saved.
+              Deleting the app removes its local settings, readings and choices. It does not remove an anonymous
+              survey response already sent to TelemetryDeck; we have no identifier to match that response to you.
+            </p>
+
+            <h3>Optional discovery survey</h3>
+            <p>
+              At the end of onboarding, you can choose where you first heard about {name}. Selecting
+              &ldquo;Share &amp; get started&rdquo; sends your selected channel to the analytics service
+              TelemetryDeck GmbH. We use response counts to understand how people find us. Selecting
+              &ldquo;Skip for now&rdquo; sends no survey response. If you are offline, a shared answer waits on
+              your iPhone and is retried when you next open the app.
+            </p>
+            <p>
+              We send only a predefined channel, such as TikTok, Reddit or our website, with the survey event name.
+              We do not send your name, email address, account, advertising ID, device ID, photos, file information,
+              storage readings or a unique installation identifier. Every response uses the same non-personal
+              sender label. TelemetryDeck records when a response arrives and processes ordinary network requests;
+              it states that it does not store IP addresses. We do not combine these responses with other data to
+              identify you or target ads. Read more in{" "}
+              <a href="https://telemetrydeck.com/privacy/">TelemetryDeck&apos;s Privacy Policy</a>.
             </p>
 
             <h3>What the app changes</h3>

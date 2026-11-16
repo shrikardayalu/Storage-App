@@ -20,6 +20,7 @@ enum ScreenshotRoute: String {
     case onboarding
     /// Onboarding's "which ones do you want to try?" (kept as `reveal` for CI's screenshot list).
     case reveal
+    case acquisition
     case paywall
 
     /// Where onboarding opens for this route; nil keeps it hidden.
@@ -27,6 +28,7 @@ enum ScreenshotRoute: String {
         switch self {
         case .onboarding: .hook
         case .reveal: .picks
+        case .acquisition: .source
         case .paywall: .paywall
         default: nil
         }
@@ -55,7 +57,7 @@ enum ScreenshotRoute: String {
         case .results:
             model.showSampleResults()
             model.isShowingResults = true
-        case .onboarding, .reveal, .paywall:
+        case .onboarding, .reveal, .acquisition, .paywall:
             break
         }
     }

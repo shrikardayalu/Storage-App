@@ -40,13 +40,12 @@ with it.
 
 ## App Privacy ("nutrition label")
 
-- **Data collection:** choose **"No, we do not collect data from this app"**. That gives **Data Not Collected**, which matches `PrivacyInfo.xcprivacy`.
-- **Why that's true:**
-  - The app has no networking. `ios/Tools/check-no-device-access.sh` fails CI if any appears.
-  - Photos and files are analysed on the device.
-  - Purchases go through Apple.
-  - The waitlist email belongs to the website, not the app, so it doesn't count here.
-- **If the app ever adds analytics, crash reporting or any server call,** update this answer, the manifest and `/privacy` together.
+- **Data collection:** choose **"Yes, we collect data from this app"** for the build with optional onboarding source reporting.
+- **Data types:** **User Content → Other User Content** (the chosen discovery channel) and **Usage Data → Product Interaction** (survey submission). Purpose: **Analytics**. Both are **not linked to the user's identity** and **not used for tracking**. This is the repository's classification based on Apple's definitions; verify it with the archive's privacy report.
+- No Device ID, User ID, email, photos, files or storage readings are sent. The minimal TelemetryDeck client sends the channel and uses one shared sender label, with no per-person ID. Skip sends nothing. Purchases remain with Apple; the website waitlist is separate.
+- An ATT prompt is not needed for this survey: it does not link data with other companies for advertising or share with data brokers.
+- See [ACQUISITION_REPORTING.md](ACQUISITION_REPORTING.md) for setup, dashboard grouping and limitations. Deploy the updated `/privacy` and `/support` before distributing this build.
+- If analytics fields or providers change, update this answer, the manifest and `/privacy` together.
 
 ## Export compliance
 
@@ -83,7 +82,7 @@ duplicates, which is exempt.
 > • Clean up all your photos in one tap.
 >
 > PRIVATE BY DESIGN
-> Everything is analysed on your iPhone. SimpleShrink has no account, collects no data and never uploads your photos.
+> Photos, videos and files are analysed on your iPhone and never uploaded. No account needed. An optional onboarding question shares only how you found us for anonymous channel totals; you can skip it.
 >
 > SimpleShrink Pro is available as a weekly or annual auto-renewing subscription, or as a one-time Lifetime purchase. Payment is charged to your Apple ID when you confirm. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and you can manage or cancel them in Settings → your name → Subscriptions.
 >

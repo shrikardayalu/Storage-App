@@ -51,6 +51,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
+        # Public TelemetryDeck app UUID; see docs/ACQUISITION_REPORTING.md.
+        TelemetryDeckAppID: "D3C0724A-3429-476D-882F-3450CA8D75DB"
         # Keep in sync with xtool-Info.plist.
         NSPhotoLibraryUsageDescription: SimpleShrink looks through your photos and videos on this iPhone to show what takes up space. It changes only the ones you approve, and nothing leaves your iPhone.
         # The app offers its own "Change Selection" button instead of iOS asking on every launch.

@@ -35,7 +35,7 @@ struct EmptyStateView: View {
 
 /// Banner note on what the app may read and change.
 struct SafetyNote: View {
-    var text = "SimpleShrink reads your photo library and your free space. In Files, it sees only a folder you pick. It changes only what you approve, and nothing leaves your iPhone."
+    var text = "SimpleShrink reads your photo library and your free space. In Files, it sees only a folder you pick. It changes only what you approve. Your photos, files and storage readings stay on your iPhone."
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {

@@ -29,6 +29,8 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>TelemetryDeckAppID</key>
+	<string>D3C0724A-3429-476D-882F-3450CA8D75DB</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SimpleShrink looks through your photos and videos on this iPhone to show what takes up space. It changes only the ones you approve, and nothing leaves your iPhone.</string>
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>

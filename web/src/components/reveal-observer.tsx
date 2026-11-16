@@ -1,15 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 
 /** One-shot ink entrances. Animation state stays outside React's markup. */
 export function RevealObserver() {
   const pathname = usePathname();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const seen = new WeakSet<Element>();
+    const entrances = new Map<Element, Animation[]>();
     const animations: Animation[] = [];
     const targets = [...document.querySelectorAll(
       "[data-reveal], .draw, main h2, main h3, main .eyebrow, main .ill-light, main .ill-dark",
@@ -18,17 +19,15 @@ export function RevealObserver() {
 
     const play = (el: Element, frames: Keyframe[], duration: number, delay = 0, extra: KeyframeAnimationOptions = {}) => {
       const animation = el.animate(frames, { duration, delay, fill: "both", ...extra });
+      animation.pause();
       animations.push(animation);
-      if (motion.matches) animation.finish();
     };
     const wash = (el: Element, delay = 0) => play(el, [
       { clipPath: "inset(-12px 105% -16px -12px)" },
       { clipPath: "inset(-12px -16px -16px -12px)" },
     ], 650, delay, { easing: "steps(10)" });
 
-    const reveal = (el: Element) => {
-      if (seen.has(el)) return;
-      seen.add(el);
+    const prepare = (el: Element) => {
       const delay = Number(getComputedStyle(el).getPropertyValue("--reveal-delay")) || 0;
       if (el.matches("[data-reveal]")) {
         play(el, [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "none" }],
@@ -53,6 +52,21 @@ export function RevealObserver() {
       } else if (!el.closest(".sticker[data-reveal]")) {
         wash(el);
       }
+    };
+    // Apply each entrance's first frame before paint, even below the viewport.
+    // Waiting until intersection exposes the text before the ink wash starts.
+    targets.forEach((el) => {
+      const start = animations.length;
+      prepare(el);
+      entrances.set(el, animations.slice(start));
+    });
+    const reveal = (el: Element) => {
+      if (seen.has(el)) return;
+      seen.add(el);
+      entrances.get(el)?.forEach((animation) => {
+        if (motion.matches) animation.finish();
+        else animation.play();
+      });
     };
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {

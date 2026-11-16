@@ -24,7 +24,7 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Safety check (Photos read-only and only in StorageApp/Photos; no deletion or network)
+      - name: Safety check (approved device changes and optional survey networking)
         run: bash ios/Tools/check-no-device-access.sh
       - name: Run package tests
         working-directory: ios/StorageCore
@@ -84,7 +84,7 @@ jobs:
           xcrun simctl install "$UDID" "$APP"
           for appearance in light dark; do
             xcrun simctl ui "$UDID" appearance "$appearance"
-            for screen in onboarding reveal paywall home library settings guide whatsapp results; do
+            for screen in onboarding reveal acquisition paywall home library settings guide whatsapp results; do
               xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
               sleep 4
               xcrun simctl io "$UDID" screenshot "screenshots/$screen-$appearance.png"
@@ -94,7 +94,7 @@ jobs:
           # Large text, to check the fixed-height screens still fit.
           xcrun simctl ui "$UDID" appearance light
           xcrun simctl ui "$UDID" content_size accessibility-large
-          for screen in onboarding reveal paywall home; do
+          for screen in onboarding reveal acquisition paywall home; do
             xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
             sleep 4
             xcrun simctl io "$UDID" screenshot "screenshots/$screen-largetext.png"
@@ -129,7 +129,7 @@ jobs:
             xcrun simctl install "$UDID" "$APP"
             for size in large accessibility-large; do
               xcrun simctl ui "$UDID" content_size "$size"
-              for screen in onboarding paywall home settings; do
+              for screen in onboarding acquisition paywall home settings; do
                 xcrun simctl launch "$UDID" "$BUNDLE_ID" -screenshotScreen "$screen"
                 sleep 4
                 xcrun simctl io "$UDID" screenshot "screenshots/$screen-$name-$size.png"
