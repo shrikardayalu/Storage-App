@@ -32,16 +32,16 @@ with it.
 | Secondary category | Photo & Video |
 | Content rights | No third-party content |
 | Age rating | 4+. Answer **None** or **No** to every question: no violence, no mature themes, no gambling, no user-generated content, no unrestricted web access. The app opens only Apple's EULA, the site's legal pages, Photos, Settings and WhatsApp. |
-| Privacy Policy URL | `https://<your domain>/privacy` |
-| Support URL | `https://<your domain>/support` |
-| Marketing URL (optional) | `https://<your domain>/` |
+| Privacy Policy URL | `https://www.simpleshrink.com/privacy` |
+| Support URL | `https://www.simpleshrink.com/support` |
+| Marketing URL (optional) | `https://www.simpleshrink.com/` |
 | Copyright | `2026 <your legal name>` |
 | License Agreement | Apple's standard EULA. The site's `/terms` page applies it and adds to it, so don't upload a custom EULA. |
 
 ## App Privacy ("nutrition label")
 
 - **Data collection:** choose **"Yes, we collect data from this app"** for the build with optional onboarding source reporting.
-- **Data types:** **User Content → Other User Content** (the chosen discovery channel) and **Usage Data → Product Interaction** (survey submission). Purpose: **Analytics**. Both are **not linked to the user's identity** and **not used for tracking**. This is the repository's classification based on Apple's definitions; verify it with the archive's privacy report.
+- **Data types (exactly these two; not Device ID):** **Other Data → Other Data Types** (the chosen discovery channel) and **Usage Data → Product Interaction** (survey submission). Purpose: **Analytics**. Both are **not linked to the user's identity** and **not used for tracking**. This is the repository's classification based on Apple's definitions; verify it with the archive's privacy report.
 - No Device ID, User ID, email, photos, files or storage readings are sent. The minimal TelemetryDeck client sends the channel and uses one shared sender label, with no per-person ID. Skip sends nothing. Purchases remain with Apple; the website waitlist is separate.
 - An ATT prompt is not needed for this survey: it does not link data with other companies for advertising or share with data brokers.
 - See [ACQUISITION_REPORTING.md](ACQUISITION_REPORTING.md) for setup, dashboard grouping and limitations. Deploy the updated `/privacy` and `/support` before distributing this build.
@@ -86,8 +86,8 @@ duplicates, which is exempt.
 >
 > SimpleShrink Pro is available as a weekly or annual auto-renewing subscription, or as a one-time Lifetime purchase. Payment is charged to your Apple ID when you confirm. Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period, and you can manage or cancel them in Settings → your name → Subscriptions.
 >
-> Terms of Use: https://<your domain>/terms
-> Privacy Policy: https://<your domain>/privacy
+> Terms of Use: https://www.simpleshrink.com/terms
+> Privacy Policy: https://www.simpleshrink.com/privacy
 
 **Keywords:** paste each localization's 100-character field from
 `marketing/aso/metadata.md`. There are 14 localizations, because the US store
@@ -95,8 +95,10 @@ searches ten of them, and each carries a different set of words. They come
 from `marketing/aso/metadata.json`, checked by `node marketing/aso/check.mjs`
 (limits, repeats, trademarks). See `marketing/aso/README.md`.
 
-**Screenshots:** upload `marketing/aso/screenshots/out/control/en-US/6.9/`
-(1320 × 2868, the 6.9" iPhone size App Store Connect asks for). Render them
+**Screenshots:** upload `marketing/aso/screenshots/out/control/en-US/6.3/`
+(1206 × 2622). As of 2026-11 App Store Connect's main iPhone slot, "iPhone
+with Dynamic Island (medium display)", accepts only 6.1"/6.3" sizes, not
+the 6.9" set. Render them
 with `node marketing/aso/screenshots/render.mjs --all`; other sets in
 `marketing/aso/screenshots/sets/` are for Product Page Optimization tests.
 The app screens inside them live in `marketing/app-store/screens/`; replace
@@ -131,7 +133,7 @@ Paste this into **App Review Information → Notes**. No sign-in is needed.
 > To review:
 >
 > 1. Use a device or simulator with some photos and videos in Photos: ideally a duplicate, a Live Photo, a burst, a screenshot and a video longer than a minute.
-> 2. Open SimpleShrink, go through onboarding, and allow Full Access to Photos when iOS asks. The scan only reads; nothing leaves the device.
+> 2. Open SimpleShrink, go through onboarding, and allow Full Access to Photos when iOS asks. The scan only reads, and photos and files never leave the device. The last onboarding screen optionally asks how you heard about the app; "Skip for now" sends nothing, and a shared answer sends only that channel to TelemetryDeck for anonymous counts.
 > 3. Home shows what the scan found. Swipe to clean, Best shot of each burst and picking items in the Library are free; Shrink videos, Live Photos to stills, Duplicates and junk, Re-save screenshots and one-tap Photo Cleanup are Pro and open the paywall.
 >
 > Every deletion is reviewed on screen and confirmed by iOS. Photos go to Recently Deleted, and the app then shows how to empty it and measures the space that comes back.

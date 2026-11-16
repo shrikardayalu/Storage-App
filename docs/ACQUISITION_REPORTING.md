@@ -56,7 +56,7 @@ produce a new response. There is deliberately no identifier for deduplication.
 ## App Store privacy
 
 For the reporting-enabled build, select **Yes, we collect data from this app**.
-The manifest declares **Other User Content** (the survey choice) and
+The manifest declares **Other Data Types** (the survey choice) and
 **Product Interaction** (its submission), for **Analytics**, **not linked to
 identity**, and **not used for tracking**. This categorization follows Apple's
 broad definitions; confirm it against the archived build's privacy report.

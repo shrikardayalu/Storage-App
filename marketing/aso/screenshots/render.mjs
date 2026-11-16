@@ -4,7 +4,7 @@
 //
 //   node marketing/aso/screenshots/render.mjs control          one set
 //   node marketing/aso/screenshots/render.mjs --all            every set in sets/
-//   node marketing/aso/screenshots/render.mjs control --size all     every size (default: 6.9 and 6.5)
+//   node marketing/aso/screenshots/render.mjs control --size all     every size (default: 6.3, 6.9 and 6.5)
 //   node marketing/aso/screenshots/render.mjs control --size 6.9
 //   node marketing/aso/screenshots/render.mjs control --check  validate only
 //
@@ -21,15 +21,16 @@ const assets = join(here, '..', '..', 'app-store');   // screens/ and art/ are s
 const PORT = 9379;
 
 // Portrait sizes App Store Connect accepts for each iPhone display class.
-// 6.9" is the one Apple asks for; it scales that down for every smaller
-// phone unless you upload the others. 6.5" is the accepted alternative.
+// As of 2026-11 App Store Connect's main iPhone slot ("iPhone with Dynamic
+// Island, medium display") takes 6.3" (1206 x 2622) or 6.1"; 6.9" is optional and
+// 6.5" is the older large size.
 const SIZES = {
   '6.9': { w: 1320, h: 2868, name: 'iPhone 6.9" (16/17 Pro Max)' },
   '6.5': { w: 1284, h: 2778, name: 'iPhone 6.5" (11 Pro Max to 14 Plus)' },
   '6.3': { w: 1206, h: 2622, name: 'iPhone 6.3" (16/17 Pro)' },
   '6.1': { w: 1170, h: 2532, name: 'iPhone 6.1" (12 to 14, 16e)' },
 };
-const DEFAULT_SIZES = ['6.9', '6.5'];
+const DEFAULT_SIZES = ['6.3', '6.9', '6.5'];
 const LAYOUTS = { phone: ['headline', 'screen'], hang: ['headline', 'screen'], promises: ['headline', 'items'] };
 const THEMES = ['cream', 'mint', 'soft', 'dark'];
 
