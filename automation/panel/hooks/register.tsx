@@ -231,10 +231,11 @@ const fetchSearch = async ($: Engine) => {
   const note = async (searchNote: string, isFetchingSearch = false) =>
     update($, status, old => (old ? { ...old, searchNote, isFetchingSearch } : old))
   await note('Asking Search Console…', true)
-  const repo = await findRepo($)
-  if (!repo) return note('Could not find the repo.')
+  // Run the script only from the one known repo, never from whatever folder
+  // the session happens to be in: files there are read, not executed.
+  const script = `${HOME_REPO}/automation/gsc.sh`
+  if (!(await $.fs.exists(script))) return note(`Could not find ${script}.`)
 
-  const script = `${repo}/automation/gsc.sh`
   const ask = async (dimension: string) => {
     const ran = await $.process.run(
       ['wsl.exe', '-e', 'bash', script.replace(/^([A-Za-z]):/, (_, d: string) => `/mnt/${d.toLowerCase()}`), dimension, String(SEARCH_DAYS)],
