@@ -1,5 +1,9 @@
 # Build Plan: Version 1
 
+> **History.** Every step here is built. Test Mode and the test album were
+> removed on 2026-11-11. What is left before launch is in
+> [CHECKLIST.md](CHECKLIST.md).
+
 A simple, step-by-step plan for building and testing the app. Each step has one goal, what to build, and how to know it works.
 
 ## What the app can and can't touch
@@ -34,8 +38,8 @@ iOS keeps every app in its own sandbox. This is everything an App Store app is a
 **Goal:** a safe sandbox so nothing real gets touched.
 
 - [x] **Photos:** a **"Storage App Test"** album on the phone, filled with normal photos, blurry and pocket shots, duplicates, 2 bursts, Live Photos, screenshots, photos of receipts, and long, 4K and short videos.
-- [ ] **Files:** make a **"Storage App Test"** folder in Files → On My iPhone before testing Step 8 (see Step 8).
-- [ ] **Test Mode:** the app only sees the test album. Built together with Step 2, the first step that reads photos.
+- [x] **Files:** make a **"Storage App Test"** folder in Files → On My iPhone before testing Step 8 (see Step 8).
+- [x] **Test Mode:** the app only sees the test album. Built together with Step 2, the first step that reads photos. (Removed 2026-11-11.)
 
 **Test:** the app sees nothing outside the test album.
 

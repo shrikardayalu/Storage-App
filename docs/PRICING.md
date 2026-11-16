@@ -72,11 +72,8 @@ Prices are placeholders, kept in two places: `web/src/lib/pricing.ts` and
   expire or refund and watch Pro switch off.
 - **On a phone via xtool** (free Apple ID) there's no store: purchases are
   simulated, and Settings > Pro has **Reset Simulated Purchase**.
-- **Sandbox** needs the paid Developer account; see `docs/RELEASE.md`.
+- **Sandbox** needs the paid Developer account; see `docs/CHECKLIST.md`.
 
 ## Launch checklist
 
-1. Settle final prices; update `web/src/lib/pricing.ts`, `Plans.swift` and `Products.storekit`.
-2. Create the three products in App Store Connect with the IDs above.
-3. Point `PaywallConfig.privacyURL` at the live site's `/privacy`.
-4. Test buy, restore and cancel with a sandbox account on TestFlight.
+See [`CHECKLIST.md`](CHECKLIST.md).

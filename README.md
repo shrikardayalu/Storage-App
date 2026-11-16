@@ -2,7 +2,7 @@
 
 SimpleShrink is an iPhone utility that helps people find unnecessary photos, screenshots, and large videos, then choose whether to remove them or compress supported media to free up storage.
 
-This repository contains the marketing website and, later, the iOS app and content tooling. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together.
+This repository contains the marketing website ([simpleshrink.com](https://www.simpleshrink.com)), the iOS app and the content tooling. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the pieces fit together, and **[docs/CHECKLIST.md](docs/CHECKLIST.md) for what is done and what is left before launch**.
 
 ## Repository layout
 
@@ -10,7 +10,7 @@ This repository contains the marketing website and, later, the iOS app and conte
 | --- | --- |
 | [`web/`](web) | Next.js marketing website and guides library (TypeScript, Tailwind CSS, App Router). Guides live in [`web/content/guides`](web/content). |
 | [`ios/`](ios) | Native SwiftUI app (Phase 1: Demo Mode with simulated data). The Xcode project is generated with XcodeGen on macOS. |
-| [`automation/`](automation) | Plan for the AI-assisted SEO/AEO content loop (not implemented yet). |
+| [`automation/`](automation) | The SEO engine: how guides are chosen, written and published, with the topic backlog and run log. |
 | [`docs/`](docs) | Project documentation. |
 
 ## Requirements
@@ -47,13 +47,12 @@ npm run start       # Serve the production build locally
 
 ## Deployment (website)
 
-The site will deploy to [Vercel](https://vercel.com):
+The site deploys to [Vercel](https://vercel.com) at https://www.simpleshrink.com on every push to `main`. To set it up from scratch:
 
 1. Push this repository to GitHub.
 2. In Vercel, import the repository and set **Root Directory** to `web`. The Next.js framework preset and npm are detected automatically.
 3. Add the variables from `web/.env.example` under Project Settings → Environment Variables.
 
-Nothing is connected or deployed yet.
 
 ## iOS app
 

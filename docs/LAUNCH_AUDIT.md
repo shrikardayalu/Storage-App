@@ -1,5 +1,9 @@
 # Pre-launch audit (iOS)
 
+> **History only.** This records what the audits of 2026-11-04 and 2026-11-14
+> found and fixed. What is still left to do is in
+> [CHECKLIST.md](CHECKLIST.md), and nowhere else.
+
 > **Read this first (2026-11-14).** This is the audit from 2026-11-04 and
 > parts of it are out of date. Since then: the bundle ID is
 > `com.simpleshrink.app`; prices are $4.99, $24.99 and $34.99; Test Mode is

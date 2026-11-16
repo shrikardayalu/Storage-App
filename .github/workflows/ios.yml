@@ -201,7 +201,7 @@ jobs:
   testflight:
     name: Release build to TestFlight
     # Manual only: Actions → iOS → Run workflow. Skips until the App Store
-    # Connect secrets in docs/RELEASE.md are set.
+    # Connect secrets in docs/CHECKLIST.md are set.
     if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     needs: [core-tests, app]
@@ -215,7 +215,7 @@ jobs:
         id: secrets
         run: |
           if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ] || [ -z "$TEAM_ID" ]; then
-            echo "::warning::App Store Connect secrets aren't set; skipping the TestFlight upload. See docs/RELEASE.md."
+            echo "::warning::App Store Connect secrets aren't set; skipping the TestFlight upload. See docs/CHECKLIST.md."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"

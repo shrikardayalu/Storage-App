@@ -1,8 +1,8 @@
 # App Store Connect: what to enter
 
 Everything App Store Connect asks for that the repository can answer,
-ready to paste. Steps that need the paid account are in `docs/RELEASE.md`,
-and the audit is in `docs/LAUNCH_AUDIT.md`. Test Mode was removed on
+ready to paste. What is done and what is left is in
+[`CHECKLIST.md`](CHECKLIST.md); the audit history is in `docs/LAUNCH_AUDIT.md`. Test Mode was removed on
 2026-11-11: the app scans the whole photo library.
 
 Character limits are checked. The marketing copy (subtitle, promotional
@@ -14,13 +14,10 @@ with it.
 
 ## Before you submit
 
-1. **Deploy the website** (`web/`, see the root `README.md`) with these settings:
-   - `NEXT_PUBLIC_SITE_URL`: the real domain.
-   - `NEXT_PUBLIC_SUPPORT_EMAIL`: an inbox you read. Until it's set, /support says the inbox isn't open yet, and App Review will likely reject a support page with no way to reach you.
-2. **Set `PaywallConfig.siteURL`** in `ios/StorageApp/Purchases/Plans.swift` to the same domain. The paywall, the Lifetime offer and Settings link `/privacy`, `/terms` and `/support` from it.
-3. **Have someone qualified read `/privacy` and `/terms`.** They're written to match the code, but they aren't legal advice. Two things they leave out on purpose, because only you can supply them:
-   - the legal name of the business or person behind the app;
-   - a governing-law clause.
+See [`CHECKLIST.md`](CHECKLIST.md). As of 2026-11-16 the fields in App
+information, Version information, App Privacy and App Review notes below are
+already entered in App Store Connect; screenshots, pricing, the build and the
+purchases are not finished.
 
 ## App information
 

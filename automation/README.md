@@ -77,23 +77,29 @@ One page per competitor in `web/src/lib/comparisons.ts`, plus roundups ("best du
 - **Conversions:** the waitlist table's `source` column (page and CTA position) now; App Store campaign tokens after launch.
 - Give a new page four weeks before judging it. Then: indexed? Impressions for the target keyword? If it has impressions and few clicks, rewrite the title and description. If it sits at positions 8 to 20, make it more complete and link to it from more pages.
 
-## Setup checklist
+## Setup
 
-**Done**
+The domain and the waitlist are live. What is left (Search Console, Bing, the App Store link after launch) is in [`docs/CHECKLIST.md`](../docs/CHECKLIST.md).
 
-- [x] Domain live: `www.simpleshrink.com`, with the apex and the old vercel.app address redirecting to it.
-- [x] Waitlist: site → n8n webhook → data table (see `web/.env.example`).
+## Running it
 
-**To do (needs the owner's accounts)**
+**On a schedule.** A scheduled task in the Claude desktop app, "SimpleShrink SEO run", runs the skill on Monday, Wednesday, Friday and Saturday at about 3:20 pm. Four runs a week gives three to four new guides, with room for one by hand. It runs while the Claude app is open; if the app was closed at that time, it runs the next time the app opens. See, pause, edit or "Run now" under **Scheduled** in the app's sidebar. The task's instructions are in `~/.claude/scheduled-tasks/simpleshrink-seo/SKILL.md`.
 
-- [ ] In Vercel → Settings → Environment Variables: remove `NEXT_PUBLIC_SITE_URL` or set it to `https://www.simpleshrink.com`, and remove `NEXT_PUBLIC_APP_NAME` if it's set.
-- [ ] Google Search Console: add `simpleshrink.com` as a Domain property (verified by a DNS TXT record), then submit `https://www.simpleshrink.com/sitemap.xml`.
-- [ ] Bing Webmaster Tools: import the site from Search Console and submit the same sitemap.
-- [ ] Optional, for automatic data: install gum and sign in, so runs can read Search Console themselves.
-- [ ] After launch: set `NEXT_PUBLIC_APP_STORE_URL` and `NEXT_PUBLIC_APP_STORE_PROVIDER_TOKEN` so every CTA becomes an attributed App Store link.
+**By hand.** In Claude Code, in this repo: `/seo` picks a topic itself; `/seo video too large to send iphone` writes about that; "use the seo skill to improve the compress videos guide" refreshes a page.
 
-## Running it on a schedule
+The build's pace check is the backstop: a sixth guide in 7 days, or a second in one day, fails the build and nothing ships.
 
-The skill can be run by hand (`/seo`) or by a scheduled task whose prompt is "Run the seo skill". A schedule should fire on four days a week at different times (for example Monday 9:40, Wednesday 14:15, Friday 11:05, Saturday 16:30), not daily on the hour. The build's pace check is the backstop if a schedule misfires.
+## Where to look
+
+| To see | Go to |
+| --- | --- |
+| What was published and why | [`log.md`](log.md), newest first, and the live [guides page](https://www.simpleshrink.com/guides) |
+| What's coming | [`backlog.md`](backlog.md). Add a row, or reorder, to steer it |
+| The schedule and each run's transcript | Claude app → Scheduled → SimpleShrink SEO run |
+| Search impressions, clicks, positions | Google Search Console (once set up) |
+| Visitors and page views | Vercel → the project → Analytics |
+| Waitlist signups and which page they came from | n8n → Data tables → `storage_app_waitlist` (the `source` column) |
+| How app users found it | TelemetryDeck (`docs/ACQUISITION_REPORTING.md`) |
+| Installs per page, after launch | App Store Connect → Analytics → Campaigns |
 
 Never store credentials in the repo. It's public.
