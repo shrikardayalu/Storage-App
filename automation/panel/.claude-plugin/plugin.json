@@ -1,0 +1,6 @@
+{
+  "name": "simpleshrink-seo",
+  "version": "0.1.0",
+  "description": "A panel showing the SimpleShrink SEO engine: this week's publishing pace, the next scheduled run, recent guides, the backlog, checks to do on a phone, and Search Console numbers.",
+  "types": "./types/index.d.ts"
+}

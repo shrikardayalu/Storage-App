@@ -73,7 +73,7 @@ One page per competitor in `web/src/lib/comparisons.ts`, plus roundups ("best du
 
 ## Measuring
 
-- **Search Console** (once set up): impressions, clicks, click rate, and position per page and query. Read through [gum](https://github.com/ehmo/gum) if it's installed, otherwise from the Search Console website.
+- **Search Console:** impressions, clicks, click rate, and position per page and query. Runs read it with [`gsc.sh`](gsc.sh) (see "Search Console data" below); you can also read it on the Search Console website.
 - **Conversions:** the waitlist table's `source` column (page and CTA position) now; App Store campaign tokens after launch.
 - Give a new page four weeks before judging it. Then: indexed? Impressions for the target keyword? If it has impressions and few clicks, rewrite the title and description. If it sits at positions 8 to 20, make it more complete and link to it from more pages.
 
@@ -89,14 +89,38 @@ The domain and the waitlist are live. What is left (Search Console, Bing, the Ap
 
 The build's pace check is the backstop: a sixth guide in 7 days, or a second in one day, fails the build and nothing ships.
 
+## The panel in the Claude app
+
+`/seo-status` opens a side panel in the Claude desktop app: this week's pace against the limit, when the next run is, the latest guides (drafts flagged), anything waiting for a check on your iPhone, the backlog by cluster with the likely next topics, and Search Console totals with the top searches and pages. **Refresh** re-reads the files; **Fetch search numbers** asks Search Console.
+
+Its source is in [`panel/`](panel) (a Claude Code mod). It is loaded in the session it was built in. To load it in another session, start Claude Code with `--plugin-dir "automation/panel"`, or ask Claude to "turn on the SEO panel mod from automation/panel".
+
+## Search Console data
+
+[`gsc.sh`](gsc.sh) reads Search Console through [gum](https://github.com/ehmo/gum). gum has no Windows build, so it is installed inside WSL (`~/.local/bin/gum`, v2.3.3), with the Linux keyring it stores the sign-in in.
+
+One-time setup, with your own Google account (about five minutes):
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com), create a project, and under **APIs & Services → Library** enable **Google Search Console API**.
+2. **APIs & Services → OAuth consent screen**: choose External, fill in the app name and your email, then set the publishing status to **In production**. (Left in Testing, Google signs you out every 7 days.)
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID → Desktop app.** Keep the client ID and secret on screen.
+4. In a terminal, run the line below. Paste the ID and the secret when asked, open the address it prints, and approve with the account that owns the Search Console property.
+
+```bash
+wsl bash "/mnt/c/Users/shrik/OneDrive/Desktop/Storage App/automation/gsc.sh" setup
+```
+
+After that, `gsc.sh query 28` (or `page`, `date`, `both`, `inspect <url>`) prints JSON, and the panel and the scheduled runs use it by themselves. The secret is stored in WSL's keyring, never in this repo.
+
 ## Where to look
 
 | To see | Go to |
 | --- | --- |
 | What was published and why | [`log.md`](log.md), newest first, and the live [guides page](https://www.simpleshrink.com/guides) |
+| Everything at a glance | `/seo-status` in the Claude app |
 | What's coming | [`backlog.md`](backlog.md). Add a row, or reorder, to steer it |
 | The schedule and each run's transcript | Claude app → Scheduled → SimpleShrink SEO run |
-| Search impressions, clicks, positions | Google Search Console (once set up) |
+| Search impressions, clicks, positions | The panel, `gsc.sh`, or the Search Console website |
 | Visitors and page views | Vercel → the project → Analytics |
 | Waitlist signups and which page they came from | n8n → Data tables → `storage_app_waitlist` (the `source` column) |
 | How app users found it | TelemetryDeck (`docs/ACQUISITION_REPORTING.md`) |

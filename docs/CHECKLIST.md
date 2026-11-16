@@ -43,9 +43,11 @@ These block submission. In order:
 
 ## Search (any time)
 
-- [ ] Google Search Console: add `simpleshrink.com` as a Domain property (DNS TXT record), then submit `https://www.simpleshrink.com/sitemap.xml`.
+- [x] Google Search Console: `simpleshrink.com` added as a property (2026-11-16).
+- [ ] In Search Console → Sitemaps, submit `https://www.simpleshrink.com/sitemap.xml` (if not done when adding the property).
 - [ ] Bing Webmaster Tools: import from Search Console, submit the same sitemap.
-- [ ] Optional: install [gum](https://github.com/ehmo/gum) and sign in, so SEO runs can read Search Console themselves.
+- [x] gum installed in WSL, with `automation/gsc.sh` to call it (2026-11-16).
+- [ ] Sign gum in: the one-time Google setup in `automation/README.md` → "Search Console data". Until then SEO runs use the backlog and the panel shows no search numbers.
 - [ ] In the Claude app, open Scheduled → "SimpleShrink SEO run", confirm the model is Opus 5.5, and press **Run now** once to see a run end to end.
 
 ## Done

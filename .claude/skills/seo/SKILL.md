@@ -30,8 +30,16 @@ The build enforces the ceiling, so don't work around it with a false date.
 
 ## 2. Pick one action
 
-With Search Console data (`gum` if installed; otherwise ask the user for an
-export, or skip to the backlog):
+First try Search Console. `automation/gsc.sh` reads it through gum in WSL and
+prints JSON:
+
+```
+wsl.exe -e bash "/mnt/c/Users/shrik/OneDrive/Desktop/Storage App/automation/gsc.sh" both 28
+```
+
+(`query`, `page`, `date` and `inspect <url>` also work; in Git Bash prefix the
+command with `MSYS_NO_PATHCONV=1`.) If it answers "not signed in" or returns
+no rows yet, skip to the backlog; don't stop to ask. With data:
 
 a. A query with impressions that no page targets: new guide.
 b. A page with impressions and a low click rate: rewrite `seoTitle`,
