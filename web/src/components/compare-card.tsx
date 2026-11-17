@@ -26,11 +26,7 @@ export function CompareCard({ competitor, index = 0 }: { competitor: Competitor;
           <AppIcon src={competitor.icon} />
         </div>
 
-        <h3 className="mt-5 font-display text-2xl leading-tight font-bold">
-          <Link href={compareHref(competitor.slug)} className="after:absolute after:inset-0 after:content-['']">
-            {competitor.name}
-          </Link>
-        </h3>
+        <h3 className="mt-5 font-display text-2xl leading-tight font-bold">{competitor.name}</h3>
         {competitor.maker && <p className="text-sm text-ink-faint">by {competitor.maker}</p>}
         <p className="mt-3 text-[0.95rem] leading-relaxed text-ink-soft">{competitor.knownFor}</p>
 
@@ -49,6 +45,11 @@ export function CompareCard({ competitor, index = 0 }: { competitor: Competitor;
           </span>
         </p>
       </div>
+      <Link
+        href={compareHref(competitor.slug)}
+        aria-label={`Compare ${siteConfig.name} vs ${competitor.name}`}
+        className="absolute inset-0 z-10 rounded-[28px]"
+      />
     </article>
   );
 }

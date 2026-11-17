@@ -39,8 +39,8 @@ export function WaitlistForm({
   }
 
   return (
-    <form action={formAction} className="w-full max-w-md">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <form action={formAction} className="w-full min-w-0 max-w-md">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
         <label htmlFor={`${id}-email`} className="sr-only">
           Email address
         </label>
@@ -72,7 +72,7 @@ export function WaitlistForm({
         <button
           type="submit"
           disabled={pending}
-          className={`btn-ink shrink-0 px-5 py-3 text-sm whitespace-nowrap disabled:opacity-60 ${
+          className={`btn-ink w-full px-5 py-3 text-sm whitespace-nowrap disabled:opacity-60 sm:w-auto sm:shrink-0 ${
             dark ? "bg-on-band text-band" : ""
           }`}
         >

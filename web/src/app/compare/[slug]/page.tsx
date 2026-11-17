@@ -288,7 +288,7 @@ function InlineCta({ title, body, campaign }: { title: string; body: string; cam
   return (
     <aside
       aria-label="About the app"
-      className="sticker my-12 overflow-hidden p-6 sm:p-8"
+      className="sticker my-12 p-6 sm:p-8"
       data-reveal
       style={{ "--reveal-delay": 0 } as CSSProperties}
     >
@@ -300,7 +300,7 @@ function InlineCta({ title, body, campaign }: { title: string; body: string; cam
             <Scribble className="absolute -bottom-2 left-0 h-2.5 w-full text-mint" delay={0} />
           </p>
           <p className="mt-3 text-base leading-relaxed text-ink-soft">{body}</p>
-          <div className="mt-5">
+          <div className="mt-5 min-w-0">
             <AppCta campaign={campaign} />
           </div>
         </div>

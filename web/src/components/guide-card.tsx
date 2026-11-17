@@ -26,11 +26,7 @@ export function GuideCard({ guide, index = 0 }: { guide: GuideMeta; index?: numb
           size={64}
           className="pointer-events-none absolute -top-5 right-4 z-10 rounded-2xl bg-surface transition-transform duration-500 ease-[var(--ease-spring)] group-hover:-translate-y-1 group-hover:rotate-6"
         />
-        <h3 className="mt-2 pr-12 font-display text-xl leading-tight font-bold">
-          <Link href={`/guides/${guide.slug}`} className="after:absolute after:inset-0 after:content-['']">
-            {guide.title}
-          </Link>
-        </h3>
+        <h3 className="mt-2 pr-12 font-display text-xl leading-tight font-bold">{guide.title}</h3>
         <p className="mt-3 line-clamp-3 text-[0.95rem] leading-relaxed text-ink-soft">{guide.description}</p>
         <p className="mt-auto flex items-center justify-between pt-6 text-sm font-semibold">
           <span className="text-ink-faint">{guide.readingMinutes} min read</span>
@@ -39,6 +35,11 @@ export function GuideCard({ guide, index = 0 }: { guide: GuideMeta; index?: numb
           </span>
         </p>
       </div>
+      <Link
+        href={`/guides/${guide.slug}`}
+        aria-label={`Read guide: ${guide.title}`}
+        className="absolute inset-0 z-10 rounded-[28px]"
+      />
     </article>
   );
 }
