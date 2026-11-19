@@ -2,31 +2,32 @@
 
 The one place that says what is done and what is left. Every other doc explains how something works; none of them keeps its own to-do list. When something here changes, change it here.
 
-Last checked: **2026-11-16** (code, the live site, the n8n waitlist, and a read-through of App Store Connect).
+Last checked: **2026-11-19** (App Store Connect pricing, purchases and TestFlight set up; build upload in progress).
 
 ## Before you can press "Add for Review"
 
 These block submission. In order:
 
-- [ ] **1. Upload a build.** TestFlight shows no builds, and the GitHub repository has none of the four secrets the upload needs.
-  1. App Store Connect → Users and Access → Integrations → App Store Connect API: create a key with the **App Manager** role. Download the `.p8` (offered once).
-  2. GitHub → Settings → Secrets and variables → Actions, add `ASC_KEY_ID`, `ASC_ISSUER_ID` (shown above the keys list), `ASC_KEY_P8` (the whole file's text) and `APPLE_TEAM_ID` (developer.apple.com → Membership).
-  3. GitHub → Actions → iOS → **Run workflow**. The TestFlight job archives a Release build, signs it, and uploads it.
-  4. On the version page, under **Build**, pick the uploaded build.
-- [ ] **2. Upload screenshots.** The "App Previews and Screenshots" tab is empty. Upload the six files in `marketing/aso/screenshots/out/control/en-US/6.3/` to "iPhone with Dynamic Island (medium display)". The app is iPhone-only, so no iPad set is needed.
-- [ ] **3. Set price and availability.** Pricing and Availability still says "Add Pricing" and "Set Up Availability". Set the price to Free and choose the countries. Leaving out China mainland avoids the two China notices on the version page; including it means completing them under App Compliance.
-- [ ] **4. Finish the three purchases.** The "Pro" group (Weekly, Annual) and "Pro Lifetime" exist. Lifetime shows "Prepare for Submission"; the two subscriptions' statuses were not read. Each needs a price, an English display name and description, and a review screenshot (`docs/APP_STORE.md` → In-app purchases), until its status is **Ready to Submit**. Then, on the version page, add all three under "In-App Purchases and Subscriptions" (the section appears once a build is attached). The first subscription must go in with the app version.
-- [ ] **5. Confirm the Privacy Policy URL** under App Privacy is `https://www.simpleshrink.com/privacy`. The two data types are already entered; the URL field was not visible in the check.
-- [ ] **6. EU trader status.** Business → Agreements shows "Complete Compliance Requirements" for the Digital Services Act. Declare trader or non-trader, or the app can't be sold in the EU.
-- [ ] **7. Test the build from TestFlight on a real iPhone.**
-  - [ ] Sign in with a Sandbox account (Users and Access → Sandbox): buy Weekly, buy Annual, buy Lifetime, restore, cancel. Lifetime on top of Weekly must still show Manage Subscription.
+- [ ] **1. Upload a build.**
+  - [x] API key created; `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` and `APPLE_TEAM_ID` are GitHub secrets (2026-11-19). The workflow rebuilds the key file from however it was pasted.
+  - [ ] GitHub → Actions → iOS → **Run workflow** until the TestFlight job uploads a build. The first try (2026-11-19) failed on the key's formatting; fixed and re-run.
+  - [ ] On the version page, under **Build**, pick the uploaded build.
+- [x] **2. Screenshots** (seen 2026-11-19): six screenshots and one app preview under "iPhone with Dynamic Island (medium display)". Age rating re-answered for Apple's new Shared Location and Dating questions (No to both, still 4+). The China notices on the version page don't apply, since China mainland is excluded.
+- [x] **3. Price and availability** (2026-11-19): Free, 174 countries and regions, everything except China mainland.
+- [ ] **4. Attach the three purchases to the version.** All three are filled in (2026-11-19): prices ($4.99 weekly, $24.99 annual, $34.99 lifetime), English names and descriptions, review screenshots (paywall for the subscriptions, Settings → Pro for Lifetime) and review notes. The group "Pro" has the English display name "SimpleShrink Pro". Their status still reads "Prepare for Submission". Once a build is attached, add all three on the version page under "In-App Purchases and Subscriptions" and check nothing is flagged as missing. The first subscription must go in with the app version.
+- [x] **5. Privacy Policy URL** under App Privacy is `https://www.simpleshrink.com/privacy` (confirmed 2026-11-19).
+- [ ] **6. Test the build from TestFlight on a real iPhone.**
+  - [ ] Purchases: TestFlight builds use the sandbox with your own Apple ID, and nothing is charged. Buy Weekly, buy Annual, buy Lifetime, restore, cancel. Lifetime on top of Weekly must still show Manage Subscription.
   - [ ] Run each cleanup once on the real library: delete, Swipe to clean, burst picks, Live Photos to stills, screenshots, shrink a video, trim a video, one-tap Photo Cleanup, a Files folder.
   - [ ] Compare free space with Settings → General → iPhone Storage before and after.
   - [ ] Try Limited Photos access, an iCloud-only video, and large text on a small iPhone.
   - [ ] Onboarding's "How did you hear about us?": Skip sends nothing; an answer shows up in TelemetryDeck (`docs/ACQUISITION_REPORTING.md`).
-- [ ] **8. Press Add for Review.**
+- [ ] **7. Press Add for Review.**
 
 ## Worth doing first, but not blocking
+
+- [ ] **EU trader status.** Business → Agreements shows "Complete Compliance Requirements" for the Digital Services Act. Until you declare trader or non-trader, the app isn't offered in the 27 EU countries; everywhere else it is. It can be done after launch, and the EU storefronts open once Apple accepts it.
+- [ ] **TestFlight for friends.** Internal group "Team" (you, automatic distribution) and the Test Information page are set up (2026-11-19). Still empty: Beta App Review contact name, phone and email. For people outside the account, create an external group, add the build (the first build goes through Beta App Review, usually under a day), then share its public link or invite by email.
 
 - [ ] **Release timing.** The version is set to release automatically after approval. Switch to "Manually release" if you want to choose the launch day (and email the waitlist the same day).
 - [ ] **Have someone qualified read `/privacy` and `/terms`.** They match the code but aren't legal advice. They name no legal entity and no governing law, on purpose.
