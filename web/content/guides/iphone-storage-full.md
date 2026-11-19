@@ -74,7 +74,7 @@ This is the step everyone forgets. Deleted photos and videos go to **Recently De
 2. Unlock it with Face ID, Touch ID, or your passcode.
 3. Tap **Select**, then **Delete All**.
 
-Only do this once you're sure. After this, the items are gone.
+Only do this once you're sure. After this, the items are gone. Files and Messages keep their own trash too; here's [how to empty Recently Deleted in every app](/guides/empty-recently-deleted-iphone).
 
 ## Step 6: Let iOS handle the rest
 

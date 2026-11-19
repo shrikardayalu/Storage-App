@@ -15,9 +15,10 @@ When Search Console has data, real queries beat anything on this list.
 | open | iphone other storage / what is taking up space on my iphone | How to read the storage bar and find the real culprit | Photos and videos are usually it |
 | open | how to free up space on iphone without deleting anything | Shrink, offload, optimize: every option that keeps your stuff | The app's whole premise |
 | open | iphone storage full but nothing on phone | Recently Deleted, hidden albums, messages, stuck calculations | Scan shows where it went |
-| open | how to empty recently deleted on iphone | Why deleting doesn't free space until this is emptied | Originals go there after shrinking |
+| published | how to empty recently deleted on iphone | `empty-recently-deleted-iphone` | Originals go there after shrinking |
 | open | offload unused apps iphone | What offloading keeps and removes, when it's worth it | Free guide in the app |
 | open | clear whatsapp storage iphone | Manage Storage screen, large files, auto-download | Free guide in the app |
+| open | how to recover recently deleted photos iphone | Recover vs. permanent delete, iCloud Photos, after 30 days | Safe cleanup before shrinking |
 | open | messages taking up storage iphone | Review large attachments, keep messages setting | Free guide in the app |
 | open | how much storage do i need on iphone | 128 vs 256 vs 512 by how you shoot | Shrinking as the cheaper alternative |
 | open | buy more iphone storage (can you add storage to an iphone) | You can't add internal storage; iCloud vs external vs shrinking | Shrinking is the one that's free |

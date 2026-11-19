@@ -72,6 +72,6 @@ Go to **Settings → Camera**:
 
 ## Don't forget Recently Deleted
 
-When you delete original videos, they move to **Recently Deleted** and keep using storage for about 30 days. Empty it from **Photos → Utilities → Recently Deleted** once you've checked your compressed copies.
+When you delete original videos, they move to **Recently Deleted** and keep using storage for about 30 days. Empty it from **Photos → Utilities → Recently Deleted** once you've checked your compressed copies. Here's [how to empty Recently Deleted on iPhone](/guides/empty-recently-deleted-iphone), step by step.
 
 For a bigger-picture cleanup, see [what to delete first when your iPhone storage is full](/guides/iphone-storage-full).
