@@ -31,7 +31,16 @@ export function RevealObserver() {
         { clipPath: "inset(-12px 105% -16px -12px)" },
         { clipPath: "inset(-12px -16px -16px -12px)" },
       ], 650, delay, { easing: "steps(10)" });
-      animation.finished.then(() => animation.cancel(), () => {});
+      animation.finished.then(() => {
+        animation.cancel();
+        cleared.add(animation);
+      }, () => {});
+    };
+    // finish() on a cleared wash would bring its clip back (this happened when
+    // tapping into a card's email field), so everything finishes through here.
+    const cleared = new WeakSet<Animation>();
+    const complete = (animation: Animation) => {
+      if (!cleared.has(animation)) animation.finish();
     };
 
     const prepare = (el: Element) => {
@@ -71,7 +80,7 @@ export function RevealObserver() {
       if (seen.has(el)) return;
       seen.add(el);
       entrances.get(el)?.forEach((animation) => {
-        if (motion.matches) animation.finish();
+        if (motion.matches) complete(animation);
         else animation.play();
       });
     };
@@ -85,7 +94,7 @@ export function RevealObserver() {
     }, { rootMargin: "0px 0px -6% 0px", threshold: 0.08 });
     const revealAll = () => {
       targets.forEach(reveal);
-      animations.forEach((animation) => animation.finish());
+      animations.forEach(complete);
       observer.disconnect();
     };
     // The observer only fires when an element crosses its threshold. A fast
@@ -129,7 +138,7 @@ export function RevealObserver() {
       }
       animations.forEach((animation) => {
         const target = (animation.effect as KeyframeEffect | null)?.target;
-        if (target instanceof Element && target.contains(event.target as Node)) animation.finish();
+        if (target instanceof Element && target.contains(event.target as Node)) complete(animation);
       });
     };
     const onMotion = () => { if (motion.matches) revealAll(); };
