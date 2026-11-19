@@ -59,6 +59,8 @@ sleep 1.5
 
 cmd="${1:-status}"
 days="${2:-28}"
+# Only the report commands take a day count; inspect takes a URL here.
+case "$days" in *[!0-9]*) days=28 ;; esac
 
 # Search Console's numbers arrive two to three days late.
 end="$(date -d '2 days ago' +%F)"

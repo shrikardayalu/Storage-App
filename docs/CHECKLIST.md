@@ -48,7 +48,7 @@ These block submission. In order:
 - [ ] Bing Webmaster Tools: import from Search Console, submit the same sitemap.
 - [x] gum installed in WSL, with `automation/gsc.sh` to call it (2026-11-16).
 - [x] Google OAuth client (Desktop app) created and stored in gum, consent screen in production (2026-11-19).
-- [ ] Sign gum in: run `gsc.sh login`, open the address it prints, approve with the Google account that owns the Search Console property (the first try, 2026-11-19, used an account with no properties). Until then SEO runs use the backlog and the panel shows no search numbers.
+- [x] gum signed in to Search Console with the property owner's account, read-only scope; `gsc.sh sites/query/inspect` verified (2026-11-19).
 - Note: "Page with redirect" for `http://` and non-www addresses in Search Console is expected (they 308 to `https://www.`), not an error.
 - [ ] In the Claude app, open Scheduled → "SimpleShrink SEO run", confirm the model is Opus 5.5, and press **Run now** once to see a run end to end.
 
