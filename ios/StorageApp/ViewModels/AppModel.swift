@@ -748,7 +748,11 @@ final class AppModel {
         noteMeasured(Double(total), of: total)
         await publishLiveProgress()
         // An interim report still being worked out is out of date now; the
-        // full one below replaces it without waiting for it.
+        // full one below replaces it without waiting for it. It's cancelled, not
+        // just forgotten: one that hadn't started yet would otherwise start after
+        // the full one, take a newer generation, and make the full one drop its
+        // result, leaving no report when this pass says it's finished.
+        reportTask?.cancel()
         reportTask = nil
         await updateJunkReport()
         junkAnalysisFinished = !Task.isCancelled && libraryScan?.date == scan.date
@@ -784,6 +788,8 @@ final class AppModel {
     /// Works the report out off the main thread: comparing every photo with
     /// every other takes a moment on a big library.
     private func updateJunkReport() async {
+        // A cancelled pass mustn't claim a newer generation than the one replacing it.
+        guard !Task.isCancelled else { return }
         reportGeneration += 1
         let generation = reportGeneration
         let items = libraryScan?.items ?? []
