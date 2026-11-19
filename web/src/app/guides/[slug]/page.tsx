@@ -55,6 +55,9 @@ const formatDate = (date: string) =>
     timeZone: "UTC",
   });
 
+// Short, true-to-the-app facts for the sidebar card.
+const SIDEBAR_POINTS = ["Nothing changes until you confirm", "Runs on your iPhone, not a server", "Shows space before and after"];
+
 function defaultCta(guide: GuideMeta) {
   return {
     title: "Free up space without deleting",
@@ -182,10 +185,24 @@ export default async function GuidePage({ params }: PageProps<"/guides/[slug]">)
                     </ol>
                   </nav>
                 )}
-                <div className="sticker p-5">
-                  <Illustration name="ill-phone-sparkle" size={56} />
-                  <p className="mt-3 font-display text-lg leading-tight font-bold">{cta.title}</p>
-                  <a href="#get-app" className="btn-ink mt-4 w-full px-4 py-2.5 text-sm">
+                <div className="sticker bg-mint-soft p-5">
+                  <div className="flex items-center gap-3">
+                    <Illustration name="ill-phone-sparkle" size={48} className="shrink-0 -rotate-6" />
+                    <p className="font-hand text-xl leading-none text-mint-deep">the faster way</p>
+                  </div>
+                  <p className="mt-3 font-display text-lg leading-tight font-bold text-ink">{cta.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-soft">{cta.body}</p>
+                  <ul className="mt-4 space-y-1.5 text-sm text-ink">
+                    {SIDEBAR_POINTS.map((point) => (
+                      <li key={point} className="flex items-start gap-2">
+                        <span aria-hidden="true" className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full bg-ink text-[0.6rem] text-paper">
+                          ✓
+                        </span>
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+                  <a href="#get-app" className="btn-ink mt-5 w-full px-4 py-2.5 text-sm">
                     {siteConfig.appStoreUrl ? "Get the app" : "Get early access"}
                   </a>
                 </div>

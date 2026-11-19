@@ -25,6 +25,8 @@
 set -euo pipefail
 
 SITE="sc-domain:simpleshrink.com"
+# Read-only access to Search Console, nothing else.
+SCOPE="https://www.googleapis.com/auth/webmasters.readonly"
 GUM="${GUM:-$HOME/.local/bin/gum}"
 
 if [ ! -x "$GUM" ]; then
@@ -35,6 +37,10 @@ fi
 # Re-run inside a session bus with the keyring unlocked.
 if [ -z "${GSC_IN_SESSION:-}" ]; then
   export GSC_IN_SESSION=1
+  # Sign-in prints its address on stderr and then waits, so show it live.
+  case "${1:-}" in
+    setup|login) exec dbus-run-session -- bash "$0" "$@" ;;
+  esac
   noise="$(mktemp)"
   status=0
   dbus-run-session -- bash "$0" "$@" 2>"$noise" || status=$?
@@ -72,10 +78,10 @@ case "$cmd" in
     printf '%s' "$client_secret" | "$GUM" auth use-oauth-client --client-id "$client_id" --secret-stdin
     unset client_secret
     echo "Now sign in. Open the address below in your browser and choose the Google account that owns the Search Console property."
-    "$GUM" login --service searchconsole --no-browser
+    "$GUM" login --scope "$SCOPE" --no-browser
     "$GUM" read searchconsole.sites.list --format json
     ;;
-  login) "$GUM" login --service searchconsole --no-browser ;;
+  login) "$GUM" login --scope "$SCOPE" --no-browser ;;
   status) "$GUM" auth status ;;
   sites) "$GUM" read searchconsole.sites.list --format json ;;
   query) analytics '["query"]' ;;

@@ -81,8 +81,35 @@ export function RevealObserver() {
       animations.forEach((animation) => animation.finish());
       observer.disconnect();
     };
+    // The observer only fires when an element crosses its threshold. A fast
+    // scroll, a table-of-contents jump or a background tab can carry an element
+    // from below the screen to above it with no crossing, and it would stay
+    // invisible for good. So on every scroll (and once now) anything already
+    // on screen or scrolled past is revealed too. Content is never left hidden.
+    let pending = targets.slice();
+    let frame = 0;
+    const sweep = () => {
+      frame = 0;
+      const bottom = window.innerHeight;
+      pending = pending.filter((el) => {
+        if (el.getBoundingClientRect().top < bottom) {
+          reveal(el);
+          observer.unobserve(el);
+          return false;
+        }
+        return !seen.has(el);
+      });
+      if (!pending.length) window.removeEventListener("scroll", onScroll);
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(sweep); };
+
     if (motion.matches) revealAll();
-    else targets.forEach((el) => observer.observe(el));
+    else {
+      targets.forEach((el) => observer.observe(el));
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll, { passive: true });
+      onScroll();
+    }
 
     // Keyboard focus should immediately expose the control and its card.
     const onFocus = (event: FocusEvent) => {
@@ -103,6 +130,9 @@ export function RevealObserver() {
     motion.addEventListener("change", onMotion);
     return () => {
       observer.disconnect();
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
       animations.forEach((animation) => animation.cancel());
       document.removeEventListener("focusin", onFocus);
       motion.removeEventListener("change", onMotion);
