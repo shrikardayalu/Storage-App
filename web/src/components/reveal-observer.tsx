@@ -21,11 +21,18 @@ export function RevealObserver() {
       const animation = el.animate(frames, { duration, delay, fill: "both", ...extra });
       animation.pause();
       animations.push(animation);
+      return animation;
     };
-    const wash = (el: Element, delay = 0) => play(el, [
-      { clipPath: "inset(-12px 105% -16px -12px)" },
-      { clipPath: "inset(-12px -16px -16px -12px)" },
-    ], 650, delay, { easing: "steps(10)" });
+    // The wash's last frame is "no clip", so drop the animation once it ends.
+    // Left filling, iOS Safari can keep painting a stale mid-wash clip that
+    // cuts off the right side of a card (form fields, buttons, line ends).
+    const wash = (el: Element, delay = 0) => {
+      const animation = play(el, [
+        { clipPath: "inset(-12px 105% -16px -12px)" },
+        { clipPath: "inset(-12px -16px -16px -12px)" },
+      ], 650, delay, { easing: "steps(10)" });
+      animation.finished.then(() => animation.cancel(), () => {});
+    };
 
     const prepare = (el: Element) => {
       const delay = Number(getComputedStyle(el).getPropertyValue("--reveal-delay")) || 0;

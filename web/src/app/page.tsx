@@ -502,9 +502,9 @@ function MethodCard({ method, index }: { method: Method; index: number }) {
       {method.guide && (
         <Link
           href={method.guide.href}
-          className="mt-auto inline-flex items-center gap-1.5 pt-6 text-sm font-semibold underline decoration-mint decoration-[3px] underline-offset-4 hover:decoration-ink"
+          className="mt-auto self-start pt-6 text-sm font-semibold underline decoration-mint decoration-[3px] underline-offset-4 hover:decoration-ink"
         >
-          {method.guide.label} <span aria-hidden="true">→</span>
+          {method.guide.label}&nbsp;<span aria-hidden="true">→</span>
         </Link>
       )}
     </article>

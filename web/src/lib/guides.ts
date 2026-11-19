@@ -223,6 +223,17 @@ function validate(guides: RawGuide[]) {
   }
 }
 
+/** Plain-text, attribute-safe version of a markdown table header, for data-label. */
+export function cellLabel(markdown: string) {
+  return markdown
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[*_`]/g, "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .trim();
+}
+
 type ArticleRenderOptions = {
   renderTable?: (table: Tokens.Table, inline: (tokens: Token[]) => string) => string;
 };
@@ -255,17 +266,25 @@ function createRenderer(toc: TocEntry[] | null, options?: ArticleRenderOptions) 
         if (options?.renderTable) {
           return options.renderTable(token, (tokens) => this.parser.parseInline(tokens));
         }
-        // Wrap tables so wide ones scroll on phones instead of the page.
+        // Wrap tables so wide ones scroll instead of the page. Tables with three
+        // or more columns stack into one card per row on phones (see
+        // .table-stack in globals.css); each cell carries its column name.
+        const stack = token.header.length >= 3;
         const header = token.header
           .map((cell) => `<th>${this.parser.parseInline(cell.tokens)}</th>`)
           .join("");
         const rows = token.rows
           .map(
             (row) =>
-              `<tr>${row.map((cell) => `<td>${this.parser.parseInline(cell.tokens)}</td>`).join("")}</tr>`,
+              `<tr>${row
+                .map((cell, i) => {
+                  const label = stack && i > 0 ? ` data-label="${cellLabel(token.header[i]?.text ?? "")}"` : "";
+                  return `<td${label}>${this.parser.parseInline(cell.tokens)}</td>`;
+                })
+                .join("")}</tr>`,
           )
           .join("");
-        return `<div class="table-scroll"><table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>\n`;
+        return `<div class="table-scroll${stack ? " table-stack" : ""}"><table><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>\n`;
       },
     },
   });

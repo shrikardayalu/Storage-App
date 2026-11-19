@@ -213,6 +213,7 @@ body::before {
     border-radius: 18px 18px 0 0;
     -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 100%;
     mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 26px 100%;
+    container-type: inline-size;
   }
 
   .eyebrow {
@@ -446,6 +447,91 @@ body::before {
     background: color-mix(in srgb, var(--tomato) 15%, var(--surface));
     color: var(--ink-soft);
   }
+
+  /* Phones: tables reflow instead of scrolling sideways, so nothing is cut off.
+     Each cell's column name comes from its data-label. */
+  @media (width < 640px) {
+    .prose-guide .table-stack thead {
+      display: none;
+    }
+    .prose-guide .table-stack :is(table, tbody, tr, td) {
+      display: block;
+    }
+    .prose-guide .table-stack tr {
+      padding: 0.9em 1.1em;
+      border-bottom: 1px solid var(--hairline);
+    }
+    .prose-guide .table-stack tr:last-child {
+      border-bottom: 0;
+    }
+    .prose-guide .table-stack td {
+      padding: 0;
+      border: 0;
+    }
+    .prose-guide .table-stack td:first-child {
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .prose-guide .table-stack td + td {
+      margin-top: 0.5em;
+    }
+    .prose-guide :is(.table-stack, .comparison-table) td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 0.1em;
+      color: var(--ink-faint);
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+  }
+  @media (width < 700px) {
+    /* Feature on its own line, then the two apps side by side. */
+    .prose-guide .comparison-table table {
+      min-width: 0;
+      table-layout: auto;
+    }
+    .prose-guide .comparison-table :is(table, thead, tbody) {
+      display: block;
+    }
+    .prose-guide .comparison-table tr {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .prose-guide .comparison-table thead th:first-child {
+      display: none;
+    }
+    .prose-guide .comparison-table thead th {
+      padding: 0.75rem 0.85rem;
+    }
+    .prose-guide .comparison-table .comparison-app {
+      gap: 0.45rem;
+      font-size: 0.85rem;
+      line-height: 1.2;
+    }
+    .prose-guide .comparison-table .comparison-app img {
+      width: 28px;
+      height: 28px;
+    }
+    .prose-guide .comparison-table tbody th:first-child {
+      grid-column: 1 / -1;
+      width: auto;
+      padding: 0.8em 0.85rem 0.35em;
+      border-bottom: 0;
+      background: var(--paper-deep);
+      color: var(--ink);
+      font-weight: 650;
+    }
+    .prose-guide .comparison-table td {
+      padding: 0.6em 0.85rem 0.8em;
+      font-size: 0.9rem;
+      overflow-wrap: anywhere;
+    }
+    .prose-guide .comparison-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -461,6 +547,13 @@ body::before {
   line-height: 1.2;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+/* Narrow receipts (small phones): drop the struck-through "before" size so item
+   names fit, and keep the totals on one line. Unlayered so it beats text-5xl. */
+@container (width < 260px) {
+  .receipt-from { display: none; }
+  .receipt-total { font-size: 2.35rem; }
 }
 
 /* Mobile has its own reading order; desktop keeps the two-column composition. */
@@ -492,6 +585,14 @@ body::before {
   .hero-description { font-size: 1.0625rem; line-height: 1.6; }
   .hero-compress { width: 64px; height: 64px; top: -2.25rem; left: -0.5rem; }
   .hero-receipt .receipt { padding-inline: 1rem; }
+  /* One column with the ticks in a straight line, the block centered under the receipt. */
+  .hero-assurances {
+    flex-direction: column;
+    align-items: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
 }
 @media (min-width: 640px) {
   .hero-layout { padding-block: 3.5rem 5rem; row-gap: 3.5rem; }

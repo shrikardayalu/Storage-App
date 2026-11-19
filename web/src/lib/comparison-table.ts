@@ -1,5 +1,6 @@
 import type { Token, Tokens } from "marked";
 import type { Competitor } from "@/lib/comparisons";
+import { cellLabel } from "@/lib/guides";
 import { siteConfig } from "@/lib/site";
 
 type Status = "included" | "unavailable" | "unknown" | "benefit" | "detail";
@@ -129,7 +130,7 @@ export function createComparisonTableRenderer(competitor: Competitor) {
       const statuses = statusesByFeature[row[0].text] ?? ["detail", "detail"];
       const cells = row.slice(1).map((cell, index) => {
         const status = statuses[index];
-        return `<td data-status="${status}"><span class="comparison-value">${statusIcon(status)}<span>${inline(cell.tokens)}</span></span></td>`;
+        return `<td data-status="${status}" data-label="${cellLabel(table.header[index + 1]?.text ?? "")}"><span class="comparison-value">${statusIcon(status)}<span>${inline(cell.tokens)}</span></span></td>`;
       }).join("");
       return `<tr><th scope="row">${inline(row[0].tokens)}</th>${cells}</tr>`;
     }).join("");

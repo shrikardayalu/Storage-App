@@ -119,11 +119,13 @@ export function SpaceReceipt() {
           <div className="mt-4 flex items-end justify-between">
             <div>
               <p className="text-xs font-semibold tracking-[0.18em] text-ink-faint uppercase">Space freed</p>
-              <p className="font-display text-5xl leading-none font-extrabold tabular-nums">{formatGb(savedShown)}</p>
+              <p className="receipt-total font-display text-5xl leading-none font-extrabold whitespace-nowrap tabular-nums">
+                {formatGb(savedShown)}
+              </p>
             </div>
             <div className="text-right">
               <p className="text-xs font-semibold tracking-[0.18em] text-ink-faint uppercase">Deleted</p>
-              <p className="font-display text-5xl leading-none font-extrabold text-mint-deep tabular-nums">0</p>
+              <p className="receipt-total font-display text-5xl leading-none font-extrabold text-mint-deep tabular-nums">0</p>
             </div>
           </div>
         </div>
@@ -160,7 +162,7 @@ function ReceiptLine({ line, done, active }: { line: Line; done: boolean; active
             <p className="truncate text-[0.95rem] font-semibold">{line.name}</p>
             <p className="shrink-0 text-[0.95rem] font-bold tabular-nums">
               <span
-                className={`mr-1.5 text-xs font-medium text-ink-faint line-through transition-opacity duration-500 ${
+                className={`receipt-from mr-1.5 text-xs font-medium text-ink-faint line-through transition-opacity duration-500 ${
                   done ? "opacity-100" : "opacity-0"
                 }`}
               >

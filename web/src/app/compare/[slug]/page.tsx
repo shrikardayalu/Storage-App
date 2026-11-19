@@ -173,7 +173,7 @@ function Article({ article }: { article: CompareArticle }) {
                 {competitor.name}
               </span>
             </div>
-            <h1 className="mt-6 font-display text-[clamp(2.4rem,5.5vw,4.2rem)] leading-[0.98] font-extrabold text-balance">
+            <h1 className="mt-6 font-display text-[clamp(2rem,1.2rem+4vw,4.2rem)] leading-[0.98] font-extrabold text-balance">
               {article.title}
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-pretty text-ink-soft sm:text-xl">{article.description}</p>
