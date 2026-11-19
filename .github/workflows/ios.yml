@@ -233,7 +233,21 @@ jobs:
         if: steps.secrets.outputs.ready == 'true'
         run: |
           mkdir -p "$RUNNER_TEMP/asc"
-          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc/AuthKey.p8"
+          # Rebuild the PEM from whatever was pasted: Windows line endings,
+          # lines run together, quotes or stray spaces all break xcodebuild.
+          body=$(printf '%s' "$ASC_KEY_P8" \
+            | sed -e 's/-----BEGIN PRIVATE KEY-----//' -e 's/-----END PRIVATE KEY-----//' \
+            | tr -d ' \t\r\n"')
+          {
+            echo "-----BEGIN PRIVATE KEY-----"
+            printf '%s' "$body" | fold -w 64
+            echo
+            echo "-----END PRIVATE KEY-----"
+          } > "$RUNNER_TEMP/asc/AuthKey.p8"
+          if ! openssl pkey -in "$RUNNER_TEMP/asc/AuthKey.p8" -noout 2>/dev/null; then
+            echo "::error::ASC_KEY_P8 isn't a valid private key. Paste the whole .p8 file (BEGIN and END lines included) into the secret again."
+            exit 1
+          fi
       - name: Archive (Release)
         if: steps.secrets.outputs.ready == 'true'
         working-directory: ios
