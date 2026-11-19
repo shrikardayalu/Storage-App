@@ -9,7 +9,7 @@
 #   bash automation/gsc.sh query 28
 #
 #   setup            one time: store your Google OAuth client, then sign in
-#   login            sign in again (if access was revoked or expired)
+#   login            sign in again (expired access, or to use another account)
 #   status           is gum signed in?
 #   sites            the properties this account can read
 #   query [days]     searches: clicks, impressions, CTR, position (default 28 days)
@@ -81,7 +81,8 @@ case "$cmd" in
     "$GUM" login --scope "$SCOPE" --no-browser
     "$GUM" read searchconsole.sites.list --format json
     ;;
-  login) "$GUM" login --scope "$SCOPE" --no-browser ;;
+  # --switch-account: a re-login may pick a different Google account on purpose.
+  login) "$GUM" login --scope "$SCOPE" --no-browser --switch-account ;;
   status) "$GUM" auth status ;;
   sites) "$GUM" read searchconsole.sites.list --format json ;;
   query) analytics '["query"]' ;;
