@@ -9,8 +9,9 @@ Last checked: **2026-11-19** (App Store Connect pricing, purchases and TestFligh
 These block submission. In order:
 
 - [ ] **1. Upload a build.**
-  - [x] API key created; `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` and `APPLE_TEAM_ID` are GitHub secrets (2026-11-19). The workflow rebuilds the key file from however it was pasted.
-  - [ ] GitHub → Actions → iOS → **Run workflow** until the TestFlight job uploads a build. The first try (2026-11-19) failed on the key's formatting; fixed and re-run.
+  - [x] `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` and `APPLE_TEAM_ID` are GitHub secrets (2026-11-19). The workflow rebuilds the key file from however it was pasted.
+  - [ ] **Replace the key with an Admin one.** The first key has the App Manager role: it archives fine, but export fails with "Cloud signing permission error", because only an Admin key may create the cloud-managed distribution certificate. Users and Access → Integrations → App Store Connect API → generate a new team key with the **Admin** role, then update `ASC_KEY_ID` and `ASC_KEY_P8` (the issuer and team IDs stay). Revoke the old key afterwards.
+  - [ ] GitHub → Actions → iOS → **Run workflow** until the TestFlight job uploads a build.
   - [ ] On the version page, under **Build**, pick the uploaded build.
 - [x] **2. Screenshots** (seen 2026-11-19): six screenshots and one app preview under "iPhone with Dynamic Island (medium display)". Age rating re-answered for Apple's new Shared Location and Dating questions (No to both, still 4+). The China notices on the version page don't apply, since China mainland is excluded.
 - [x] **3. Price and availability** (2026-11-19): Free, 174 countries and regions, everything except China mainland.
