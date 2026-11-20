@@ -10,7 +10,8 @@ These block submission. In order:
 
 - [ ] **1. Upload a build.**
   - [x] `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` and `APPLE_TEAM_ID` are GitHub secrets (2026-11-19). The workflow rebuilds the key file from however it was pasted.
-  - [ ] **Replace the key with an Admin one.** The first key has the App Manager role: it archives fine, but export fails with "Cloud signing permission error", because only an Admin key may create the cloud-managed distribution certificate. Users and Access → Integrations → App Store Connect API → generate a new team key with the **Admin** role, then update `ASC_KEY_ID` and `ASC_KEY_P8` (the issuer and team IDs stay). Revoke the old key afterwards.
+  - [x] CI builds with Xcode 26 (`macos-26` runners) since 2026-11-20: App Store Connect rejects uploads built with an older SDK. From April 2027 it will want Xcode 27.
+  - [x] **Admin key in place** (2026-11-20). The key needs the **Admin** role: with App Manager the archive works but export fails with "Cloud signing permission error", since only Admin may create the cloud-managed distribution certificate. Revoke the first (App Manager) key once a build is up.
   - [ ] GitHub → Actions → iOS → **Run workflow** until the TestFlight job uploads a build.
   - [ ] On the version page, under **Build**, pick the uploaded build.
 - [x] **2. Screenshots** (seen 2026-11-19): six screenshots and one app preview under "iPhone with Dynamic Island (medium display)". Age rating re-answered for Apple's new Shared Location and Dating questions (No to both, still 4+). The China notices on the version page don't apply, since China mainland is excluded.

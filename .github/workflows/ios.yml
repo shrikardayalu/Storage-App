@@ -21,7 +21,7 @@ env:
 jobs:
   core-tests:
     name: StorageCore tests (swift test)
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Safety check (approved device changes and optional survey networking)
@@ -32,7 +32,7 @@ jobs:
 
   app:
     name: Build, screenshot, and test (iOS Simulator)
-    runs-on: macos-15
+    runs-on: macos-26
     needs: core-tests
     steps:
       - uses: actions/checkout@v4
@@ -165,7 +165,7 @@ jobs:
 
   unsigned-ipa:
     name: Unsigned .ipa (for Sideloadly)
-    runs-on: macos-15
+    runs-on: macos-26
     needs: core-tests
     steps:
       - uses: actions/checkout@v4
@@ -203,7 +203,7 @@ jobs:
     # Manual only: Actions → iOS → Run workflow. Skips until the App Store
     # Connect secrets in docs/CHECKLIST.md are set.
     if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
+    runs-on: macos-26
     needs: [core-tests, app]
     env:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
