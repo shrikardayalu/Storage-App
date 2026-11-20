@@ -13,7 +13,7 @@ These block submission. In order:
   - [x] The TestFlight build uses Xcode 26 (`macos-26` runner) since 2026-11-20: App Store Connect rejects uploads built with an older SDK. From April 2027 it will want Xcode 27.
   - [ ] The simulator app tests still run on Xcode 16 (`macos-15`). On Xcode 26, StoreKit Testing fails to start (`SKInternalErrorDomain` 3) and the purchase tests hang. Get them passing on `macos-26` before GitHub drops Xcode 16 or Apple wants Xcode 27.
   - [x] **Admin key in place** (2026-11-20). The key needs the **Admin** role: with App Manager the archive works but export fails with "Cloud signing permission error", since only Admin may create the cloud-managed distribution certificate. Revoke the first (App Manager) key once a build is up.
-  - [ ] GitHub → Actions → iOS → **Run workflow** until the TestFlight job uploads a build.
+  - [x] First build uploaded to App Store Connect (2026-11-20, run 44746667593). New builds: GitHub → Actions → iOS → **Run workflow**.
   - [ ] On the version page, under **Build**, pick the uploaded build.
 - [x] **2. Screenshots** (seen 2026-11-19): six screenshots and one app preview under "iPhone with Dynamic Island (medium display)". Age rating re-answered for Apple's new Shared Location and Dating questions (No to both, still 4+). The China notices on the version page don't apply, since China mainland is excluded.
 - [x] **3. Price and availability** (2026-11-19): Free, 174 countries and regions, everything except China mainland.
