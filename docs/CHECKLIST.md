@@ -10,7 +10,8 @@ These block submission. In order:
 
 - [ ] **1. Upload a build.**
   - [x] `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` and `APPLE_TEAM_ID` are GitHub secrets (2026-11-19). The workflow rebuilds the key file from however it was pasted.
-  - [x] CI builds with Xcode 26 (`macos-26` runners) since 2026-11-20: App Store Connect rejects uploads built with an older SDK. From April 2027 it will want Xcode 27.
+  - [x] The TestFlight build uses Xcode 26 (`macos-26` runner) since 2026-11-20: App Store Connect rejects uploads built with an older SDK. From April 2027 it will want Xcode 27.
+  - [ ] The simulator app tests still run on Xcode 16 (`macos-15`). On Xcode 26, StoreKit Testing fails to start (`SKInternalErrorDomain` 3) and the purchase tests hang. Get them passing on `macos-26` before GitHub drops Xcode 16 or Apple wants Xcode 27.
   - [x] **Admin key in place** (2026-11-20). The key needs the **Admin** role: with App Manager the archive works but export fails with "Cloud signing permission error", since only Admin may create the cloud-managed distribution certificate. Revoke the first (App Manager) key once a build is up.
   - [ ] GitHub → Actions → iOS → **Run workflow** until the TestFlight job uploads a build.
   - [ ] On the version page, under **Build**, pick the uploaded build.
