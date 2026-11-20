@@ -7,6 +7,7 @@ import { FaqList } from "@/components/faq-list";
 import { GuideCard } from "@/components/guide-card";
 import { Illustration, Scribble } from "@/components/ink";
 import { JsonLd } from "@/components/json-ld";
+import { ReadingProgress } from "@/components/reading-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { StickyCta } from "@/components/sticky-cta";
@@ -95,6 +96,7 @@ export default async function GuidePage({ params }: PageProps<"/guides/[slug]">)
 
   return (
     <>
+      <ReadingProgress />
       <SiteHeader />
 
       <main id="main" className="flex-1 overflow-x-clip">

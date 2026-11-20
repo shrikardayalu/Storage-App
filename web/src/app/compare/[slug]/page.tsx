@@ -9,6 +9,7 @@ import { FaqList } from "@/components/faq-list";
 import { TodoBanner } from "@/components/todo-banner";
 import { Illustration, Scribble } from "@/components/ink";
 import { JsonLd } from "@/components/json-ld";
+import { ReadingProgress } from "@/components/reading-progress";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { StickyCta } from "@/components/sticky-cta";
@@ -76,6 +77,7 @@ export default async function ComparePage({ params }: PageProps<"/compare/[slug]
 
   return (
     <>
+      {article && <ReadingProgress />}
       <SiteHeader />
       <main id="main" className="flex-1 overflow-x-clip">
         {article ? <Article article={article} /> : <Placeholder competitor={competitor} />}
