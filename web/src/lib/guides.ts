@@ -17,7 +17,7 @@ const GUIDES_DIR = path.join(process.cwd(), "content", "guides");
 export const CTA_MARKER = "<!-- cta -->";
 
 /** Site routes that are not guides; internal links may point at these. */
-const STATIC_ROUTES = new Set(["/", "/guides", "/about", "/privacy", "/pricing", "/support", "/terms"]);
+const STATIC_ROUTES = new Set(["/", "/guides", "/compare", "/about", "/privacy", "/pricing", "/support", "/terms"]);
 
 /**
  * Publishing pace. A young site that adds pages faster than it earns trust

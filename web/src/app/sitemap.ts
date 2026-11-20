@@ -6,6 +6,8 @@ import { absoluteUrl } from "@/lib/site";
 export default function sitemap(): MetadataRoute.Sitemap {
   const guides = getAllGuides();
   const newest = guides[0]?.updated;
+  const comparisons = getAllCompareArticles().filter((a) => a.competitor.ready);
+  const newestComparison = comparisons.map((a) => a.updated).sort().at(-1);
 
   return [
     { url: absoluteUrl("/"), lastModified: newest },
@@ -14,9 +16,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: absoluteUrl(`/guides/${guide.slug}`),
       lastModified: guide.updated,
     })),
-    ...getAllCompareArticles()
-      .filter((a) => a.competitor.ready)
-      .map((a) => ({ url: absoluteUrl(`/compare/${a.competitor.slug}`), lastModified: a.updated })),
+    { url: absoluteUrl("/compare"), lastModified: newestComparison },
+    ...comparisons.map((a) => ({ url: absoluteUrl(`/compare/${a.competitor.slug}`), lastModified: a.updated })),
     { url: absoluteUrl("/pricing") },
     { url: absoluteUrl("/about") },
     { url: absoluteUrl("/support") },

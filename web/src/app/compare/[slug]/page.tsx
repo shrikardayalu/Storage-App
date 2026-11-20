@@ -124,7 +124,7 @@ export default async function ComparePage({ params }: PageProps<"/compare/[slug]
               compareSchema(article),
               breadcrumbSchema([
                 { name: "Home", path: "/" },
-                { name: "Compare", path: "/#compare" },
+                { name: "Compare", path: "/compare" },
                 { name: article.title, path: `/compare/${slug}` },
               ]),
               ...(article.faq.length ? [faqSchema(article.faq)] : []),
@@ -145,7 +145,7 @@ function Breadcrumbs() {
         </li>
         <li aria-hidden="true">/</li>
         <li>
-          <Link href="/#compare" className="hover:text-ink">Compare</Link>
+          <Link href="/compare" className="hover:text-ink">Compare</Link>
         </li>
       </ol>
     </nav>

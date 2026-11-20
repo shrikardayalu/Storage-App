@@ -81,7 +81,7 @@ When Search Console has data, real queries beat anything on this list.
 
 | Status | Keyword | Angle | Tie-back |
 | --- | --- | --- | --- |
-| open | best iphone storage cleaner apps | Honest roundup incl. built-in tools | Direct |
+| published | best iphone storage cleaner apps | `/compare` | Direct |
 | open | best video compressor app iphone | Roundup, with Shortcuts as the free baseline | Direct |
 | open | best duplicate photo cleaner iphone | Roundup, with Photos' own Duplicates album first | Direct |
 | open | free iphone cleaner app no subscription | What's truly free in each app | Free tier |

@@ -31,6 +31,9 @@ export function GET() {
   const comparisons = getAllCompareArticles().filter((a) => a.competitor.ready);
   if (comparisons.length) {
     lines.push("## Comparisons", "");
+    lines.push(
+      `- [Best iPhone storage cleaners](${absoluteUrl("/compare")}): Start with the Photos app, then how ${siteConfig.name} compares with the popular cleaners.`,
+    );
     for (const a of comparisons) {
       lines.push(`- [${a.title}](${absoluteUrl(`/compare/${a.competitor.slug}`)}): ${a.description}`);
     }

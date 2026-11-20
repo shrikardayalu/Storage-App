@@ -50,6 +50,11 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/compare" className="hover:text-on-band">
+                    Best iPhone storage cleaners
+                  </Link>
+                </li>
+                <li>
                   <Link href="/pricing" className="hover:text-on-band">
                     Pricing
                   </Link>

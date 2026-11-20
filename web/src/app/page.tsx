@@ -20,8 +20,18 @@ import { siteConfig } from "@/lib/site";
 
 const name = siteConfig.name;
 
+const homeTitle = "Free Up iPhone Storage Without Deleting";
+const homeDocumentTitle = `${homeTitle} | ${name}`;
+const homeDescription =
+  "Free up iPhone storage without deleting your photos or videos. Shrink 4K videos, trim long recordings, and keep Live Photos as stills.";
+
 export const metadata: Metadata = {
+  // The root layout's title template does not apply to this page, so the brand is included here.
+  title: { absolute: homeDocumentTitle },
+  description: homeDescription,
   alternates: { canonical: "/" },
+  openGraph: { title: homeDocumentTitle, description: homeDescription, url: "/" },
+  twitter: { card: "summary_large_image", title: homeDocumentTitle, description: homeDescription },
 };
 
 const faq = [
@@ -154,7 +164,7 @@ export default function Home() {
                 </span>
               </h1>
               <p className="hero-description mt-8 max-w-xl text-lg leading-relaxed text-pretty text-ink-soft sm:text-xl">
-                {name} makes what you already have take up less space.{" "}
+                {name} frees up iPhone storage without deleting your photos or videos.{" "}
                 <span className="font-semibold text-ink">
                   Shrink videos, trim long recordings, and turn Live Photos into stills.
                 </span>
@@ -382,6 +392,12 @@ export default function Home() {
               >
                 {name} vs. the popular cleaners.
               </h2>
+              <Link
+                href="/compare"
+                className="mt-5 inline-flex items-center gap-2 font-semibold underline decoration-mint decoration-[3px] underline-offset-4 hover:decoration-ink"
+              >
+                Best iPhone storage cleaners <span aria-hidden="true">→</span>
+              </Link>
             </div>
             <p className="text-lg leading-relaxed text-ink-soft">
               Most cleaners help you find things to delete. Here&apos;s an honest look at where each one shines,

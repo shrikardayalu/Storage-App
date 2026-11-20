@@ -24,26 +24,38 @@ export function generateStaticParams() {
   return getAllGuides().map((guide) => ({ slug: guide.slug }));
 }
 
+/**
+ * `seoTitle` is already written for a search result. The layout would append
+ * " | SimpleShrink" and push the distinctive ending past the cutoff, so the
+ * brand is added only when the full string still fits.
+ */
+function guideDocumentTitle(seoTitle: string) {
+  const branded = `${seoTitle} | ${siteConfig.name}`;
+  return branded.length <= 60 ? branded : seoTitle;
+}
+
 export async function generateMetadata({ params }: PageProps<"/guides/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const guide = getGuide(slug);
   if (!guide) return {};
 
+  const title = guideDocumentTitle(guide.seoTitle);
+
   return {
-    title: guide.seoTitle,
+    title: { absolute: title },
     description: guide.description,
     alternates: { canonical: `/guides/${guide.slug}` },
     openGraph: {
       type: "article",
       siteName: siteConfig.name,
       locale: siteConfig.locale,
-      title: guide.seoTitle,
+      title,
       description: guide.description,
       url: `/guides/${guide.slug}`,
       publishedTime: guide.published,
       modifiedTime: guide.updated,
     },
-    twitter: { card: "summary_large_image", title: guide.seoTitle, description: guide.description },
+    twitter: { card: "summary_large_image", title, description: guide.description },
   };
 }
 
