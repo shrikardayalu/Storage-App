@@ -14,10 +14,10 @@ These block submission. In order:
   - [ ] The simulator app tests still run on Xcode 16 (`macos-15`). On Xcode 26, StoreKit Testing fails to start (`SKInternalErrorDomain` 3) and the purchase tests hang. Get them passing on `macos-26` before GitHub drops Xcode 16 or Apple wants Xcode 27.
   - [x] **Admin key in place** (2026-11-20). The key needs the **Admin** role: with App Manager the archive works but export fails with "Cloud signing permission error", since only Admin may create the cloud-managed distribution certificate. Revoke the first (App Manager) key once a build is up.
   - [x] First build uploaded to App Store Connect (2026-11-20, run 44746667593). New builds: GitHub → Actions → iOS → **Run workflow**.
-  - [ ] On the version page, under **Build**, pick the uploaded build.
+  - [x] Build 46 (1.0) attached to the version (2026-11-20).
 - [x] **2. Screenshots** (seen 2026-11-19): six screenshots and one app preview under "iPhone with Dynamic Island (medium display)". Age rating re-answered for Apple's new Shared Location and Dating questions (No to both, still 4+). The China notices on the version page don't apply, since China mainland is excluded.
 - [x] **3. Price and availability** (2026-11-19): Free, 174 countries and regions, everything except China mainland.
-- [ ] **4. Attach the three purchases to the version.** All three are filled in (2026-11-19): prices ($4.99 weekly, $24.99 annual, $34.99 lifetime), English names and descriptions, review screenshots (paywall for the subscriptions, Settings → Pro for Lifetime) and review notes. The group "Pro" has the English display name "SimpleShrink Pro". Their status still reads "Prepare for Submission". Once a build is attached, add all three on the version page under "In-App Purchases and Subscriptions" and check nothing is flagged as missing. The first subscription must go in with the app version.
+- [x] **4. Purchases** (2026-11-20): Weekly ($4.99), Annual ($24.99), Lifetime ($34.99) and the "Pro" group (English name "SimpleShrink Pro") are filled in and sit in the app's **draft submission** as Ready to Submit. There's no purchases section on the version page any more; each item's own "Add for Review" puts it in the draft. The draft goes to Apple only together with the app version (step 7).
 - [x] **5. Privacy Policy URL** under App Privacy is `https://www.simpleshrink.com/privacy` (confirmed 2026-11-19).
 - [ ] **6. Test the build from TestFlight on a real iPhone.**
   - [ ] Purchases: TestFlight builds use the sandbox with your own Apple ID, and nothing is charged. Buy Weekly, buy Annual, buy Lifetime, restore, cancel. Lifetime on top of Weekly must still show Manage Subscription.
@@ -25,7 +25,7 @@ These block submission. In order:
   - [ ] Compare free space with Settings → General → iPhone Storage before and after.
   - [ ] Try Limited Photos access, an iCloud-only video, and large text on a small iPhone.
   - [ ] Onboarding's "How did you hear about us?": Skip sends nothing; an answer shows up in TelemetryDeck (`docs/ACQUISITION_REPORTING.md`).
-- [ ] **7. Press Add for Review.**
+- [ ] **7. Press Add for Review** on the version page, add it to the existing draft submission (which already holds the purchases), then Submit for Review.
 
 ## Worth doing first, but not blocking
 
@@ -36,7 +36,7 @@ These block submission. In order:
 - [ ] **Have someone qualified read `/privacy` and `/terms`.** They match the code but aren't legal advice. They name no legal entity and no governing law, on purpose.
 - [ ] **Update Next.js.** The site runs 16.4.2; a moderate advisory (GHSA-mfr8-8qww-v76h) is fixed in later versions. The site doesn't use the affected feature combination in any obvious way, but update anyway.
 - [ ] **Other App Store localizations.** Only English (U.S.) is filled in. The other 13 names, subtitles and keyword fields are in `marketing/aso/metadata.md` and widen what the US store searches.
-- [ ] **Header asset** on the version page (0 of 1). Optional.
+- [x] **Header and search results assets** uploaded (2026-11-20): `marketing/aso/creative/out/header.png` (3840 x 1646) and `search.png` (3840 x 2560), rendered by `node marketing/aso/creative/render.mjs` (add `--guides` to see Apple's safe areas). Checked in App Store Connect's Device Preview on iPhone and iPad. They show on iOS 27 and later.
 
 ## Launch day
 

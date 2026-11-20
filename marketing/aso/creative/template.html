@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SimpleShrink App Store creative assets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Schibsted+Grotesk:wght@700;900&display=block" rel="stylesheet">
+<style>
+  /* The product page header (3840 x 1646) and the search results asset
+     (3840 x 2560), drawn at full size. Same palette, type and illustrations
+     as ../screenshots/template.html. render.mjs opens this file with
+     ?asset=header or ?asset=search (add &guides=1 to see Apple's safe areas). */
+  :root {
+    --cream: #F4F1EA; --paper: #FFFDF8; --ink: #1A1A17; --mint: #5ED49B;
+    --mint-soft: #CDEFDC; --accent: #1C7D50;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--cream); }
+  .canvas { position: relative; overflow: hidden; font-family: "Schibsted Grotesk", system-ui, sans-serif; color: var(--ink); }
+  .header { width: 3840px; height: 1646px; background: var(--cream); }
+  .search { width: 3840px; height: 2560px; background: var(--mint); }
+
+  .blob { position: absolute; border-radius: 50%; }
+  .art { position: absolute; }
+  .phone { position: absolute; padding: 26px; background: var(--ink); border-radius: 104px; }
+  .phone img { display: block; width: 100%; border-radius: 82px; }
+  svg.doodle { position: absolute; overflow: visible; fill: none; stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; }
+
+  h1 { position: absolute; margin: 0; font-weight: 900; letter-spacing: -0.045em; line-height: 0.95; white-space: nowrap; }
+  h1 .hand { display: inline-block; font-family: "Gochi Hand", cursive; font-weight: 400; letter-spacing: -0.01em;
+    font-size: 1.22em; line-height: 0.75; transform: rotate(-4deg); }
+
+  .safe { position: absolute; outline: 8px dashed #e0245e; z-index: 99; pointer-events: none; }
+</style>
+</head>
+<body>
+<script>
+const ASSETS = '../../app-store';
+const params = new URLSearchParams(location.search);
+const which = params.get('asset') || 'header';
+const SPARK = '<path d="M60 8 Q63 60 58 112"/><path d="M8 62 Q60 56 112 60"/>';
+const spark = (color, size, x, y) => `<svg class="doodle" style="stroke:${color};left:${x}px;top:${y}px" width="${size}" height="${size}" viewBox="0 0 120 120">${SPARK}</svg>`;
+const art = (name, width, x, y, deg = 0) => `<img class="art" src="${ASSETS}/art/ill-${name}.svg" style="width:${width}px;left:${x}px;top:${y}px;transform:rotate(${deg}deg)" alt="">`;
+const phone = (screen, width, x, y, deg, shadow) => `<div class="phone" style="width:${width}px;left:${x}px;top:${y}px;transform:rotate(${deg}deg);box-shadow:-30px 34px 0 ${shadow}"><img src="${ASSETS}/screens/${screen}.png" alt=""></div>`;
+const blob = (color, size, x, y) => `<div class="blob" style="background:${color};width:${size}px;height:${size}px;left:${x}px;top:${y}px"></div>`;
+
+// Apple's art safe areas: everything that matters stays inside these.
+const SAFE = {
+  header: { x: 1097, y: 493, w: 1646, h: 661 },
+  search: { x: 836, y: 765, w: 2168, h: 1030 },
+};
+
+/** Shrinks a headline until it fits the box it was given. */
+function fit(h1, maxW, maxH) {
+  let size = parseFloat(getComputedStyle(h1).fontSize);
+  while (size > 60 && (h1.offsetWidth > maxW || h1.offsetHeight > maxH)) { size -= 4; h1.style.fontSize = size + 'px'; }
+  return h1;
+}
+
+function header() {
+  const c = document.body.appendChild(Object.assign(document.createElement('section'), { className: 'canvas header' }));
+  // Atmosphere, outside the safe area: two phones showing the app, illustrations, sparks.
+  c.insertAdjacentHTML('beforeend',
+    blob('var(--mint-soft)', 1500, -260, 420) + blob('var(--mint-soft)', 1400, 2780, -380) +
+    phone('reveal-light', 640, 330, 170, -9, 'var(--mint)') +
+    phone('results-light', 640, 2900, 300, 8, 'var(--mint)') +
+    art('video', 330, 40, 120, -10) + art('stack-large', 300, 1000, 1240, 6) +
+    art('piggy', 320, 3460, 1150, 9) + art('compress', 300, 2560, 90, -6) +
+    spark('var(--accent)', 150, 1060, 230) + spark('var(--ink)', 110, 2700, 1280) + spark('var(--accent)', 120, 3600, 140));
+  // The idea, inside the safe area.
+  const s = SAFE.header;
+  const h1 = c.appendChild(Object.assign(document.createElement('h1'), {
+    innerHTML: '<span class="hand" style="color:var(--accent)">Shrink it,</span><br>don&rsquo;t delete.',
+  }));
+  h1.style.cssText = 'font-size:300px;text-align:center';
+  fit(h1, s.w - 60, s.h - 40);
+  h1.style.left = s.x + (s.w - h1.offsetWidth) / 2 + 'px';
+  h1.style.top = s.y + (s.h - h1.offsetHeight) / 2 + 'px';
+  return c;
+}
+
+function search() {
+  const c = document.body.appendChild(Object.assign(document.createElement('section'), { className: 'canvas search' }));
+  const s = SAFE.search;
+  c.insertAdjacentHTML('beforeend',
+    blob('#4ec78c', 1900, -500, 1500) + blob('#4ec78c', 1500, 3000, -500) +
+    art('photo', 420, 120, 250, -8) + art('trash', 380, 3240, 1900, 8) +
+    art('stack-large', 400, 260, 1950, 5) + art('video', 380, 3200, 380, -7) +
+    spark('var(--paper)', 170, 650, 560) + spark('var(--ink)', 130, 3080, 1700) + spark('var(--paper)', 140, 2000, 2150));
+  // Headline on the left of the safe area, the app's breakdown screen on the right.
+  // The phone's height follows its width (screens are 1320 x 2868, plus the 26px frame).
+  const phoneW = 410, gap = 120, phoneH = (phoneW - 52) * 2868 / 1320 + 52;
+  const h1 = c.appendChild(Object.assign(document.createElement('h1'), {
+    innerHTML: 'See what&rsquo;s<br><span class="hand" style="color:var(--paper)">eating</span><br>your space',
+  }));
+  h1.style.cssText = 'font-size:290px;text-align:left';
+  const textW = s.w - phoneW - gap - 80;
+  fit(h1, textW, s.h - 40);
+  const blockW = h1.offsetWidth + gap + phoneW + 52;
+  const left = s.x + (s.w - blockW) / 2;
+  h1.style.left = left + 'px';
+  h1.style.top = s.y + (s.h - h1.offsetHeight) / 2 + 'px';
+  c.insertAdjacentHTML('beforeend', phone('reveal-light', phoneW, left + h1.offsetWidth + gap, s.y + (s.h - phoneH) / 2, 3, 'var(--ink)'));
+  return c;
+}
+
+window.ready = (async () => {
+  await Promise.all([document.fonts.load('900 200px "Schibsted Grotesk"'), document.fonts.load('400 200px "Gochi Hand"')]);
+  if (!document.fonts.check('900 200px "Schibsted Grotesk"')) throw new Error('The fonts did not load. Check the internet connection.');
+  const c = which === 'search' ? search() : header();
+  if (params.get('guides')) {
+    const s = SAFE[which];
+    c.insertAdjacentHTML('beforeend', `<div class="safe" style="left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px"></div>`);
+  }
+  await Promise.all([...document.images].map(i => i.decode().catch(() => {})));
+  return { w: c.offsetWidth, h: c.offsetHeight };
+})();
+</script>
+</body>
+</html>

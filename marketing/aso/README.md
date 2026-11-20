@@ -7,6 +7,7 @@ Three steps, each one command, no npm packages (Node 22+ and Chrome).
 | 1. Research keywords | `node marketing/aso/research.mjs` | `research/seeds.json` | `research/report.md`, `research/data.json` |
 | 2. Write and check the listing | `node marketing/aso/check.mjs` | `metadata.json` | `metadata.md` (paste sheet) |
 | 3. Render screenshots | `node marketing/aso/screenshots/render.mjs --all` | `screenshots/sets/*.json` | `screenshots/out/<set>/<locale>/<size>/*.png` |
+| Header and search results assets | `node marketing/aso/creative/render.mjs` | `creative/template.html` | `creative/out/header.png`, `creative/out/search.png` |
 
 ## 1. Research
 
