@@ -2,6 +2,16 @@
 
 One entry per run, newest first. Each says what changed, why it was picked, where the facts came from, and what to check later. Entries marked **device check** have steps a person should confirm on a real iPhone.
 
+## 2026-11-20 · new guide · `video-too-large-to-send-iphone`
+
+- **Keyword:** video too large to send iphone (secondary: how to send a large video from iphone, Mail Drop, AirDrop a long video).
+- **Why:** adjacent sharing-and-transfer row from the backlog (Search Console still returns no rows). Last two were adjacent then core, so an adjacent one keeps the mix, and it is the first Sharing & transfer page. The results are Apple Community threads, Dropbox and file-transfer vendor pages, and Wondershare-style content farms; several quote outdated or wrong Mail Drop limits (one says 20 GB). None ties the sending problem back to storage.
+- **Sources:** Apple Support 108329, "Mail Drop limits" (5 GB, 1 TB Mail Drop limit, 30 days, not counted against iCloud storage, offered when over the ISP limit, recipient's app may have a smaller limit, all file types, depends on connection speed); iPhone User Guide, "Share long videos on iPhone" (AirDrop and Mail Drop steps, Everyone for 10 Minutes, Options → All Photos Data, some long videos too large for a standard text message); iPhone User Guide, "Use AirDrop to send items to nearby devices" (30 ft / 10 m, Wi-Fi and Bluetooth, continues over the internet, cellular charges, Settings → General → AirDrop → Use Cellular Data); iPhone User Guide, "Share photos and videos on iPhone" (attachment size limit set by the service provider); iPhone User Guide, "Trim video length, adjust speed, and edit audio" (trim steps, Save Video vs Save Video as New Clip). The guide pages were read through a fetch summary, not verbatim.
+- **Links:** out to compress-videos-iphone, high-efficiency-vs-most-compatible-iphone, iphone-storage-full; in from compress-videos-iphone (Method 2) and high-efficiency-vs-most-compatible-iphone (Sharing without switching formats).
+- **Left out (no source):** Messages and WhatsApp size limits, Copy iCloud Link, per-minute video sizes.
+- **Device check:** the AirDrop alert button is **Accept**; Mail's Mail Drop prompt appears from Photos → Share → Mail on a large video; Settings → Camera → Record Video shows size per minute. Also: compress-videos-iphone Method 1 says **Save Video** keeps the original underneath and saves less space, while Apple's trim article says Save Video keeps only the trimmed version and Save Video as New Clip keeps both. Re-check on a device and fix that guide.
+- **Check on 2026-12-18:** indexed? Impressions for the keyword and for "how to send a large video from iphone"?
+
 ## 2026-11-19 · new guide · `empty-recently-deleted-iphone`
 
 - **Keyword:** how to empty recently deleted on iphone (secondary: empty trash on iphone, deleted photos still taking up space).

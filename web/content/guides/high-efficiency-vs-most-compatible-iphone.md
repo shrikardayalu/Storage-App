@@ -59,7 +59,7 @@ You can keep the smaller files and still send copies that open anywhere.
 - **iCloud Photos:** everything keeps its original format, resolution, and frame rate.
 - **On a Mac:** open the photo in Photos or Preview, choose **File → Export**, and pick JPEG.
 
-None of these change the original in your library. They make a compatible copy for whoever is receiving it.
+None of these change the original in your library. They make a compatible copy for whoever is receiving it. If the problem is size rather than format, see [what to do when a video is too large to send](/guides/video-too-large-to-send-iphone).
 
 <!-- cta -->
 

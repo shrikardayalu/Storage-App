@@ -60,6 +60,8 @@ The free **Shortcuts** app (built into iOS) can re-encode a video at a lower res
 5. Run the shortcut, pick a video, and check the new, smaller copy.
 6. Once you're happy with it, delete the original.
 
+A smaller copy is also the way through when a clip won't go in a text. For the other options, such as AirDrop and Mail Drop, see [how to send a video that's too large on iPhone](/guides/video-too-large-to-send-iphone).
+
 <!-- cta -->
 
 ## Method 3: Record smaller videos from now on

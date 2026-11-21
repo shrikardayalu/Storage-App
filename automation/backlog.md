@@ -70,7 +70,9 @@ When Search Console has data, real queries beat anything on this list.
 
 | Status | Keyword | Angle | Tie-back |
 | --- | --- | --- | --- |
-| open | video too large to send iphone | Limits for Mail, Messages, WhatsApp; iCloud link, AirDrop, shrinking | Video shrink |
+| published | video too large to send iphone | `video-too-large-to-send-iphone` | Video shrink |
+| open | share video with icloud link iphone | Copy iCloud Link: steps, how long the link lasts (not on Apple's sharing pages checked 2026-11-20; find a source) | Video shrink |
+| open | airdrop not working iphone | Range, Wi-Fi/Bluetooth, Everyone for 10 Minutes, over-the-internet fallback | Sending big videos |
 | open | how to email a large video from iphone | Mail Drop and its limits | Video shrink |
 | open | compress video for whatsapp / discord iphone | Per-app size limits and the simplest route under each | Video shrink |
 | open | transfer photos from iphone to external hard drive | USB-C drive via Files, step by step | Then clear the phone safely |
