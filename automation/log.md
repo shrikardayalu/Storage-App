@@ -2,6 +2,16 @@
 
 One entry per run, newest first. Each says what changed, why it was picked, where the facts came from, and what to check later. Entries marked **device check** have steps a person should confirm on a real iPhone.
 
+## 2026-11-21 · new guide · `trim-video-iphone`
+
+- **Keyword:** trim video iphone to save space (secondary: how to trim a video on iphone, Save Video vs Save Video as New Clip, trimmed video still same size).
+- **Why:** core videos row from the backlog (Search Console returns no rows yet). Last two were adjacent then core, and the week had no core videos page. "How to trim a video on iphone" alone is owned by Apple Support 104968 and big publishers, so the page targets the narrower storage intent: Apple Community has several threads asking why a trimmed video still takes the same space, and no ranking page explains it with Apple sources.
+- **Sources (opened this run):** iPhone User Guide, "Trim video length, adjust speed, and edit audio" (iph1d1344a2d: frame viewer, Done, Save Video saves only the trimmed video, Save Video as New Clip saves both, Revert after saving, a new clip can't be reverted, slo-mo black vertical bars); Apple Support 104968 (Edit, sliders, Play to preview, Revert → Revert to Original); iPhone User Guide, "Delete or hide photos and videos" (iphb4defbde9: 30 days in Recently Deleted, deleting with iCloud Photos removes on all devices and iCloud); iPhone User Guide, "Locate photos and videos by media type" (iph8530ff6a2: Collections → Media Types); Apple Support 108429 (Settings → General → iPhone Storage, Photos category); iPhone User Guide, "Undo and revert photo edits" (iph2413db0ab, read through a fetch summary: edits saved across devices with iCloud Photos). App claim from docs/PRICING.md (Pro: shrink and trim videos).
+- **Inference, not stated by Apple:** that Save Video doesn't reliably free space, because it stays revertible. The page says only "don't count on it" and gives the new-clip route.
+- **Links:** out to empty-recently-deleted-iphone, compress-videos-iphone, iphone-storage-full; in from compress-videos-iphone (Method 1, which also fixes the Save Video wording flagged on 2026-11-20; `updated` bumped) and video-too-large-to-send-iphone (trim section).
+- **Device check:** after **Save Video** on a long clip and emptying nothing, does iPhone Storage → Photos shrink? (If it does, soften the "don't count on it" line.) Also confirm the **Edit** button name and that **Revert** appears directly in Edit for a trimmed video.
+- **Check on 2026-12-19:** indexed? Impressions for the keyword and for "how to trim a video on iphone"?
+
 ## 2026-11-20 · new guide · `video-too-large-to-send-iphone`
 
 - **Keyword:** video too large to send iphone (secondary: how to send a large video from iphone, Mail Drop, AirDrop a long video).

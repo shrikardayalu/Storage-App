@@ -5,7 +5,7 @@ description: "Keep the video, lose most of the file size. Three ways to compress
 topic: videos
 primaryKeyword: "compress video iphone"
 published: 2026-10-20
-updated: 2026-10-20
+updated: 2026-11-21
 illustration: ill-compress
 related:
   - iphone-storage-full
@@ -47,7 +47,7 @@ The easiest compression is cutting the boring parts.
 3. Tap **Done**, then **Save Video as New Clip**.
 4. Delete the original if you no longer need it.
 
-Saving as a new clip creates a genuinely smaller file. Choosing **Save Video** keeps the original underneath so you can revert, which doesn't save as much space.
+Saving as a new clip creates a separate, shorter video that can't be reverted, so once the original is gone, only the short clip is left. Apple says **Save Video** keeps only the trimmed version, but it can still be reverted to the full length later, so it's not the dependable way to free space. More on the difference in [how to trim a video on iPhone to save space](/guides/trim-video-iphone).
 
 ## Method 2: Re-encode with the Shortcuts app
 
