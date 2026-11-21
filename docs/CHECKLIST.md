@@ -2,7 +2,7 @@
 
 The one place that says what is done and what is left. Every other doc explains how something works; none of them keeps its own to-do list. When something here changes, change it here.
 
-Last checked: **2026-11-20** (build 46 tested from TestFlight and submitted for App Store review).
+Last checked: **2026-11-21** (TestFlight approved for external testers; build 46 waiting on App Store review).
 
 ## Before you can press "Add for Review"
 
@@ -31,7 +31,7 @@ These block submission. In order:
 ## Worth doing first, but not blocking
 
 - [ ] **EU trader status.** Business → Agreements shows "Complete Compliance Requirements" for the Digital Services Act. Until you declare trader or non-trader, the app isn't offered in the 27 EU countries; everywhere else it is. It can be done after launch, and the EU storefronts open once Apple accepts it.
-- [ ] **TestFlight for friends.** Internal group "Team" (you, automatic distribution) and the Test Information page are set up (2026-11-19). Still empty: Beta App Review contact name, phone and email. For people outside the account, create an external group, add the build (the first build goes through Beta App Review, usually under a day), then share its public link or invite by email.
+- [x] **TestFlight for friends.** External testing passed Beta App Review (2026-11-21) and the build is going out to testers. Ask them to try Limited Photos access, an iCloud-only video and large text (step 6), and collect what they report.
 
 - [ ] **Release timing.** The version is set to release automatically after approval. Switch to "Manually release" if you want to choose the launch day (and email the waitlist the same day).
 - [ ] **Have someone qualified read `/privacy` and `/terms`.** They match the code but aren't legal advice. They name no legal entity and no governing law, on purpose.
