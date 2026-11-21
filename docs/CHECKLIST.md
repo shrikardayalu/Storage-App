@@ -2,13 +2,13 @@
 
 The one place that says what is done and what is left. Every other doc explains how something works; none of them keeps its own to-do list. When something here changes, change it here.
 
-Last checked: **2026-11-19** (App Store Connect pricing, purchases and TestFlight set up; build upload in progress).
+Last checked: **2026-11-20** (build 46 tested from TestFlight and submitted for App Store review).
 
 ## Before you can press "Add for Review"
 
 These block submission. In order:
 
-- [ ] **1. Upload a build.**
+- [x] **1. Upload a build.**
   - [x] `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` and `APPLE_TEAM_ID` are GitHub secrets (2026-11-19). The workflow rebuilds the key file from however it was pasted.
   - [x] The TestFlight build uses Xcode 26 (`macos-26` runner) since 2026-11-20: App Store Connect rejects uploads built with an older SDK. From April 2027 it will want Xcode 27.
   - [ ] The simulator app tests still run on Xcode 16 (`macos-15`). On Xcode 26, StoreKit Testing fails to start (`SKInternalErrorDomain` 3) and the purchase tests hang. Get them passing on `macos-26` before GitHub drops Xcode 16 or Apple wants Xcode 27.
@@ -19,13 +19,14 @@ These block submission. In order:
 - [x] **3. Price and availability** (2026-11-19): Free, 174 countries and regions, everything except China mainland.
 - [x] **4. Purchases** (2026-11-20): Weekly ($4.99), Annual ($24.99), Lifetime ($34.99) and the "Pro" group (English name "SimpleShrink Pro") are filled in and sit in the app's **draft submission** as Ready to Submit. There's no purchases section on the version page any more; each item's own "Add for Review" puts it in the draft. The draft goes to Apple only together with the app version (step 7).
 - [x] **5. Privacy Policy URL** under App Privacy is `https://www.simpleshrink.com/privacy` (confirmed 2026-11-19).
-- [ ] **6. Test the build from TestFlight on a real iPhone.**
-  - [ ] Purchases: TestFlight builds use the sandbox with your own Apple ID, and nothing is charged. Buy Weekly, buy Annual, buy Lifetime, restore, cancel. Lifetime on top of Weekly must still show Manage Subscription.
-  - [ ] Run each cleanup once on the real library: delete, Swipe to clean, burst picks, Live Photos to stills, screenshots, shrink a video, trim a video, one-tap Photo Cleanup, a Files folder.
-  - [ ] Compare free space with Settings → General → iPhone Storage before and after.
-  - [ ] Try Limited Photos access, an iCloud-only video, and large text on a small iPhone.
+- [ ] **6. Test the build from TestFlight on a real iPhone.** Build 46 tested 2026-11-20.
+  - [x] Purchases (worked 2026-11-20): TestFlight builds use the sandbox with your own Apple ID, and nothing is charged. Buy Weekly, buy Annual, buy Lifetime, restore, cancel. Lifetime on top of Weekly must still show Manage Subscription.
+  - [x] Run each cleanup once on the real library (worked 2026-11-20): delete, Swipe to clean, burst picks, Live Photos to stills, screenshots, shrink a video, trim a video, one-tap Photo Cleanup, a Files folder.
+  - [x] Compare free space with Settings → General → iPhone Storage before and after.
+  - [ ] Try Limited Photos access, an iCloud-only video, and large text on a small iPhone. Not tested yet; you have no iCloud library, so the iCloud-only video is left to the TestFlight friends.
+  - Settings → Apple ID → Subscriptions shows SimpleShrink with no icon. That's expected for sandbox purchases before release: the icon comes from the live App Store listing.
   - [ ] Onboarding's "How did you hear about us?": Skip sends nothing; an answer shows up in TelemetryDeck (`docs/ACQUISITION_REPORTING.md`).
-- [ ] **7. Press Add for Review** on the version page, add it to the existing draft submission (which already holds the purchases), then Submit for Review.
+- [x] **7. Press Add for Review** (submitted 2026-11-20; waiting on App Review) on the version page, add it to the existing draft submission (which already holds the purchases), then Submit for Review.
 
 ## Worth doing first, but not blocking
 
