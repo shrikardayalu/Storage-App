@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   title: { absolute: homeDocumentTitle },
   description: homeDescription,
   alternates: { canonical: "/" },
-  openGraph: { title: homeDocumentTitle, description: homeDescription, url: "/" },
+  openGraph: { type: "website", siteName: name, title: homeDocumentTitle, description: homeDescription, url: "/" },
   twitter: { card: "summary_large_image", title: homeDocumentTitle, description: homeDescription },
 };
 

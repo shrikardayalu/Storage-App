@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { OgCard, ogSize } from "@/components/og/og-card";
+import { OgCard, ogOptions, ogSize } from "@/components/og/og-card";
 import { getCompareArticle } from "@/lib/compare-articles";
 import { competitors, getCompetitor } from "@/lib/comparisons";
 import { siteConfig } from "@/lib/site";
@@ -18,10 +18,13 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   const article = competitor?.ready ? getCompareArticle(slug) : null;
   return new ImageResponse(
     <OgCard
-      eyebrow={`${siteConfig.name} · Compare`}
-      title={`${siteConfig.name} vs ${competitor?.name ?? ""}`}
-      footer={article ? `Facts checked ${article.updated}` : "Comparison coming soon"}
+      eyebrow="the honest comparison"
+      title={siteConfig.name}
+      highlight={`vs ${competitor?.name ?? "the rest"}`}
+      note={article ? "facts checked, no spin" : "comparison coming soon"}
+      art="ill-shield-check"
+      footer={article ? `simpleshrink.com/compare · checked ${article.updated}` : "simpleshrink.com/compare"}
     />,
-    size,
+    ogOptions,
   );
 }

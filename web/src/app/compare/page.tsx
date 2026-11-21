@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title,
   description,
   alternates: { canonical: "/compare" },
-  openGraph: { title: `${title} | ${name}`, description, url: "/compare" },
+  openGraph: { type: "website", siteName: name, title: `${title} | ${name}`, description, url: "/compare" },
   twitter: { card: "summary_large_image", title: `${title} | ${name}`, description },
 };
 
