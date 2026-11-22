@@ -65,7 +65,8 @@ final class SwipePhotoStore {
                 }
             }
         }) else {
-            previews[id]?.failed = previews[id]?.image == nil
+            let hasImage = previews[id]?.image != nil
+            previews[id]?.failed = !hasImage
             return
         }
         let timeout = Task { [weak self] in
@@ -77,7 +78,9 @@ final class SwipePhotoStore {
     }
 
     private func finish(_ id: String) {
-        previews[id]?.failed = previews[id]?.image == nil
+        // Finish reading before mutating the observed dictionary's entry.
+        let hasImage = previews[id]?.image != nil
+        previews[id]?.failed = !hasImage
         previews[id]?.progress = nil
         cancel(id)
     }
