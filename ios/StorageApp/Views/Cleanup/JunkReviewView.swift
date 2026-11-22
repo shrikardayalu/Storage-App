@@ -129,7 +129,7 @@ struct JunkReviewView: View {
                     Section {
                         findings(report)
                     } header: {
-                        sectionSwitch(report)
+                        sectionSwitch(report).tourTarget("items")
                     }
                 } else if let report, report.isEmpty, !model.isAnalyzing {
                     EmptyStateView(
@@ -165,12 +165,13 @@ struct JunkReviewView: View {
         .navigationBarTitleDisplayMode(.inline)
         .scopePicker($scope, label: "Which photos to remove", isShown: report?.isEmpty == false, isDisabled: model.isChanging)
         .safeAreaInset(edge: .bottom) {
-            if report?.isEmpty == false { actionBar }
+            if report?.isEmpty == false { actionBar.tourTarget("action") }
         }
         .mediaPreview($preview)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Removing what you picked…") }
         }
+        .featureTour(.duplicates, enabled: !model.isChanging)
         .confirmationDialog(
             "Remove \(countText) from your library?",
             isPresented: $confirming,

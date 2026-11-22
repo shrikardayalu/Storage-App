@@ -17,17 +17,17 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 24) {
                 header
                     .writesIn()
-                StorageSummaryCard()
+                StorageSummaryCard().tourTarget("storage")
                     .drawsIn(section: 0)
                 StorageHealthCard()
                     .drawsIn(section: 1)
-                upNext
+                upNext.tourTarget("next")
                     .drawsIn(section: 2)
                 if let scan = model.libraryScan, scan.total.count > 0 {
                     PhotoToolsSection(onPaywall: { showingPaywall = true })
                         .drawsIn(section: 3)
                 }
-                MoreSection()
+                MoreSection().tourTarget("more")
                     .drawsIn(section: 4)
                 SafetyFootnote()
                     .drawsIn(section: 5, outlined: false)
@@ -36,6 +36,7 @@ struct HomeView: View {
             .padding(.bottom, 28)
         }
         .background(PaperBackground())
+        .featureTour(.home, enabled: onboardingDone && model.selectedTab == .home)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $model.isShowingResults) { ResultsView() }
         .fullScreenCover(isPresented: $showingPaywall) {

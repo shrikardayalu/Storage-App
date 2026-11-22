@@ -57,7 +57,7 @@ struct LivePhotoStillsView: View {
                     .rotationEffect(.degrees(-0.6))
                 keeps
                 if showChecking { checking }
-                list(approvedCount: approved.count)
+                list(approvedCount: approved.count).tourTarget("items")
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
@@ -72,11 +72,12 @@ struct LivePhotoStillsView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .scopePicker($scope, label: "Which Live Photos to turn into stills", isShown: !livePhotos.isEmpty, isDisabled: model.isChanging)
-        .safeAreaInset(edge: .bottom) { actionBar(approved) }
+        .safeAreaInset(edge: .bottom) { actionBar(approved).tourTarget("action") }
         .drawing($progress, duration: 3)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Making stills…") }
         }
+        .featureTour(.livePhotos, enabled: !model.isChanging)
         .confirmationDialog(
             "Turn \(approved.count == 1 ? "1 Live Photo" : "\(approved.count) Live Photos") into stills?",
             isPresented: $confirming,

@@ -44,11 +44,11 @@ struct FilesCleanupView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header
+                header.tourTarget("header")
                 if let receipt = model.lastFileDeletion {
                     DeletedCard(receipt: receipt, reclaim: model.fileReclaim)
                 }
-                content
+                content.tourTarget("items")
                 if let message = (error ?? model.folderError)?.localizedDescription {
                     Text(message)
                         .font(.footnote.weight(.medium))
@@ -63,7 +63,7 @@ struct FilesCleanupView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            if report?.isEmpty == false { actionBar }
+            if report?.isEmpty == false { actionBar.tourTarget("action") }
         }
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Deleting files…") }
@@ -77,6 +77,7 @@ struct FilesCleanupView: View {
                 error = .verificationFailed(failure.localizedDescription)
             }
         }
+        .featureTour(.files, enabled: !model.isChanging)
         .confirmationDialog(
             "Delete \(countText) for good?",
             isPresented: $confirming,

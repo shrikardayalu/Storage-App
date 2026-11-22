@@ -78,7 +78,7 @@ struct BurstPicksView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                list
+                list.tourTarget("items")
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
@@ -93,12 +93,13 @@ struct BurstPicksView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .scopePicker($scope, label: "Which bursts to clean", isShown: !bursts.isEmpty, isDisabled: model.isChanging)
-        .safeAreaInset(edge: .bottom) { actionBar(totals) }
+        .safeAreaInset(edge: .bottom) { actionBar(totals).tourTarget("action") }
         .drawing($progress, duration: 3)
         .mediaPreview($preview)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Keeping your picks…") }
         }
+        .featureTour(.bursts, enabled: !model.isChanging)
         .confirmationDialog(
             "Keep \(totals.approved.count == 1 ? "1 shot" : "\(totals.approved.count) shots") and remove \(removeCount == 1 ? "1 other" : "\(removeCount) others")?",
             isPresented: $confirming,

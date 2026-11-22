@@ -44,7 +44,7 @@ struct ScreenshotResaveView: View {
                     .sticker(radius: 26, padding: 16)
                     .rotationEffect(.degrees(-0.6))
                 keeps
-                list
+                list.tourTarget("items")
                 if let error {
                     Text(error.localizedDescription)
                         .font(.footnote.weight(.medium))
@@ -59,12 +59,13 @@ struct ScreenshotResaveView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .scopePicker($scope, label: "Which screenshots to re-save", isShown: !screenshots.isEmpty, isDisabled: model.isChanging)
-        .safeAreaInset(edge: .bottom) { actionBar }
+        .safeAreaInset(edge: .bottom) { actionBar.tourTarget("action") }
         .drawing($progress, duration: 3)
         .mediaPreview($preview)
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Re-saving screenshots…") }
         }
+        .featureTour(.screenshots, enabled: !model.isChanging)
         .confirmationDialog(
             "Re-save \(countText)?",
             isPresented: $confirming,

@@ -69,8 +69,8 @@ struct VideosView: View {
                     .padding(.top, 2)
                 }
                 .padding(.top, 8)
-                if !videos.isEmpty { qualityPicker }
-                list(approvedCount: approved.count)
+                if !videos.isEmpty { qualityPicker.tourTarget("quality") }
+                list(approvedCount: approved.count).tourTarget("items")
                 if leftAlone > 0 {
                     Text("\(leftAlone == 1 ? "1 video is" : "\(leftAlone) videos are") left alone: slo-mo, Cinematic, spatial and ProRes videos stay as they are, and very small videos aren't worth it.")
                         .font(.caption)
@@ -94,7 +94,7 @@ struct VideosView: View {
         .navigationDestination(item: $opened) { VideoShrinkView(item: $0) }
         .mediaPreview($preview)
         .safeAreaInset(edge: .bottom) {
-            if !videos.isEmpty { actionBar(approved) }
+            if !videos.isEmpty { actionBar(approved).tourTarget("action") }
         }
         .drawing($progress, duration: 1.6)
         .overlay {
@@ -109,6 +109,7 @@ struct VideosView: View {
                 )
             }
         }
+        .featureTour(.videos, enabled: !model.isChanging)
         .confirmationDialog("Shrink \(approved.count == 1 ? "1 video" : "\(approved.count) videos")?", isPresented: $confirming, titleVisibility: .visible) {
             Button(Self.buttonTitle(approved.count)) { Task { await shrink(approved) } }
         } message: {

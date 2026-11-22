@@ -104,7 +104,22 @@ Or press **⌘U** in Xcode.
 
 ### Continuous integration
 
-`.github/workflows/ios.yml` runs on changes under `ios/`. On a macOS runner it runs the safety check and `swift test`, then installs XcodeGen, generates the project, builds the app for the iOS Simulator, and runs the app tests. Nothing is signed, deployed, or published.
+`.github/workflows/ios.yml` runs on pushes and pull requests that change `ios/**` or the workflow itself. It runs the safety check and StorageCore tests, builds and tests the simulator app, captures screenshots, and builds an unsigned device IPA. These push/PR runs do not upload to TestFlight.
+
+### Sending an update to TestFlight
+
+1. Commit and push the changes to GitHub. Wait for the iOS checks to pass.
+2. Open **Actions > iOS > Run workflow**, select the branch containing the changes, and run it. This manual run repeats the checks, then signs, archives and uploads to App Store Connect when the Apple secrets listed in `docs/CHECKLIST.md` are configured.
+3. Wait for Apple to process the build. In App Store Connect > TestFlight, add it to the intended tester group and submit for beta review if requested for external testing. Uploading alone does not assign a build to an external group.
+4. Testers update through TestFlight, or receive it automatically if they enabled automatic updates.
+
+Every distributed native code or bundled UI change needs a new build; you can combine many commits into one release. Actions uses its run number as the build number, so normal new workflow runs increment it automatically. Re-running an old run reuses its number; start a new workflow run for a fresh upload. The marketing version stays in `ios/project.yml` and can remain the same across beta builds. TestFlight distribution does not publish an App Store release.
+
+### Checking first-use tours and swipe previews
+
+Tours appear after onboarding and the first time each cleanup tool is opened. Each tour has its own `tour.v1.*` UserDefaults key, is skippable, and can be replayed with the question-mark button. Screenshot routes suppress automatic tours. All/Select stays pinned above tool content so its spotlight remains visible while scrolling.
+
+Before distributing these changes, use an iOS simulator or device to check the tour at large text sizes, with VoiceOver and Reduce Motion, and after relaunch. On a physical device with Optimize iPhone Storage, swipe through iCloud-only photos on a slow connection and offline: check progressive images, retry, skip, undo, leaving/reopening, and final deletion review. Skipping must neither delete a photo nor remember it as kept. `SwipePhotoStoreTests` covers request upgrades, cancellation, stale callbacks, timeout and retry with injected image requests.
 
 ### Seeing the app without a Mac
 

@@ -40,18 +40,20 @@ struct MediaPreview: Identifiable {
 }
 
 extension View {
-    /// The All / Select switch in the top bar, the same on every tool.
+    /// The All / Select switch pinned at the top of each tool, inside its tour overlay.
     func scopePicker(_ scope: Binding<PickScope>, label: String, isShown: Bool = true, isDisabled: Bool = false) -> some View {
-        toolbar {
+        safeAreaInset(edge: .top, spacing: 0) {
             if isShown {
-                ToolbarItem(placement: .principal) {
-                    Picker(label, selection: scope) {
-                        ForEach(PickScope.allCases) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 180)
-                    .disabled(isDisabled)
+                Picker(label, selection: scope) {
+                    ForEach(PickScope.allCases) { Text($0.rawValue).tag($0) }
                 }
+                .pickerStyle(.segmented)
+                .frame(width: 180)
+                .disabled(isDisabled)
+                .tourTarget("scope")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Theme.background)
             }
         }
     }

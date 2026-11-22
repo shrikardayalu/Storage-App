@@ -15,6 +15,7 @@ struct SwipeCleanView: View {
     @Environment(\.dismiss) private var dismiss
     /// Asked on the way out when photos are swiped away but not deleted yet.
     @State private var leaving = false
+    @State private var photos = SwipePhotoStore()
 
     @State private var queue: [SwipeCandidate] = []
     @State private var position = 0
@@ -26,13 +27,13 @@ struct SwipeCleanView: View {
     @State private var error: PhotoChangeError?
 
     private var current: SwipeCandidate? { queue.indices.contains(position) ? queue[position] : nil }
-    private var toDelete: [SwipeCandidate] { decisions.filter { $0.delete }.map { $0.candidate } }
-    private var kept: [MediaItem.ID] { decisions.filter { !$0.delete }.map(\.candidate.id) }
+    private var toDelete: [SwipeCandidate] { decisions.filter { $0.delete == true }.map { $0.candidate } }
+    private var kept: [MediaItem.ID] { decisions.filter { $0.delete == false }.map(\.candidate.id) }
     private var deleteBytes: Int64 { toDelete.reduce(0) { $0 + $1.item.currentBytes } }
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            header.tourTarget("header")
             if !loaded {
                 Spacer()
                 PhotoAnalysisLoader(caption: "Finding photos you probably don't need, on this iPhone.")
@@ -44,7 +45,7 @@ struct SwipeCleanView: View {
                     .id(current.id)
                     .transition(.asymmetric(insertion: .scale(scale: 0.92).combined(with: .opacity), removal: .opacity).motionSafe)
                 Spacer(minLength: 8)
-                controls
+                controls.tourTarget("controls")
             } else {
                 Spacer()
                 EmptyStateView(
@@ -100,6 +101,7 @@ struct SwipeCleanView: View {
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Deleting what you swiped away…") }
         }
+        .featureTour(.swipe, enabled: !model.isChanging)
         .confirmationDialog(
             "Delete \(countText) from your library?",
             isPresented: $confirming,
@@ -111,9 +113,10 @@ struct SwipeCleanView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: decisions.count)
         .task { await load() }
+        .task(id: previewIDs) { photos.prepare(previewIDs) }
         .onChange(of: model.swipeCandidates) { _, _ in adoptCandidatesIfStillWaiting() }
         // Photos kept on a swipe stay kept: they aren't offered again next time.
-        .onDisappear { model.markSwipeKept(kept) }
+        .onDisappear { model.markSwipeKept(kept); photos.stop() }
         .onChange(of: model.junkReport) { _, _ in
             // After a delete the library is scanned again: start over on what's left.
             // While a scan is still running, the candidates handler shows what's found so far.
@@ -150,9 +153,10 @@ struct SwipeCleanView: View {
     private func card(_ candidate: SwipeCandidate) -> some View {
         let lean = drag.width / Self.swipeDistance
         return VStack(alignment: .leading, spacing: 10) {
-            SwipePhoto(id: candidate.item.id)
+            SwipePhoto(preview: photos.previews[candidate.id],
+                       retry: { photos.retry(candidate.id) }, skip: { decide(delete: nil) })
                 .frame(maxWidth: .infinity)
-                .aspectRatio(candidate.item.pixelHeight > 0 ? CGFloat(candidate.item.pixelWidth) / CGFloat(candidate.item.pixelHeight) : 1, contentMode: .fit)
+                .aspectRatio(photos.previews[candidate.id]?.image != nil && candidate.item.pixelHeight > 0 ? CGFloat(candidate.item.pixelWidth) / CGFloat(candidate.item.pixelHeight) : 1, contentMode: .fit)
                 .frame(maxHeight: 380)
                 .overlay(alignment: .topLeading) {
                     RubberStamp(top: "swipe", main: "keep", color: Theme.accent, angle: -12)
@@ -179,6 +183,7 @@ struct SwipeCleanView: View {
             }
         }
         .sticker(padding: 12)
+        .tourTarget("items")
         .padding(.horizontal, 20)
         .offset(x: drag.width, y: drag.height * 0.2)
         .rotationEffect(.degrees(reduceMotion ? 0 : Double(drag.width) / 22))
@@ -199,7 +204,7 @@ struct SwipeCleanView: View {
                     }
                 }
         )
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
         .accessibilityHint("Use the Delete and Keep buttons below.")
         .accessibilityAction(named: "Delete") { decide(delete: true) }
         .accessibilityAction(named: "Keep") { decide(delete: false) }
@@ -208,10 +213,12 @@ struct SwipeCleanView: View {
     private var controls: some View {
         HStack(spacing: 18) {
             CircleAction(symbol: "trash", label: "Delete", tint: Theme.tomatoInk) { decide(delete: true) }
+                .disabled(!canDecide)
             CircleAction(symbol: "arrow.uturn.backward", label: "Undo", tint: Theme.ink, small: true) { undo() }
                 .disabled(decisions.isEmpty)
                 .opacity(decisions.isEmpty ? 0.35 : 1)
             CircleAction(symbol: "heart", label: "Keep", tint: Theme.accent) { decide(delete: false) }
+                .disabled(!canDecide)
         }
         .padding(.bottom, 14)
     }
@@ -272,8 +279,17 @@ struct SwipeCleanView: View {
         loaded = true
     }
 
-    private func decide(delete: Bool) {
-        guard let current else { return }
+    private var previewIDs: [String] {
+        guard !queue.isEmpty else { return [] }
+        return queue[max(0, position - 1)..<min(queue.count, position + 4)].map(\.id)
+    }
+
+    private var canDecide: Bool {
+        current.flatMap { photos.previews[$0.id]?.image } != nil
+    }
+
+    private func decide(delete: Bool?) {
+        guard let current, delete == nil || canDecide else { return }
         withAnimation(.spring(response: 0.32, dampingFraction: 0.8).motionSafe) {
             drag = .zero
             decisions.append(Decision(candidate: current, delete: delete))
@@ -310,30 +326,49 @@ struct SwipeCleanView: View {
 /// One swipe: which photo, and whether it goes.
 private struct Decision: Equatable {
     let candidate: SwipeCandidate
-    let delete: Bool
+    /// nil means skipped: never persisted as kept or submitted for deletion.
+    let delete: Bool?
 }
 
 /// A big copy of one photo for the swipe card.
 private struct SwipePhoto: View {
-    let id: MediaItem.ID
-    @State private var image: UIImage?
+    let preview: SwipePhotoStore.Preview?
+    let retry: () -> Void
+    let skip: () -> Void
 
     var body: some View {
         ZStack {
             Theme.well
-            if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+            if let image = preview?.image {
+                Image(uiImage: image).resizable().scaledToFit()
+                    .accessibilityLabel("Photo to review")
             } else {
-                SketchSpinner(size: 22)
+                VStack(spacing: 12) {
+                    if preview?.failed == true {
+                        Image(systemName: "icloud.slash").font(.title2)
+                        Text("Couldn't load this photo").font(.headline)
+                        Text("It may be in iCloud. Check your connection and try again, or skip it for now.")
+                            .font(.caption).multilineTextAlignment(.center)
+                        HStack(spacing: 20) {
+                            Button("Try again", action: retry)
+                            Button("Skip photo", action: skip)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(minHeight: 44)
+                    } else {
+                        SketchSpinner(size: 22)
+                        Text(preview?.progress == nil ? "Loading photo…" : "Downloading from iCloud…")
+                            .font(.caption)
+                        if let progress = preview?.progress {
+                            ProgressView(value: progress).frame(maxWidth: 140)
+                        }
+                    }
+                }
+                .padding(16)
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Theme.ink.opacity(0.8), lineWidth: 1.25))
-        .task(id: id) {
-            image = PhotoThumbnailLoader.cached(id)
-            image = await PhotoThumbnailLoader.image(for: id, side: 700) ?? image
-        }
-        .accessibilityHidden(true)
     }
 }
 

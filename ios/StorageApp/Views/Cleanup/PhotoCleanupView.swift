@@ -35,7 +35,7 @@ struct PhotoCleanupView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                header
+                header.tourTarget("header")
                 if model.isAnalyzing || plan == nil {
                     PhotoAnalysisLoader(caption: "Checking each photo, on this iPhone. Nothing leaves it.")
                 }
@@ -46,7 +46,7 @@ struct PhotoCleanupView: View {
                         message: "No Live Photos, duplicates or junk to clean in your library."
                     )
                 } else if let plan, hasFindings(plan) {
-                    summary(plan)
+                    summary(plan).tourTarget("items")
                 }
                 if let error {
                     Text(error.localizedDescription)
@@ -62,11 +62,12 @@ struct PhotoCleanupView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            if let plan, !plan.isEmpty { actionBar(plan) }
+            if let plan, !plan.isEmpty { actionBar(plan).tourTarget("action") }
         }
         .overlay {
             if model.isChanging { WorkingOverlay(message: "Cleaning up your photos…") }
         }
+        .featureTour(.photoCleanup, enabled: !model.isChanging)
         .confirmationDialog("Clean up your photos?", isPresented: $confirming, titleVisibility: .visible) {
             Button("Clean up \(plan.map { ByteFormatter.string($0.totalBytes, precision: .twoDecimals) } ?? "")", role: .destructive) {
                 Task { await cleanUp() }

@@ -11,6 +11,7 @@ struct LibraryView: View {
     var body: some View {
         @Bindable var model = model
         content
+            .tourTarget("items")
             .mediaPreview($preview)
             .scrollContentBackground(.hidden)
             .background(PaperBackground())
@@ -24,6 +25,7 @@ struct LibraryView: View {
                                 model.isSelecting.toggle()
                             }
                         }
+                        .tourTarget("select")
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -35,7 +37,7 @@ struct LibraryView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if model.isSelecting {
-                    SelectionBar()
+                    SelectionBar().tourTarget("action")
                         .transition(.move(edge: .bottom).combined(with: .opacity).motionSafe)
                 }
             }
@@ -45,6 +47,7 @@ struct LibraryView: View {
                     WorkingOverlay(message: "Scanning your library…")
                 }
             }
+            .featureTour(.library, enabled: model.selectedTab == .library && !model.isChanging)
             .sheet(isPresented: $model.isReviewing, onDismiss: { model.presentPendingGuide() }) {
                 CleanupReviewView()
             }
