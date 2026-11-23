@@ -5,7 +5,7 @@ description: "A calm, step-by-step plan for when your iPhone says storage is ful
 topic: free-up-space
 primaryKeyword: "iphone storage full"
 published: 2026-10-20
-updated: 2026-10-20
+updated: 2026-11-23
 illustration: ill-stack-large
 related:
   - iphone-system-data-too-large
@@ -83,7 +83,7 @@ A few built-in settings keep storage from filling back up:
 | Setting | Where to find it | What it does |
 | --- | --- | --- |
 | Offload Unused Apps | Settings → General → iPhone Storage (in Recommendations) | Removes apps you don't use but keeps their data |
-| Optimize iPhone Storage | Settings → Photos (requires iCloud Photos) | Keeps full-size originals in iCloud and smaller versions on your phone |
+| Optimize Storage | Settings → [your name] → iCloud → Photos (requires iCloud Photos) | Keeps full-size originals in iCloud and smaller versions on your phone. It's the only way iCloud space frees room on the phone; see [why your iPhone can be full when iCloud has space](/guides/iphone-storage-full-icloud-has-space) |
 | Keep Messages | Settings → Messages → Keep Messages | Automatically deletes messages older than 30 days or 1 year |
 | Record Video format | Settings → Camera → Record Video | Lower resolution or frame rate means smaller new videos |
 

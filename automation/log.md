@@ -2,6 +2,17 @@
 
 One entry per run, newest first. Each says what changed, why it was picked, where the facts came from, and what to check later. Entries marked **device check** have steps a person should confirm on a real iPhone.
 
+## 2026-11-23 · new guide · `iphone-storage-full-icloud-has-space`
+
+- **Keyword:** iphone storage full but icloud has space (secondary: iCloud storage vs iPhone storage, does buying iCloud storage free up iPhone space, Optimize Storage still full).
+- **Why:** adjacent iCloud & backup row from the backlog ("icloud storage full vs iphone storage full"), narrowed. Search Console has only 9 single-impression rows, all on pages we already have. The broad "difference" query is owned by Apple Support 102670, but "iphone storage full but icloud has space" returns Apple Community threads and a Wondershare page with no sourced answer. Last two guides were core (trim) and adjacent (sharing); this is the first iCloud & backup page.
+- **Sources (opened this run, read through a fetch summary):** Apple Support 102670 (separate pools, alerts, check paths); 108922 (5 GB free, what stops when iCloud is full incl. iCloud Mail, Settings → name → iCloud → Storage / Manage Account Storage, Recommended for You, Backups → device → turn off apps, Turn Off and Delete from iCloud, Recently Deleted doesn't count toward iCloud, over the limit deletes skip Recently Deleted); 108782 (iCloud Photos uses iCloud and device storage, Sync this device, Optimize Storage path on iOS 27 via iPhone Storage vs iOS 26 and earlier, space-saving versions, optimizes least-accessed first when space is needed, deletes everywhere, 30 days, not duplicated in iCloud Backup, keep backup copies); 108429 (Settings → General → iPhone Storage, categories incl. iCloud Drive = downloaded content, offload keeps documents and data, alert suggests removing videos and apps). App claim from docs/PRICING.md (Pro: shrink videos, Live Photos to stills).
+- **Inference, not stated by Apple:** that replacing an original with a smaller copy lowers iCloud usage too (follows from iCloud Photos syncing adds and deletes).
+- **Also fixed:** iphone-storage-full's Step 6 table gave Optimize iPhone Storage as Settings → Photos; Apple 108782 puts it under Settings → [name] → iCloud → Photos. Row corrected and `updated` bumped.
+- **Links:** out to empty-recently-deleted-iphone, iphone-storage-full, live-photos-storage-iphone, compress-videos-iphone; in from iphone-storage-full (Step 6 table) and empty-recently-deleted-iphone (iCloud Photos note).
+- **Device check:** on iOS 27, that the path is Settings → name → iCloud → Photos → iPhone Storage → Optimize Storage and the label reads "Saved to iCloud"; the app detail buttons read **Offload App** and **Delete App**.
+- **Check on 2026-12-21:** indexed? Impressions for the keyword and for "icloud storage vs iphone storage"?
+
 ## 2026-11-21 · new guide · `trim-video-iphone`
 
 - **Keyword:** trim video iphone to save space (secondary: how to trim a video on iphone, Save Video vs Save Video as New Clip, trimmed video still same size).

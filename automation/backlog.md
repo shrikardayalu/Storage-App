@@ -60,7 +60,8 @@ When Search Console has data, real queries beat anything on this list.
 
 | Status | Keyword | Angle | Tie-back |
 | --- | --- | --- | --- |
-| open | icloud storage full vs iphone storage full | Two different meters, two different fixes | Shrinking helps both |
+| published | iphone storage full but icloud has space | `iphone-storage-full-icloud-has-space` | Shrinking helps both |
+| open | icloud backup not enough storage | What fills a backup, turning off apps in Backups, Photos in Backup when iCloud Photos is off (Apple 108922) | Smaller library, smaller backup |
 | open | optimize iphone storage explained | What it keeps on the phone, when it fails to help | Shrinking shrinks the iCloud copy too |
 | open | does deleting photos from iphone delete from icloud | Sync is not backup | Shrink instead of delete |
 | open | how to back up iphone photos before deleting | Mac, PC, external drive, a second cloud | Safety before cleanup |

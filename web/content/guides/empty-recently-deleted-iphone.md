@@ -50,7 +50,7 @@ If you want to clear the whole album, some iOS versions also show a **Delete All
 **Before you tap Delete, check two things:**
 
 - **Is anything in there you still want?** Scroll through first. If you find something, select it and choose **Recover** from the same **More** menu, and it goes back to your library.
-- **Do you use iCloud Photos?** If so, anything you delete is deleted on all your devices. Permanently deleting a photo removes it from all your devices, so if iCloud is your only other copy, it's gone everywhere. Apple explains this in [Delete or hide photos and videos on iPhone](https://support.apple.com/guide/iphone/delete-or-hide-photos-and-videos-iphb4defbde9/ios).
+- **Do you use iCloud Photos?** If so, anything you delete is deleted on all your devices. Permanently deleting a photo removes it from all your devices, so if iCloud is your only other copy, it's gone everywhere. (It's also why [a full iPhone with free iCloud space](/guides/iphone-storage-full-icloud-has-space) isn't fixed by deleting photos.) Apple explains this in [Delete or hide photos and videos on iPhone](https://support.apple.com/guide/iphone/delete-or-hide-photos-and-videos-iphb4defbde9/ios).
 
 Once it's empty, open **Settings → General → iPhone Storage** to check the result. The **Photos** figure in the app list is the one to watch.
 
