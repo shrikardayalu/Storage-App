@@ -138,7 +138,7 @@ enum Plan: String, CaseIterable, Identifiable {
         ("scissors", "Trim long recordings to the good part"),
         ("livephoto", "Keep Live Photos as stills, minus the hidden video"),
         ("camera.viewfinder", "Re-save screenshots at a fraction of the size"),
-        ("square.on.square", "Clear duplicates, blurry shots and junk"),
+        ("square.on.square", "Clear duplicates, blurry shots and junk in bulk"),
         ("wand.and.stars", "Clean up all your photos in one tap"),
     ]
 }

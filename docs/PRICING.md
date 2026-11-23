@@ -74,6 +74,35 @@ Prices are placeholders, kept in two places: `web/src/lib/pricing.ts` and
   simulated, and Settings > Pro has **Reset Simulated Purchase**.
 - **Sandbox** needs the paid Developer account; see `docs/CHECKLIST.md`.
 
+### Resetting a TestFlight purchase to Free
+
+Restore Purchases recovers active ownership; it does not cancel or reset a
+purchase. A failed restore now reports the App Store error rather than saying
+there is no purchase. Cancelling the restore prompt leaves the current plan
+alone. A successful restore with no active purchase returns Free; an expired
+subscription does not unlock Pro.
+
+For an Annual subscription bought in TestFlight with your regular Apple Account,
+open Settings > Pro > Manage Subscription in SimpleShrink, cancel renewal, and
+wait until the displayed expiration time. Return to the app so it refreshes its
+entitlements. The default TestFlight renewal period is one day for every plan,
+including Annual, with up to six renewals; it does not last a real year.
+
+For repeatable tests with a clean purchase history, use a dedicated Sandbox
+Apple Account. Apple requires signing out of the regular account under iPhone
+Settings > your name > Media & Purchases, then signing into the Sandbox Apple
+Account under Settings > Developer. This changes the account used for test
+purchases, not the iCloud account. Clear that sandbox tester's history in App
+Store Connect > Users and Access > Sandbox > select the tester > Clear Purchase
+History. This deletes that tester's sandbox purchases; it does not clear the
+earlier TestFlight purchase made with your regular Apple Account. Sign the
+sandbox account out and back in to clear the device's purchase-history cache,
+then relaunch SimpleShrink and restore to refresh its status.
+
+Apple's references: [TestFlight purchases](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testing-subscriptions-and-in-app-purchases-in-testflight),
+[sandbox account controls](https://developer.apple.com/help/app-store-connect/test-in-app-purchases/manage-sandbox-apple-account-settings),
+and [sandbox testing](https://developer.apple.com/documentation/storekit/testing-in-app-purchases-with-sandbox).
+
 ## Launch checklist
 
 See [`CHECKLIST.md`](CHECKLIST.md).

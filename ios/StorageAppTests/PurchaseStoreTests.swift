@@ -94,13 +94,76 @@ final class PurchaseStoreTests: XCTestCase {
         let reinstalled = await makeStore()
         XCTAssertEqual(reinstalled.activePlan, .weekly)
         let restored = await reinstalled.restore()
-        XCTAssertTrue(restored)
+        XCTAssertEqual(restored, .restored)
     }
 
     func testRestoreWithNothingBoughtStaysFree() async {
         let store = await makeStore()
         let restored = await store.restore()
-        XCTAssertFalse(restored)
+        XCTAssertEqual(restored, .noPurchases)
+        XCTAssertFalse(store.isPro)
+    }
+
+    func testFailedRestoreReportsTheErrorAndPreservesPro() async {
+        let store = PurchaseStore(defaults: defaults, allowsSimulation: false, syncPurchases: {
+            throw URLError(.notConnectedToInternet)
+        })
+        await store.start()
+        _ = await store.purchase(.annual)
+        XCTAssertEqual(store.activePlan, .annual)
+
+        let outcome = await store.restore()
+
+        XCTAssertEqual(outcome, .failed(URLError(.notConnectedToInternet).localizedDescription))
+        XCTAssertEqual(store.activePlan, .annual)
+        XCTAssertTrue(store.hasActiveSubscription)
+        XCTAssertFalse(store.isPurchasing)
+    }
+
+    func testFailedRestoreOnFreeDoesNotClaimThereAreNoPurchases() async {
+        let store = PurchaseStore(defaults: defaults, allowsSimulation: false, syncPurchases: {
+            throw URLError(.notConnectedToInternet)
+        })
+        let outcome = await store.restore()
+        guard case .failed = outcome else { return XCTFail("Expected a restore error, got \(outcome)") }
+        XCTAssertFalse(store.isPro)
+        XCTAssertFalse(store.isPurchasing)
+    }
+
+    func testCancelledRestorePreservesProAndShowsNoError() async {
+        let store = PurchaseStore(defaults: defaults, allowsSimulation: false, syncPurchases: {
+            throw StoreKitError.userCancelled
+        })
+        await store.start()
+        _ = await store.purchase(.lifetime)
+
+        let outcome = await store.restore()
+
+        XCTAssertEqual(outcome, .cancelled)
+        XCTAssertNil(outcome.message)
+        XCTAssertEqual(store.activePlan, .lifetime)
+        XCTAssertFalse(store.isPurchasing)
+    }
+
+    func testRestoreDoesNotResetAnOwnedLifetimePurchase() async {
+        let store = await makeStore()
+        _ = await store.purchase(.lifetime)
+
+        let outcome = await store.restore()
+
+        XCTAssertEqual(outcome, .restored)
+        XCTAssertEqual(store.activePlan, .lifetime)
+    }
+
+    func testRestoreOfAnExpiredSubscriptionStaysFree() async throws {
+        let store = await makeStore()
+        _ = await store.purchase(.annual)
+        try session.expireSubscription(productIdentifier: Plan.annual.productID)
+        await refresh(store, until: { !store.isPro })
+
+        let outcome = await store.restore()
+
+        XCTAssertEqual(outcome, .noPurchases)
         XCTAssertFalse(store.isPro)
     }
 

@@ -25,6 +25,26 @@ final class PurchaseStore {
         case failed(String)
     }
 
+    enum RestoreOutcome: Equatable {
+        case restored
+        case noPurchases
+        case cancelled
+        case failed(String)
+
+        var message: String? {
+            switch self {
+            case .restored:
+                "Pro is active on this iPhone."
+            case .noPurchases:
+                "No active Pro purchase was found. Use the Apple Account that made the purchase. Expired subscriptions don't restore Pro."
+            case .cancelled:
+                nil
+            case .failed(let reason):
+                "Couldn't restore purchases. \(reason) Please try again."
+            }
+        }
+    }
+
     private(set) var activePlan: Plan?
     /// A weekly or annual subscription is active, even if Lifetime outranks it.
     /// Someone who bought Lifetime on top still pays for this until they cancel it.
@@ -37,6 +57,7 @@ final class PurchaseStore {
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let allowsSimulation: Bool
+    @ObservationIgnored private let syncPurchases: () async throws -> Void
     @ObservationIgnored private var updates: Task<Void, Never>?
 
     private enum Keys {
@@ -44,9 +65,11 @@ final class PurchaseStore {
         static let lifetimeOfferShown = "purchases.lifetimeOfferShown"
     }
 
-    init(defaults: UserDefaults = .standard, allowsSimulation: Bool = PaywallConfig.allowsSimulatedPurchases) {
+    init(defaults: UserDefaults = .standard, allowsSimulation: Bool = PaywallConfig.allowsSimulatedPurchases,
+         syncPurchases: @escaping () async throws -> Void = { try await AppStore.sync() }) {
         self.defaults = defaults
         self.allowsSimulation = allowsSimulation
+        self.syncPurchases = syncPurchases
         if allowsSimulation {
             activePlan = defaults.string(forKey: Keys.simulatedPlan).flatMap(Plan.init(rawValue:))
         }
@@ -176,14 +199,21 @@ final class PurchaseStore {
         }
     }
 
-    /// Asks the App Store for this Apple ID's purchases. Returns whether Pro is active.
-    func restore() async -> Bool {
+    /// Restores active ownership. A failed or cancelled sync must not be
+    /// mistaken for an empty purchase history or clear the current plan.
+    func restore() async -> RestoreOutcome {
         isPurchasing = true
         defer { isPurchasing = false }
-        if isSimulated { return isPro }
-        try? await AppStore.sync()
+        if isSimulated { return isPro ? .restored : .noPurchases }
+        do {
+            try await syncPurchases()
+        } catch StoreKitError.userCancelled {
+            return .cancelled
+        } catch {
+            return .failed(error.localizedDescription)
+        }
         await refreshEntitlements()
-        return isPro
+        return isPro ? .restored : .noPurchases
     }
 
     // MARK: Simulation (debug builds without App Store products)

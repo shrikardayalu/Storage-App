@@ -157,9 +157,8 @@ private struct ProSection: View {
             }
             Button("Restore Purchases") {
                 Task {
-                    restoreMessage = await purchases.restore()
-                        ? "Pro is active on this iPhone."
-                        : "No earlier purchase was found for this Apple ID."
+                    let outcome = await purchases.restore()
+                    restoreMessage = outcome.message
                 }
             }
             .disabled(purchases.isPurchasing)

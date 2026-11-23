@@ -247,11 +247,12 @@ struct PaywallView: View {
 private func restorePurchases(_ purchases: PurchaseStore, onPurchased: @escaping () -> Void,
                               boughtTick: Binding<Int>, message: Binding<PaywallMessage?>) {
     Task {
-        if await purchases.restore() {
+        let outcome = await purchases.restore()
+        if outcome == .restored {
             boughtTick.wrappedValue += 1
             onPurchased()
-        } else {
-            message.wrappedValue = PaywallMessage(title: "Restore Purchases", body: "No earlier purchase was found for this Apple ID.")
+        } else if let body = outcome.message {
+            message.wrappedValue = PaywallMessage(title: "Restore Purchases", body: body)
         }
     }
 }
