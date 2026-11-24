@@ -53,6 +53,26 @@ Use one of these endings (rotate them across videos):
   Facts in the story are researched and sourced at the top of `SCRIPT.md`, as the base
   skill requires.
 
+## Motion, look, captions and sound (read `marketing/shorts/MOTION_LESSONS.md`)
+These were measured frame by frame on a top reference short after the first Geniza cut looked static. They override
+the base skill where they differ.
+- **Captions are on** (the base skill says no captions). Use one word at a time (short words ride with the next),
+  white heavy rounded sans with a thick black outline, at ~70 % of the frame height, swapping hard on each word.
+  `captions.tsx` in the studio does this from the word timings.
+- **The camera never parks.** Every shot is a continuous move (dolly, truck, orbit or crane) with wide lenses (FOV
+  50-60) and low cameras. Aim for a median frame change of 8+ and under 3 % still frames on `scripts/motion_stats.py`
+  (the reference measures 13 and 0.9 %; Geniza v1 measured 1.6 and 33 %).
+- **No hard cuts.** A place change is a blurred whip (`WHIPS` plus the motion-blur pass) or a 6-8 frame dissolve.
+- **Every character acts:** walks in, climbs, throws, leans, jumps up, lifts a prop. Something else moves in the
+  world as well (papers, flames, steam).
+- **Sharpness:** render with `--image-format=png --crf 14`, keep lens blur light (the subject is always crisp) and
+  paint close-up textures at 2x.
+- **The ending shows the real app.** Use the actual screens from `marketing/app-store/screens/` on a proper phone. The
+  home screen there is outdated (Test Mode pill), so use the picker and results screens. Keep the icon clear of the
+  phone so nothing overlaps or gets cut off.
+- **Sound effects stay light.** Each one follows something that moves on screen. There's no whoosh on every cut and no
+  repeated copies; use a soft bed for continuous actions (paper rain, rustling). Effects sit about 12 dB under the voice.
+
 ## Running on the Pro plan (keep it lean)
 The base skill was built with many parallel agents and several Opus max verifier rounds.
 That is too heavy for this plan. Instead:
