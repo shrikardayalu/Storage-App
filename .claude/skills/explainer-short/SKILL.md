@@ -105,6 +105,17 @@ That is too heavy for this plan. Instead:
   `--gl=angle`, Chrome as `--browser-executable`, `TEMP`/`TMP` set to `C:/remotion-tmp`.
 - Kenney models aren't installed (their download is behind a JS page). Props are built from boxes and textures instead.
 
+## Script format (every time a script is shown or saved)
+Whenever the user asks for a script, give it in the form it gets pasted into the TTS, in a code block in chat and the
+same way in `SCRIPT.md`:
+- One sentence group per line, as plain lines. No numbers, bullets or headings inside the script.
+- Write numbers as they're spoken ("eighteen ninety-six", "thirty-five million", "ninety-nine percent").
+- Add Gemini's inline tags (`<short pause>`, `<chuckle>`, and the like) only where the voice needs them, such as a beat
+  before a punchline or a laugh on a joke. Most videos need 2-5 tags in all. An extra tag adds a pause or a
+  performance and breaks the steady pace.
+- Sources, shot ideas and the caption go outside the script block. For shot ideas, refer to the line by its words, not
+  by a number.
+
 ## Voice
 - Audition first: put the same script through Gemini Flash TTS (voices Charon, Algieba,
   Sadaltager, Iapetus) and one ElevenLabs voice. The user picks.
