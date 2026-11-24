@@ -2,7 +2,7 @@
 
 Format: ~60 s (220 words) vertical cartoon short, ~3.7 words/s, one steady deadpan narrator.
 Ending: callback twist (the museum's "someday" pays off; yours doesn't), with a light plug in the last ~4 s.
-Status: **draft, waiting for approval.**
+Status: **approved 2026-11-24.** Built with placeholder timings and a scratch voice; waiting on the real narration (VOICE_SCRIPT.md).
 
 ## Facts and sources
 - The Smithsonian is usually called the world's largest museum, education and research complex. It holds about 155 million objects and specimens (the script says "over 150 million"). ([Smithsonian factsheet: Collections](https://newsdesk.si.edu/factsheets/smithsonian-collections), [SI Archives: how many objects](https://siarchives.si.edu/blog/how-many-objects-does-smithsonian-have))
