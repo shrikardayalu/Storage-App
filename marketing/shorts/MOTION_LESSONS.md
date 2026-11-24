@@ -35,6 +35,27 @@ The same study was run on our first Cairo Geniza cut.
 - Interiors have warm practical lights (lamps, windows) and rich colours (red velvet, brass, polished wood).
 - Sharp. Lens blur is used, but the subject is always crisp, and there is no softness from the render itself.
 
+## Color, light and shadow (the four most recent shorts, 2026-11-24)
+Measured on 36 sampled frames (luminance percentiles, mean saturation, mean colour of shadow pixels):
+
+| Measure | Recent reference shorts | Geniza v1 | Geniza v3 |
+|---|---|---|---|
+| Darkest 5 % (luma) | 0.10-0.20 (space scenes ~0.01) | 0.23 | 0.14 |
+| Median luma | 0.2-0.45 | 0.49 | 0.36 |
+| Brightest 5 % | 0.6-0.95 | 0.74 | 0.70 |
+| Mean saturation | 0.2-0.45, with a few strong accents | 0.45 everywhere | 0.37 |
+| Shadow colour | neutral to cool grey-blue, about (60, 55, 70) | warm purple-brown | neutral-warm grey |
+
+- **Real darks and dramatic light.** Shadows go deep; scenes are lit by a key light plus warm practicals (lamps, neon,
+  fire) that throw visible pools of light against a cooler ambient. Bloom and haze around light sources.
+- **Moderate overall saturation with strong accents.** Bases are neutral (stone, metal, tile) and a few things carry
+  the colour (a red sign, an orange glow, a costume). An all-warm, all-saturated frame looks cheap next to them.
+- **Shadows are neutral to cool, never purple or brown.**
+- A light vignette and darker frame edges keep the eye in the centre.
+- **No decorative sparkle.** Glints and glows come from something in the story (the lost book, the treasure) and are
+  soft, not spinning stars.
+- **Characters face where they're going.** Someone climbing a ladder is seen from behind (`back: true` in `toon.ts`).
+
 ## Captions
 - One word at a time, sometimes two or three short words ("the youngest", "every gap."), swapping hard on each word.
 - White, very heavy rounded sans with a thick black outline and a soft drop shadow, centred at about 70 % of the frame

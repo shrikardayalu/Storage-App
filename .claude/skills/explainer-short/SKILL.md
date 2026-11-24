@@ -70,6 +70,13 @@ the base skill where they differ.
 - **The ending shows the real app.** Use the actual screens from `marketing/app-store/screens/` on a proper phone. The
   home screen there is outdated (Test Mode pill), so use the picker and results screens. Keep the icon clear of the
   phone so nothing overlaps or gets cut off.
+- **Color and light:** deep neutral-cool shadows, warm practical lights with floor pools against a cooler ambient,
+  moderate saturation with a few strong accents, a light vignette. Targets: darkest 5 % around 0.15, median 0.3-0.4,
+  saturation 0.3-0.4 (see the table in MOTION_LESSONS.md).
+- **No spinning stars or bursts as decoration.** Use them at most once a video, on a story moment. A soft glow from
+  the object itself is usually better.
+- **Characters face their action.** Climbers are drawn from behind (`back: true`), and props are never held in
+  front of a face.
 - **Sound effects stay light.** Each one follows something that moves on screen. There's no whoosh on every cut and no
   repeated copies; use a soft bed for continuous actions (paper rain, rustling). Effects sit about 12 dB under the voice.
 
