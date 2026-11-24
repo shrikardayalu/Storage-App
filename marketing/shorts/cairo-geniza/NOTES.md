@@ -10,18 +10,26 @@
 - Composition: `GenizaShort`, 1080x1920 at 30 fps, rendered at 1440x2560.
 
 ## Status (2026-11-24)
-- The picture is built for all 15 lines (19 shots). It is timed to **placeholder word timings** (3.7 words/s).
-- The sound is an original score plus synthesized effects. The narration in the cut is a **scratch voice** (the built-in
-  Windows voice, stretched to fit each line). It is there only to judge pacing, and the real voice replaces it.
+- **Final cut is done** with the real narration (Gemini TTS, read from `VOICE_SCRIPT.md`, 71.4 s).
+- It has 19 shots with continuous camera moves, blurred whips and short dissolves between places, one-word captions,
+  an original score with light effects, and real SimpleShrink screens at the end.
+- The final file is `C:\Users\shrik\shorts-studio\out\geniza\final.mp4` (1440x2560). The 1080p preview is
+  `geniza-v4-final.mp4` in this folder.
 
-## Swapping in the real voice
+## From voice to finished video (what worked)
 1. Save the narration as `C:\Users\shrik\shorts-studio\geniza\voice\voice.wav`.
-2. Get word timings from any speech-to-text that gives word times (for example Whisper on the GPU), as
-   `[{"word", "start", "end"}]` with one entry per script word in order (`1896` counts as one word). Save as `voice/words.json`.
-3. `python geniza/timing.py geniza/voice/words.json` rewrites `src/videos/geniza/timing.ts`. Every shot, camera move and
-   effect follows it.
-4. Re-render stills to check, then the video, then `python geniza/audio.py` (it picks up `voice.wav`), then mux:
-   `ffmpeg -i out/geniza/video.mp4 -i geniza/audio/mix.wav -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 256k out/geniza/final.mp4`
+2. `python geniza/align.py` gets Whisper word timestamps (`small.en` on the CPU, via `faster-whisper`) and aligns them to
+   `script.txt`. It joins words Whisper splits in two ("Worn" + "-out", "Simple" + "Shrink") and merges "eighteen
+   ninety-six" into `1896`. Anything still unmatched is interpolated and listed; check that no line's first word is in
+   that list.
+3. `python geniza/timing.py geniza/voice/words.json` rewrites `timing.ts`. Every shot, camera move, effect and caption
+   follows it.
+4. Check stills at the cue words and fix anything that collides. A real read bunches some words closer than the
+   placeholder timings did.
+5. `python geniza/audio.py` mixes `voice.wav` at -16 LUFS, with the music about 13 dB under it (raised in the gaps)
+   and the effects under that.
+6. `bash scripts/final.sh <preview name>` renders with PNG frames, muxes the sound, writes a 1080p preview into this
+   folder, and runs the motion stats and QA.
 
 ## Plan usage (Pro)
 - Start of the build: 5-hour window 11 %, weekly 2 %.
@@ -29,6 +37,8 @@
 - First full render with score, effects and scratch voice: 5-hour window 29 %, weekly 4 %.
   So a whole first short cost about 18 % of one 5-hour window and 2 % of the week, far under the estimate.
 
-## Preview
-`geniza-v1-scratch-voice.mp4` (1080p, not in git). Since then the junk-drawer close-up has been re-aimed at the
-glowing scroll; that change shows up in the next render.
+## Previews (1080p, not in git)
+- `geniza-v1-scratch-voice.mp4`: the first build.
+- `geniza-v2-scratch-voice.mp4`: continuous camera, whips, captions, the real-app ending, lighter sound.
+- `geniza-v4-final.mp4`: the real voice, the color and light pass, no star effects, climbers seen from behind, and the
+  reworked hauling shot.
