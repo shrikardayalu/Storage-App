@@ -44,6 +44,16 @@ also opens once ever, right after the first free cleanup gives space back
 user taps a Pro card on Home. Screenshot re-save (PNG screenshots saved again as smaller HEIC copies)
 is a Pro tool and is on the paywall.
 
+## Marketing claims
+
+Claims that social posts, shorts and the site may use, with what backs them:
+
+- **"Frees up gigabytes of storage in minutes."** Backed by the owner's own test
+  (2026-11-24): shrinking and compressing videos alone saved 30+ GB on their
+  library. Video shrinking is a Pro tool, so say it about the app as a whole
+  and don't promise it on the free tier. Keep it at "gigabytes"; don't quote
+  "30 GB" as what everyone gets.
+
 No free trial, by choice: cleanup is a one-and-done job, so a trial would let
 people free their space and cancel without paying. The free scan (which shows
 what Pro would save) does the convincing instead. Revisit only if the app adds

@@ -48,7 +48,8 @@ Use one of these endings (rotate them across videos):
   throws away.
 - The story still has to stand on its own as a great short (paradox hook, real facts).
   Don't pick a weak story because it links neatly to storage.
-- The only app claims allowed are the ones in `docs/PRICING.md` and the live app.
+- The only app claims allowed are the ones in `docs/PRICING.md` (see "Marketing claims") and the live app.
+  "Frees up gigabytes of storage in minutes" is backed and is the standard plug line.
   Facts in the story are researched and sourced at the top of `SCRIPT.md`, as the base
   skill requires.
 
