@@ -93,3 +93,6 @@ ios/ci-artifacts/
 
 # ASO research: cached App Store responses (re-fetched by research.mjs)
 marketing/aso/research/cache/
+
+# Rendered shorts (large; kept locally, not in git)
+marketing/shorts/**/*.mp4

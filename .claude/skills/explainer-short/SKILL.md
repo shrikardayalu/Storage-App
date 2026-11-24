@@ -65,6 +65,19 @@ That is too heavy for this plan. Instead:
   `mcp__ccd_session_mgmt__get_usage` and note both numbers in the video's notes, so the
   cost estimates stay real.
 
+## The studio project (set up 2026-11-24)
+- `C:\Users\shrik\shorts-studio` is the Remotion project (pinned versions from the base skill's README, ffmpeg via
+  winget, `REMOTION_TMP=C:/remotion-tmp`). `src/videos/bridge/` is the shared engine; each short gets its own folder
+  (the first one is `src/videos/geniza/`, see `marketing/shorts/cairo-geniza/NOTES.md`). Copy that folder for a new
+  short rather than starting from the bridge again.
+- Times come from a generated `timing.ts` (`geniza/timing.py`). Without a voice it makes placeholder timings, so the
+  picture can be built before the narration exists. Shots key off line starts and words (`LS(n)`, `W(n, "word")`).
+- Stills: `BRIDGE_COMP=<Comp> node scripts/bridge-stills.mjs out/<name>/v1_ <frames> 0.5`, then
+  `python scripts/sheet.py out/<name>/v1_ out/<name>/sheet.jpg` to review every shot on one contact sheet.
+- Final render: `--scale 1.3333333333333333` (the base skill's `1.3333` gives 2559.94 px and Remotion refuses it),
+  `--gl=angle`, Chrome as `--browser-executable`, `TEMP`/`TMP` set to `C:/remotion-tmp`.
+- Kenney models aren't installed (their download is behind a JS page). Props are built from boxes and textures instead.
+
 ## Voice
 - Audition first: put the same script through Gemini Flash TTS (voices Charon, Algieba,
   Sadaltager, Iapetus) and one ElevenLabs voice. The user picks.
