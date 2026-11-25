@@ -62,11 +62,24 @@ the base skill where they differ.
 - **The camera never parks.** Every shot is a continuous move (dolly, truck, orbit or crane) with wide lenses (FOV
   50-60) and low cameras. Aim for a median frame change of 8+ and under 3 % still frames on `scripts/motion_stats.py`
   (the reference measures 13 and 0.9 %; Geniza v1 measured 1.6 and 33 %).
-- **No hard cuts.** A place change is a blurred whip (`WHIPS` plus the motion-blur pass) or a 6-8 frame dissolve.
+- **No hard cuts.** A place change is a blurred whip (`WHIPS` plus the motion-blur pass, which runs only there) or a
+  6-8 frame dissolve.
+- **Moves run at a near-constant speed** (`go()` in `smithsonian/story.ts`: 30 % ease, 70 % linear). Full sine eases
+  park the camera at both ends of every shot and pushed still frames to 5 %.
 - **Every character acts:** walks in, climbs, throws, leans, jumps up, lifts a prop. Something else moves in the
   world as well (papers, flames, steam).
-- **Sharpness:** render with `--image-format=png --crf 14`, keep lens blur light (the subject is always crisp) and
-  paint close-up textures at 2x.
+- **Sharpness (the user notices blur fast; the Smithsonian v1 cut looked smeared in about half its shots):**
+  - **Motion blur runs only inside whips.** Gate the motion-blur pass on the whip (`inWhip(id, f)` in
+    `smithsonian/story.ts`) and never use its radial zoom part. On ordinary moves (tracking a plane, a crane, an orbit
+    around the phone) it smears the whole frame, and the black edge it drags in reads as a glitch.
+  - **Lens blur stays light:** `LensBlur({ maxCoC: 8, nearScale: 0.25 })`. The old 24 / 1.2 turned anyone walking
+    near the camera into a blob. Keep passers-by off the camera's path anyway.
+  - **No shimmer on flat props.** Textures seen at a low angle (a tray on a desk, a floor sign) get
+    `anisotropy = 16`, sit a few mm clear of the surface under them, and use big soft shapes with thick outlines.
+    Thin lines and small high-contrast detail flicker frame to frame.
+  - Render with `--image-format=png --crf 14` and paint close-up textures at 2x.
+  - Before the final render, look at stills from inside the camera moves, not only from held moments, and check
+    every moving shot for blur.
 - **The ending shows the real app.** Use the actual screens from `marketing/app-store/screens/` on a proper phone. The
   home screen there is outdated (Test Mode pill), so use the picker and results screens. Keep the icon clear of the
   phone so nothing overlaps or gets cut off.
@@ -95,8 +108,8 @@ That is too heavy for this plan. Instead:
 ## The studio project (set up 2026-11-24)
 - `C:\Users\shrik\shorts-studio` is the Remotion project (pinned versions from the base skill's README, ffmpeg via
   winget, `REMOTION_TMP=C:/remotion-tmp`). `src/videos/bridge/` is the shared engine; each short gets its own folder
-  (the first one is `src/videos/geniza/`, see `marketing/shorts/cairo-geniza/NOTES.md`). Copy that folder for a new
-  short rather than starting from the bridge again.
+  (`src/videos/geniza/`, then `src/videos/smithsonian/`, which has the sharpness fixes and a reusable warehouse aisle;
+  see each short's NOTES.md). Copy the newest folder for a new short rather than starting from the bridge again.
 - Times come from a generated `timing.ts` (`geniza/timing.py`). Without a voice it makes placeholder timings, so the
   picture can be built before the narration exists. Shots key off line starts and words (`LS(n)`, `W(n, "word")`).
 - Stills: `BRIDGE_COMP=<Comp> node scripts/bridge-stills.mjs out/<name>/v1_ <frames> 0.5`, then
