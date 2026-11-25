@@ -19,10 +19,14 @@
   NO OPEN FLAMES sign. **City** (x -800): the Hudson with the Manhattan skyline.
 - The warehouse aisle, cabinets, lamps and drawers are built to be reused in later shorts.
 
-## Status (2026-11-24)
-- Script approved, all 13 shots built, the first full cut is rendered with the scratch (Windows) voice on placeholder
-  timings: `smithsonian-v1-scratch-voice.mp4` in this folder.
-- **Waiting on the real narration.** Record it from `VOICE_SCRIPT.md` (Gemini TTS, Charon).
+## Status (2026-11-25)
+- **Final cut is done** with the real narration (Gemini TTS, 70.5 s): `smithsonian-v2-final.mp4` in this folder, full
+  size at `C:\Users\shrik\shorts-studio\out\smithsonian\final.mp4` (1440x2560).
+- v2 fixes after the user's review of v1: motion blur now runs only inside whips (it had smeared the plane, the pods
+  crane and the phone pan), lens blur is much lighter (a visitor near the camera was a blob), and the geese tray is
+  redrawn as side-view geese with anisotropic filtering (it flickered and read as keys).
+- Final checks: motion median 3.7, still frames 0.9 %, -14.3 LUFS, peak -1.1 dBFS, no silences, no black, white or
+  frozen frames; hard cuts only at the planned flash and the pods-to-warehouse whip.
 
 ## From voice to finished video
 1. Save the narration as `C:\Users\shrik\shorts-studio\smithsonian\voice\voice.wav`.
