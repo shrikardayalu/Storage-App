@@ -77,6 +77,19 @@ the base skill where they differ.
   - **No shimmer on flat props.** Textures seen at a low angle (a tray on a desk, a floor sign) get
     `anisotropy = 16`, sit a few mm clear of the surface under them, and use big soft shapes with thick outlines.
     Thin lines and small high-contrast detail flicker frame to frame.
+  - **No flicker (z-fighting).** Two surfaces at the same depth fight over every pixel and flip frame to frame. In
+    the Smithsonian v2 cut, the Hudson set's riverbank floor ran under the pods' lawn at the same height, so the lawn
+    flashed grey. A tray also shared its top face with the desk under it. Rules:
+    - Sets sit side by side in one world, so every set's floor must end well before the next set's floor begins.
+    - A prop resting on a surface starts at that surface's height and never shares a face with it. Decals, labels and
+      front panels sit 1.5-3 cm proud, not 4 mm.
+    - On wide outdoor shots, set `cam.near` to about 1 m so far walls keep their depth precision.
+    - Freeze the shadow camera per shot (one centre and size, `shotShadow()`). A shadow frame that follows the look
+      point every frame makes shadow edges crawl.
+    - Keep fine repeating patterns (corrugated siding, stripes) wide and low-contrast; fine ones alias into shimmer.
+  - **Check flicker, not just stills.** Render 4 consecutive frames of every moving shot. Count pixels that go up then
+    down (a >12 luma swing each way) and look at where they sit. Moving outlines are fine; whole patches flipping are
+    z-fighting. The pods shot went from 10.3 % to 0.6 % once the overlapping floors were fixed.
   - Render with `--image-format=png --crf 14` and paint close-up textures at 2x.
   - Before the final render, look at stills from inside the camera moves, not only from held moments, and check
     every moving shot for blur.

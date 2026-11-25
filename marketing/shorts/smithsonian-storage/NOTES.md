@@ -20,8 +20,13 @@
 - The warehouse aisle, cabinets, lamps and drawers are built to be reused in later shorts.
 
 ## Status (2026-11-25)
-- **Final cut is done** with the real narration (Gemini TTS, 70.5 s): `smithsonian-v2-final.mp4` in this folder, full
+- **Final cut is done** with the real narration (Gemini TTS, 70.5 s): `smithsonian-v3-final.mp4` in this folder, full
   size at `C:\Users\shrik\shorts-studio\out\smithsonian\final.mp4` (1440x2560).
+- v3 fixes the flicker the user saw in v2: the Hudson set's riverbank floor overlapped the pods' lawn at the same
+  height (the lawn flashed grey), and the geese tray shared its top with the desk. Also new: a frozen shadow frame per
+  shot, a 1 m near plane on the outdoor shots, wider siding ribs, and cabinet fronts and labels set clear of their
+  boxes. Flicker (pixels swinging up then down, per frame) went from 2.8 to 0.7 % on the pods, 3.6 to 2.2 % on the
+  tray and 2.6 to 2.0 % on the aisle. What's left is outlines moving with the camera.
 - v2 fixes after the user's review of v1: motion blur now runs only inside whips (it had smeared the plane, the pods
   crane and the phone pan), lens blur is much lighter (a visitor near the camera was a blob), and the geese tray is
   redrawn as side-view geese with anisotropic filtering (it flickered and read as keys).
