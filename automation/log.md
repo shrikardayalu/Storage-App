@@ -2,6 +2,16 @@
 
 One entry per run, newest first. Each says what changed, why it was picked, where the facts came from, and what to check later. Entries marked **device check** have steps a person should confirm on a real iPhone.
 
+## 2026-11-26 · new guide (draft) · `delete-burst-photos-iphone`
+
+- **Keyword:** delete burst photos iphone (secondary: keep only the best burst photo, delete an entire burst, Use Volume Up for Burst).
+- **Why:** core photos row from the backlog. Search Console now has rows (about 70 queries, all on existing pages; the iMessage video length queries hit video-too-large-to-send-iphone but Apple publishes no limit, so there's no sourced answer to add). The last four guides alternated core and adjacent, with the last one adjacent, so this one is core. The results are MacRumors, iMore and MacPaw how-tos, Apple Community threads and content farms, mostly old and in disagreement about whether bursts can be bulk-deleted; none ties bursts to Recently Deleted and iCloud Photos with Apple sources. It's also the free best-shot-of-each-burst feature (docs/PRICING.md).
+- **Committed as `draft: true`:** Apple's burst article (iOS 14, 15, 16, 26 and 27 versions all checked) ends at **Done** and doesn't say what iOS asks next. Third-party pages say "Keep Everything" / "Keep Only N Favorites", but no Apple source says so. Apple also doesn't say where bursts are listed in Photos (the Media Types page didn't confirm a Bursts collection). The page says "if iOS then asks…" and doesn't name a Bursts album. No links in from other guides yet, because a link to a draft would break the build.
+- **Sources (opened this run, read through fetch summaries):** iPhone User Guide, "Capture action shots with Burst mode" (ipha42c55cd0: drag the Shutter left, lift to stop, Settings → Camera → Use Volume Up for Burst, front and rear cameras, tap the thumbnail then Burst (number) top left, gray dots for suggested frames, circle on each frame then Done, delete the entire burst with the Delete button); iPhone User Guide, "Delete or hide photos and videos" (iphb4defbde9: 30 days in Recently Deleted, recover or delete any time, iCloud Photos deletes on all devices). App claim from docs/PRICING.md (free: best shot of each burst).
+- **Links (out):** empty-recently-deleted-iphone, delete-duplicate-photos-iphone, iphone-storage-full.
+- **Device check (before publishing):** (1) After tapping **Done** in a burst, what prompt appears and what are its buttons called? Put the exact names in step 5. (2) Is there a **Bursts** collection under Media Types (or elsewhere) in Photos on iOS 26/27? If so, add "find all your bursts" steps. (3) Does **Delete** on a burst remove every frame? Then remove `draft: true`, set `published` to that day, and add links in from delete-duplicate-photos-iphone (it mentions Media Types → Bursts; check that line on the device too) and empty-recently-deleted-iphone.
+- **Check:** four weeks after it's published.
+
 ## 2026-11-23 · new guide · `iphone-storage-full-icloud-has-space`
 
 - **Keyword:** iphone storage full but icloud has space (secondary: iCloud storage vs iPhone storage, does buying iCloud storage free up iPhone space, Optimize Storage still full).

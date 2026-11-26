@@ -27,7 +27,7 @@ When Search Console has data, real queries beat anything on this list.
 
 | Status | Keyword | Angle | Tie-back |
 | --- | --- | --- | --- |
-| open | delete burst photos iphone | Keep the best of each burst, remove the rest | Best-shot picker (free) |
+| draft | delete burst photos iphone | `delete-burst-photos-iphone` (draft: post-Done prompt and Bursts collection need a device check) | Best-shot picker (free) |
 | open | how to find blurry photos on iphone | No built-in filter; manual ways and limits | Swipe to clean |
 | open | why are iphone screenshots so large | PNG vs HEIC for screenshots, what re-saving does | Screenshot re-save (Pro) |
 | open | how to delete photos from iphone but not icloud | The honest answer and its traps | Shrinking instead of deleting |
@@ -73,6 +73,7 @@ When Search Console has data, real queries beat anything on this list.
 | Status | Keyword | Angle | Tie-back |
 | --- | --- | --- | --- |
 | published | video too large to send iphone | `video-too-large-to-send-iphone` | Video shrink |
+| open | imessage video length limit | Search Console shows impressions; needs an Apple source for any limit, else fold into video-too-large-to-send-iphone | Video shrink |
 | open | share video with icloud link iphone | Copy iCloud Link: steps, how long the link lasts (not on Apple's sharing pages checked 2026-11-20; find a source) | Video shrink |
 | open | airdrop not working iphone | Range, Wi-Fi/Bluetooth, Everyone for 10 Minutes, over-the-internet fallback | Sending big videos |
 | open | how to email a large video from iphone | Mail Drop and its limits | Video shrink |
