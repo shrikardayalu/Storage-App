@@ -87,6 +87,25 @@ These block submission. In order:
 - [x] All six comparison pages are published.
 - [x] SEO engine: skill, backlog, log, a build-enforced pace of 5 new guides a week, and a scheduled run four days a week.
 
+## Story shorts
+
+Story first, light SimpleShrink plug only at the very end (callback twist by default). How to make one: `.claude/skills/explainer-short/SKILL.md`. Each short gets a folder in `marketing/shorts/`. Tick one when its final cut is rendered.
+
+- [x] Cairo Geniza (`marketing/shorts/cairo-geniza/`, 2026-11-24)
+- [x] Smithsonian storage (`marketing/shorts/smithsonian-storage/`)
+- [ ] **Vivian Maier.** A nanny shot about 100,000 street photos, most never developed; they turned up in an auctioned storage locker. Callback: the photos we never look at either. *Scripting since 2026-11-26.*
+- [ ] **Muybridge's galloping horse (1878).** A bet, 12 cameras in a row, the first burst shot. Callback: burst picks ("your phone takes 40 every time you hold the button").
+- [ ] **Voyager Golden Record.** 116 images to show aliens all of Earth. Callback: "you have 116 photos of one brunch."
+- [ ] **The Collyer brothers.** NYC hoarders, about 140 tons of stuff, booby-trapped tunnels.
+- [ ] **BBC wiping Doctor Who.** Tapes reused to save shelf space; fans still hunt the lost episodes. Twist: deleting the *wrong* things hurts, so you approve every change.
+- [ ] **Squirrels forget most of their nuts.** The forgotten ones become forests. Callback: forgotten files don't grow into anything.
+- [ ] **Packrat middens.** Junk piles preserved in packrat urine for 50,000 years; scientists read them like time capsules.
+- [ ] **Kodak's 1975 digital camera, shelved.** The first photo took 23 seconds to save. Callback: 4,000 screenshots now.
+- [ ] **Winchester Mystery House.** 38 years of nonstop building, stairs into ceilings. Callback: storage that only grows.
+- [ ] **The Library of Alexandria didn't burn in a day.** It faded from neglect and budget cuts. Myth-buster hook.
+- [ ] **Svalbard seed vault.** The world's seed backup flooded in 2017. What's actually worth backing up.
+- [ ] **Vatican Apostolic Archive.** About 85 km of shelves, sealed for centuries. "What's in there?" mystery.
+
 ## Where things are
 
 | What | Where |
