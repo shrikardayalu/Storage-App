@@ -2,6 +2,17 @@
 
 One entry per run, newest first. Each says what changed, why it was picked, where the facts came from, and what to check later. Entries marked **device check** have steps a person should confirm on a real iPhone.
 
+## 2026-11-27 · new guide · `cut-middle-of-video-iphone`
+
+- **Keyword:** how to cut out the middle of a video on iphone (secondary: cut out part of a video on iphone, delete part of a video, Photos two-clip workaround).
+- **Why:** Search Console (28 days) shows queries no page targets: "how to cut middle of video on iphone", "how to cut out parts of a video on iphone", "how to delete part of a video on iphone" (positions 64-88, landing on trim-video-iphone, which says Photos can't do it). Backlog row was open pending an Apple source; Apple's iMovie for iPhone guide covers it. Results are Wondershare/Filmora/FlexClip vendor pages and an old OSXDaily post; none covers the leftover original or the storage cost. Core videos page; the last guide (burst photos, draft) was core photos and the one before adjacent.
+- **Sources (opened this run, through fetch summaries):** iMovie User Guide for iPhone, "Arrange video clips and photos" (knac788312: playhead not at the very beginning, tap clip → Actions → Split or swipe down over the playhead, None transition (cut) inserted, tap clip → Delete); Apple Support HT210430 (pinch open to zoom, white playhead line); iMovie guide "Create a movie project" (knae593d39ca: Start New Project → Movie, Projects browser, Create Movie); iMovie guide "Share your movie as video file" (kna4501dba9: Share → Save or Share Video → Options for resolution/frame rate → Done → Save Video; Mail or Messages creates 360p at 30 fps); iMovie guide "Edit clips in Magic Movies…" (knae86ec8aec: Undo at top of screen); App Store listing for iMovie, checked 2026-11-27 (Free, Apple, 702.6 MB); iPhone User Guide, trim video (iph1d1344a2d: start/stop only, Save Video as New Clip keeps both); iPhone User Guide, delete or hide photos (iphb4defbde9: 30 days in Recently Deleted, iCloud Photos deletes on all devices). App claim from docs/PRICING.md (Pro: shrink and trim videos).
+- **Inference, not stated by Apple:** that the full-length original stays in Photos after iMovie's Save Video (no iMovie page says either way). The page says "most likely" and tells the reader to check.
+- **Links:** out to trim-video-iphone, empty-recently-deleted-iphone, compress-videos-iphone, iphone-storage-full; in from trim-video-iphone (Photos section) and video-too-large-to-send-iphone (trim section). `updated` not bumped on those, since no facts were re-checked.
+- **Device check:** in iMovie 3.0.6, that the **Actions** button label and **Split** appear after tapping a clip; the path back to the **Projects** browser after editing; that after **Save Video** the original is still in Photos next to the new movie.
+- **Next:** trim-video-iphone collects many "shorten a video" queries at positions 33-88; consider a title/heading test for "shorten" (backlog row added).
+- **Check on 2026-12-25:** indexed? Impressions for the keyword and "cut out part of a video on iphone"?
+
 ## 2026-11-26 · new guide (draft) · `delete-burst-photos-iphone`
 
 - **Keyword:** delete burst photos iphone (secondary: keep only the best burst photo, delete an entire burst, Use Volume Up for Burst).

@@ -37,7 +37,7 @@ These are the steps from Apple's guide to [trimming a video on iPhone](https://s
 4. Tap **Done**.
 5. Tap **Save Video** or **Save Video as New Clip**.
 
-That's all trimming in Photos does: it moves the start and the end. It doesn't cut sections out of the middle.
+That's all trimming in Photos does: it moves the start and the end. It doesn't cut sections out of the middle; for that, see [how to cut out the middle of a video on iPhone](/guides/cut-middle-of-video-iphone) with iMovie.
 
 ## Save Video vs Save Video as New Clip
 

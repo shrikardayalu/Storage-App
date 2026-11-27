@@ -38,12 +38,13 @@ When Search Console has data, real queries beat anything on this list.
 
 | Status | Keyword | Angle | Tie-back |
 | --- | --- | --- | --- |
+| open | how to shorten a video on iphone | Search Console: many "shorten / cut video" queries land on trim-video-iphone at positions 33-88; improve that page's title and headings for "shorten" before writing anything new | Trim tool |
 | open | how to find largest videos on iphone | Review Personal Videos in Settings, Media Types | Largest-first list |
 | published | trim video iphone to save space | `trim-video-iphone` | Trim tool |
 | open | convert 4k video to 1080p iphone | Shortcuts Encode Media, export options | Video shrink |
 | open | how much storage does 4k video use on iphone | Apple's per-minute table by mode | Video shrink |
 | open | slo-mo video storage iphone | Why slo-mo is large, converting to normal speed | Video shrink |
-| open | how to cut out the middle of a video on iphone | Photos only trims ends; two-clip workaround, iMovie (find an Apple source) | Trim tool |
+| published | how to cut out the middle of a video on iphone | `cut-middle-of-video-iphone` | Trim tool |
 
 ## Adjacent: camera and formats
 

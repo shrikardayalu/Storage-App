@@ -78,7 +78,7 @@ Often the person only needs 30 seconds of a five-minute clip. Trimming fixes the
 4. Tap **Done**.
 5. Tap **Save Video as New Clip** to keep the full original as well, or **Save Video** to keep only the trimmed version.
 
-Then share the trimmed clip as usual. Which save option to pick if you also want the space back is in [the trimming guide](/guides/trim-video-iphone). If it's still too large for a text, try AirDrop or Mail Drop with it, or make it smaller.
+Then share the trimmed clip as usual. Which save option to pick if you also want the space back is in [the trimming guide](/guides/trim-video-iphone). If the part you don't need is in the middle rather than at the ends, you can [cut it out with iMovie](/guides/cut-middle-of-video-iphone). If it's still too large for a text, try AirDrop or Mail Drop with it, or make it smaller.
 
 ## Make a smaller copy
 
