@@ -2,7 +2,7 @@
 
 Format: ~60 s (~225 words) vertical cartoon short, ~3.7 words/s, one steady deadpan narrator.
 Ending: callback twist (her best shots sat buried in a box; yours sit under screenshots), with a light plug in the last ~4 s.
-Status: **approved 2026-11-26** (price stays at "four hundred").
+Status: **approved 2026-11-26** (price stays at "four hundred"); the hook is being reworked (options below the script).
 
 ## Facts and sources
 - In 2007 Maier fell behind on payments for a storage unit on Chicago's North Side, and its contents (negatives, prints, recordings, 8 mm film) were auctioned. John Maloof bought a box of negatives and undeveloped film for about $400 (one blog says $380; most sources say $400, so the script says "four hundred"). ([Wikipedia](https://en.wikipedia.org/wiki/Vivian_Maier), [Britannica](https://www.britannica.com/print/article/1804651), [vivianmaier.com: history](https://www.vivianmaier.com/about-vivian-maier/history))
@@ -32,6 +32,57 @@ Her best shots spent decades in a box, buried under everything else.
 Kind of like yours. Somewhere in your camera roll is a great photo, <chuckle> under four thousand screenshots.
 SimpleShrink cleans up gigabytes in minutes. Link in bio.
 ```
+
+## Hook options (2026-11-27, waiting for a pick)
+The approved hook opens on a date ("In two thousand seven", about 1.5 s of nothing) and gives away the payoff in its
+first sentence ("one of the great photo finds of the century"), so there's no open question to stay for. Each option
+below replaces only the opening; the rest of the script stays except where noted.
+Extra source for option B: Maloof said the negatives went in his closet for about half a year because none fit the
+book (vivianmaier.com history page; [Mother Jones 2011](https://www.motherjones.com/media/2011/05/vivian-maier-john-maloof/)).
+
+**A. Strange action, reason hidden (recommended).** Title: "The Nanny Who Hid 100,000 Photos".
+```
+A nanny secretly took a hundred thousand photos, <short pause> and showed almost nobody.
+Some rolls she never even developed.
+We only know because a man paid four hundred dollars for a box of her junk at a Chicago auction.
+```
+First frame: Vivian on the grey street, already raising the camera; shutter click on "photos". Changes: the
+"In two thousand seven" line goes; "Some rolls had never even been developed" is cut from the negatives line; "The
+photographer was Vivian Maier. She was a nanny." becomes "Her name was Vivian Maier." Build: a new opening street shot
+before the auction (the street set exists; colour still floods in on her name).
+
+**B. Money, then a strange choice (cheapest to build).** Title: "The $400 Box He Left in His Closet".
+```
+A man paid four hundred dollars for a box of junk, then shoved it in his closet.
+Months later he looked closer, <short pause> and the art world lost its mind.
+```
+First frame: the gavel coming down, as now. Changes: "John Maloof was writing a history book..." gains "None of it fit
+the book." Build: one extra beat of the box going into a closet in John's room.
+
+**C. Contradiction.** Title: "The Greatest Photographer Nobody Knew".
+```
+One of the greatest street photographers of the century was a nanny, <short pause> and almost nobody saw her pictures.
+They turned up in a box of junk that sold for four hundred dollars.
+```
+First frame: Vivian pushing the pram, camera at her chest, on the grey street. Changes: the "She was a nanny" reveal
+moves to the hook, so that line becomes "Her name was Vivian Maier." Gives away the mid-story twist, which is why it
+isn't the pick.
+
+**D. Irony first.** Title: "He Found Her Name Days Too Late".
+```
+A man finally learned who took the photos in his junk box, <short pause> days after she died.
+He'd paid four hundred dollars for her life's work.
+```
+First frame: the laptop glow and the death notice. Changes: the death-notice line later is cut to one sentence so it
+isn't told twice. Weakest first frame (dark room), and the sad beat lands before anyone cares about her.
+
+**E. The film she never saw.** Title: "The Photos She Never Saw".
+```
+She took some of the best street photos in America, <short pause> and never even saw a lot of them.
+They sat undeveloped in a storage locker, until she stopped paying the rent.
+```
+First frame: an undeveloped film canister rolling across the locker floor, camera chasing it. Changes: the storage
+locker line goes; the auction comes third. Build: the locker shot moves to the front.
 
 ## Shot ideas (rough, for the build)
 - "In two thousand seven...": Low dolly down a cluttered auction hall (reuse the Smithsonian warehouse aisle, warmer light), a gavel comes down, a man lifts a dusty cardboard box. White flash on "great photo finds".

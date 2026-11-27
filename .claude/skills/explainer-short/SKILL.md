@@ -131,6 +131,35 @@ That is too heavy for this plan. Instead:
   `--gl=angle`, Chrome as `--browser-executable`, `TEMP`/`TMP` set to `C:/remotion-tmp`.
 - Kenney models aren't installed (their download is behind a JS page). Props are built from boxes and textures instead.
 
+## The hook (first line and first frames)
+Most viewers who leave do it in the first ~3 seconds, so the hook decides whether anything else gets seen. Researched
+2026-11-27 on the top story shorts in this style (2D cartoon cards in 3D sets) and on short-form retention write-ups.
+What the best ones share:
+- **The first words are the strange thing.** One plain sentence, 9-14 words (~3 s), about something someone did that
+  makes no sense yet. No date, no "in the 1950s", no "this is the story of", no "did you know", no name first. A date
+  or a setup clause spends the most valuable second on nothing.
+- **Hide the reason, keep the loop open.** The hook raises one question the viewer needs answered (why would she? what
+  was in it?) and the payoff answers it at the end. Never state the payoff in the hook ("...one of the great finds of
+  the century" closes the loop before it opens).
+- **Concrete and small.** One exact number, one object, one person: "four hundred dollars", "a box", "a nanny". Small
+  concrete things beat big abstract claims.
+- **A contradiction or an irony** inside the sentence (a nanny who was a master photographer; film she shot and never
+  developed; a box of junk that was worth millions).
+- **Second line, a reaction or an escalation.** Within 2 s of the hook, someone reacts (laughs, scoffs, refuses) or the
+  claim gets weirder. Then the story fills in who, where and what is at stake, with the camera already moving.
+- **The first frame is mid-action and shows the words literally**: the object or action the hook names, moving, at a
+  low wide angle, from frame 0. No title card, no establishing shot, no fade in. Captions start on the first word.
+- **The last line flips the first.** The ending callback answers the hook's question, so the video loops into a rewatch.
+- **Titles use the same shapes**: "The X that Y", "Why X", "The job nobody wants", strange action with the reason
+  hidden. Write the title and the hook together.
+- The hook never mentions phones, storage or the app.
+
+**Every time a script is shown, give hook options with it.** Write 4-5 different openings (the first one or two lines
+only), each with a short label for its angle (strange action, contradiction, money, irony, reaction), the first frame it
+needs, and a matching title. Say which one you recommend and why in one line, and note what in the rest of the script
+or the build would change for each. The user picks before the voice is made. Save the options in `SCRIPT.md` next to
+the script.
+
 ## Script format (every time a script is shown or saved)
 Whenever the user asks for a script, give it in the form it gets pasted into the TTS, in a code block in chat and the
 same way in `SCRIPT.md`:
