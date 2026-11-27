@@ -11,6 +11,9 @@
 - Composition: `VivianShort`, 1080x1920 at 30 fps, rendered at 1440x2560.
 
 ## Sets (one world, side by side, every floor clear of the next)
+- **The hook** (on the street set): grey, low behind her shoulder as she looks down into her camera at kids playing
+  hopscotch; the camera arcs round her (an orbit, so the background slides) and a shutter-like white flash cuts to the
+  auction.
 - **Auction hall** (x 0): wood floor, lot tables, the podium with a gavel, bidders seen from behind, John with the box.
 - **Storage corridor** (x 400): rows of roll-up doors; the opened unit (z 10.5) is packed with boxes; the open box on
   the floor spills negative strips, and one film canister rolls away.
@@ -24,7 +27,15 @@
   walls on "online", visitors walk in on "museums", the statuette glints on "Oscar", the lone box under junk at the far
   end, and the phone above it for the plug.
 
-## Status (2026-11-26)
+## Status (2026-11-27, v2)
+- Hook A picked (script v2 in SCRIPT.md): the video now opens on her, not on the auction. Shots are renumbered (13
+  shots; the street hook is shot 1) and every line cue moved by two lines.
+- v2 scratch cut: `vivian-v2-scratch-voice.mp4` (67.5 s, not in git). Checks: motion median 2.6, still frames 2.0 %
+  (target under 3 %; the first push-in barely moved and measured 78 % still in the hook until it became an arc), -15.0
+  LUFS, peak -1.0 dBFS, no silences, no black, white or frozen frames. Hard cuts only at the flash into the auction and
+  the whips into the desk and the gallery. The desk and laptop moves were widened too.
+
+## Status (2026-11-26, v1)
 - Script approved; built with placeholder timings (3.7 words/s, 66.8 s) and a Windows scratch voice.
 - Scratch cut rendered: `vivian-v1-scratch-voice.mp4` in this folder (not in git), full size at
   `C:\Users\shrik\shorts-studio\out\vivian\final.mp4`.
@@ -44,6 +55,9 @@
 6. `bash scripts/final_vivian.sh vivian-v2-final` renders and runs the checks.
 
 ## Lessons from this build
+- Check `motion_stats` per shot, not only the total: the new hook measured 78 % still on its own while the total
+  looked fine-ish. A short push-in on a grey low-contrast set reads as frozen; an orbit that slides the background
+  does not. The hook is where this matters most.
 - In a 9:16 frame the horizontal view is only about 30 degrees wide. Rooms wider than ~9 m lose their side walls, so
   anything hung on them never shows. Keep interiors narrow or aim the camera at the wall.
 - Repeating doors on a fixed grid must line up with any special unit, and a solid wall box behind the doors has to be
@@ -51,6 +65,7 @@
 - Looking down +z, screen right is world -x. Place things that must be on screen right at lower x.
 
 ## Plan usage (Pro)
+- Hook research and v2 rebuild (2026-11-27): 5-hour window 3 % -> 10 %, weekly 20 % -> 21 %.
 - Start of the script phase: 5-hour window 2 %, weekly 17 %.
 - Scratch-voice cut done (sets built from scratch, three still rounds, two full renders): 5-hour window 23 %, weekly
   19 %. So script plus build cost about 21 % of one 5-hour window and 2 % of the week.

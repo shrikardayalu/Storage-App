@@ -13,14 +13,16 @@ Gemini's inline expression tags; everything else is read word for word. Numbers 
 
 ## Script
 ```
-In two thousand seven, a man paid four hundred dollars for a box of junk at a Chicago auction. <short pause> It turned out to be one of the great photo finds of the century.
+A nanny secretly took a hundred thousand photos, <short pause> and showed almost nobody.
+Some rolls she never even developed.
+We only know because a man paid four hundred dollars for a box of her junk at a Chicago auction.
 The box came from a storage locker. Its owner had stopped paying the rent.
-Inside were negatives. Thousands of them. Some rolls had never even been developed.
+Inside were negatives. Thousands of them.
 John Maloof was writing a history book about his neighborhood. He just wanted old pictures of buildings.
 Instead he found Chicago in the fifties and sixties. Kids, cops, rich ladies, and one tall woman who kept showing up in shop windows and shadows.
-The photographer was Vivian Maier. <short pause> She was a nanny.
+The tall woman was the nanny. <short pause> Her name was Vivian Maier.
 For forty years she raised other people's kids, and walked the city with a camera around her neck.
-She showed almost nobody. Her room was stacked to the ceiling with newspapers, so heavy the floor sagged.
+She kept almost everything. Her room was stacked to the ceiling with newspapers, so heavy the floor sagged.
 When Maloof finally searched her name, he found her death notice. She had died a few days earlier.
 He posted some photos online. They went viral. Museums called. A documentary about her got nominated for an Oscar.
 Over a hundred thousand negatives, and almost nobody saw them while she was alive.
