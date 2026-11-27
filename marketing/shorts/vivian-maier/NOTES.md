@@ -28,6 +28,11 @@
   end, and the phone above it for the plug.
 
 ## Status (2026-11-27, v2)
+- **Final cut with the Charon narration: `vivian-v2-final.mp4`** (76.9 s, not in git; full size at
+  `C:/Users/shrik/shorts-studio/out/vivian/final.mp4`). Checks: motion median 2.4, still frames 2.1 %, -14.4 LUFS,
+  peak -1.1 dBFS, no silences, no black, white or frozen frames; hard cuts only at the flash into the auction and the
+  two whips. Whisper gave three line-first words late (Inside, Instead, He, by 0.35-0.65 s); they were snapped to the
+  speech onset in `words.json` before re-timing.
 - Hook A picked (script v2 in SCRIPT.md): the video now opens on her, not on the auction. Shots are renumbered (13
   shots; the street hook is shot 1) and every line cue moved by two lines.
 - v2 scratch cut: `vivian-v2-scratch-voice.mp4` (67.5 s, not in git). Checks: motion median 2.6, still frames 2.0 %
@@ -66,6 +71,7 @@
 
 ## Plan usage (Pro)
 - Hook research and v2 rebuild (2026-11-27): 5-hour window 3 % -> 10 %, weekly 20 % -> 21 %.
+- Real voice: re-time, stills and final render: 5-hour window 10 % -> 13 %, weekly 21 % -> 22 %.
 - Start of the script phase: 5-hour window 2 %, weekly 17 %.
 - Scratch-voice cut done (sets built from scratch, three still rounds, two full renders): 5-hour window 23 %, weekly
   19 %. So script plus build cost about 21 % of one 5-hour window and 2 % of the week.

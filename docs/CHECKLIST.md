@@ -93,7 +93,7 @@ Story first, light SimpleShrink plug only at the very end (callback twist by def
 
 - [x] Cairo Geniza (`marketing/shorts/cairo-geniza/`, 2026-11-24)
 - [x] Smithsonian storage (`marketing/shorts/smithsonian-storage/`)
-- [ ] **Vivian Maier.** A nanny shot about 100,000 street photos, most never developed; they turned up in an auctioned storage locker. Callback: the photos we never look at either. *Scripting since 2026-11-26.*
+- [x] **Vivian Maier.** A nanny shot about 100,000 street photos, many never developed; they turned up in an auctioned storage locker. Callback: the photos we never look at either. *Final cut rendered 2026-11-27 (`marketing/shorts/vivian-maier/vivian-v2-final.mp4`); ready to post.*
 - [ ] **Muybridge's galloping horse (1878).** A bet, 12 cameras in a row, the first burst shot. Callback: burst picks ("your phone takes 40 every time you hold the button").
 - [ ] **Voyager Golden Record.** 116 images to show aliens all of Earth. Callback: "you have 116 photos of one brunch."
 - [ ] **The Collyer brothers.** NYC hoarders, about 140 tons of stuff, booby-trapped tunnels.
