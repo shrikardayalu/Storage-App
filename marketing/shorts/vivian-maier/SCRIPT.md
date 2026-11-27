@@ -2,7 +2,7 @@
 
 Format: ~60 s (~225 words) vertical cartoon short, ~3.7 words/s, one steady deadpan narrator.
 Ending: callback twist (her best shots sat buried in a box; yours sit under screenshots), with a light plug in the last ~4 s.
-Status: **draft, waiting on approval.**
+Status: **approved 2026-11-26** (price stays at "four hundred").
 
 ## Facts and sources
 - In 2007 Maier fell behind on payments for a storage unit on Chicago's North Side, and its contents (negatives, prints, recordings, 8 mm film) were auctioned. John Maloof bought a box of negatives and undeveloped film for about $400 (one blog says $380; most sources say $400, so the script says "four hundred"). ([Wikipedia](https://en.wikipedia.org/wiki/Vivian_Maier), [Britannica](https://www.britannica.com/print/article/1804651), [vivianmaier.com: history](https://www.vivianmaier.com/about-vivian-maier/history))
@@ -52,3 +52,4 @@ A nanny took 100,000 photos and almost nobody saw them 📷 #vivianmaier #photog
 
 ## Usage log
 - Start (script phase): 5-hour window 2 %, weekly 17 % (2026-11-26).
+- Scratch cut done: 5-hour window 23 %, weekly 19 %.
