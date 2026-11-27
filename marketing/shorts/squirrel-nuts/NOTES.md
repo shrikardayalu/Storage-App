@@ -29,6 +29,15 @@
 - **Forest** (x 1200): spring lawn, the big oak that grows from a sprout (shot 10), 22 oaks that pop up around it
   (kept out of the camera's pull-back sector), the stump, the phone's mound.
 
+## Status (2026-11-27, v2)
+- **Final cut with the Charon narration: `squirrel-v2-final.mp4`** (69.8 s, not in git; full size at
+  `C:/Users/shrik/shorts-studio/out/squirrel/final.mp4`). Whisper aligned all 235 words (none interpolated); line
+  starts were checked against the speech onsets and sit within about 0.1 s, so no hand fixes.
+- Checks: motion median 3.6, still frames 1.0 %, no hard cuts, -14.2 LUFS, peak -1.0 dBFS, no silences, no black,
+  white or frozen frames. Cue stills checked on every shot (the fake, the nip, the hawk, the plug).
+- Post caption (draft): Squirrels fake-bury nuts to fool thieves 🐿️ #squirrels #nature #didyouknow #iphonestorage.
+  On TikTok, switch on the "Your brand" content disclosure.
+
 ## Status (2026-11-27, v1)
 - Script approved with hook A; built with placeholder timings (3.7 words/s, 65.5 s) and a Windows scratch voice.
 - Scratch cut: `squirrel-v1-scratch-voice.mp4` in this folder (not in git); full size at
@@ -55,5 +64,6 @@
 - Script phase start: 5-hour window 17 %, weekly 22 % (2026-11-27).
 - Scratch cut done (four sets and a new character from scratch, five still rounds, two full renders): the 5-hour
   window reset mid-build (17 % -> reset -> 4 %), weekly 22 % -> 25 %.
+- Real voice: align, re-time, cue stills and final render: 5-hour window 4 % -> 7 %, weekly 25 % -> 25 %.
 - Scratch cut checks: motion median 3.8, still frames 0.9 %, no hard cuts, -15.2 LUFS, peak -1.1 dBFS, no silences,
   no black, white or frozen frames.

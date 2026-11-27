@@ -3,8 +3,8 @@
 Format: ~60 s (~230 words) vertical cartoon short, ~3.7 words/s, one steady deadpan narrator.
 Ending: callback twist (a squirrel's forgotten nut grows into a tree; your forgotten files just sit there), with a
 light plug in the last ~4 s.
-Status: **approved 2026-11-27 with hook A** (the script below). Scratch cut built; waiting on the real narration
-(VOICE_SCRIPT.md, build steps in NOTES.md).
+Status: **approved 2026-11-27 with hook A** (the script below). Final cut rendered with the Charon narration
+(`squirrel-v2-final.mp4`, see NOTES.md).
 
 ## A correction to the idea
 "Squirrels forget most of their nuts" is popular but weak. The "up to 74 % never recovered" figure is repeated

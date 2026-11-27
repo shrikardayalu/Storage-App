@@ -94,7 +94,7 @@ Story first, light SimpleShrink plug only at the very end (callback twist by def
 - [x] Cairo Geniza (`marketing/shorts/cairo-geniza/`, 2026-11-24)
 - [x] Smithsonian storage (`marketing/shorts/smithsonian-storage/`)
 - [x] **Vivian Maier.** A nanny shot about 100,000 street photos, many never developed; they turned up in an auctioned storage locker. Callback: the photos we never look at either. *Final cut rendered 2026-11-27 (`marketing/shorts/vivian-maier/vivian-v2-final.mp4`); ready to post.*
-- [ ] **Squirrel nuts.** Squirrels fake-bury nuts and remember most of them; the oaks come from the ones they never come back for. Callback: forgotten files just sit there and don't grow into anything. *Script approved with hook A; scratch-voice cut built 2026-11-27 (`marketing/shorts/squirrel-nuts/squirrel-v1-scratch-voice.mp4`, checks pass). Waiting on the Charon narration (`VOICE_SCRIPT.md`), then re-time and final render (steps in `NOTES.md`).*
+- [x] **Squirrel nuts.** Squirrels fake-bury nuts and remember most of them; the oaks come from the ones they never come back for. Callback: forgotten files just sit there and don't grow into anything. *Final cut rendered 2026-11-27 with the Charon narration (`marketing/shorts/squirrel-nuts/squirrel-v2-final.mp4`, checks pass); ready to post.*
 - [ ] **Muybridge's galloping horse (1878).** A bet, 12 cameras in a row, the first burst shot. Callback: burst picks ("your phone takes 40 every time you hold the button").
 - [ ] **Voyager Golden Record.** 116 images to show aliens all of Earth. Callback: "you have 116 photos of one brunch."
 - [ ] **The Collyer brothers.** NYC hoarders, about 140 tons of stuff, booby-trapped tunnels.
