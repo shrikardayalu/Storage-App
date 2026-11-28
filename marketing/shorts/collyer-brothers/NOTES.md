@@ -33,6 +33,18 @@ packed modern hallway → the emptied parlor, one tied bundle on his chair → t
 - **Hoard** (x 800): a long room the dolly runs down; each thing sits on its own side so the camera turns to it.
 - **Hallway** (x 1200): a narrow modern corridor with boxes and bags on both sides, ceiling panels, a door at the end.
 
+## Status (2026-11-27, v1)
+- Script approved with hook A; built with placeholder timings (3.7 words/s, 72.3 s) and a Windows scratch voice.
+- Scratch cut: `collyer-v1-scratch-voice.mp4` in this folder (not in git); full size at
+  `C:/Users/shrik/shorts-studio/out/collyer/final.mp4`.
+- Checks: motion median 4.0, still frames 0.6 %, -15.2 LUFS, peak -1.1 dBFS, no silences, no black, white or frozen
+  frames. One hard cut, on purpose: the lights going out ("lights", frame 796 at placeholder timing).
+- Fixed after the first render: a missing dissolve into the bills shot, and a worker card that sat a metre from the
+  lens in the tunnel discovery shot (removed; only the torch light moves there now).
+- Waiting on the real narration (VOICE_SCRIPT.md).
+- Post caption (draft): The brothers who booby-trapped their own house 🕯️ #history #truecrime #nyc #iphonestorage.
+  On TikTok, switch on the "Your brand" content disclosure.
+
 ## From voice to finished video
 1. Save the narration as `C:\Users\shrik\shorts-studio\collyer\voice\voice.wav`.
 2. `python collyer/align.py` gets Whisper word times and aligns them to `script.txt` (check line-first words; Whisper
@@ -52,3 +64,5 @@ packed modern hallway → the emptied parlor, one tied bundle on his chair → t
 
 ## Plan usage (Pro)
 - Script phase start: 5-hour window 2 %, weekly 26 % (2026-11-27).
+- Scratch cut done (five new sets, new characters and props, three still rounds, two full renders): 5-hour window
+  2 % -> 22 %, weekly 26 % -> 29 %.
