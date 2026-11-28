@@ -97,7 +97,7 @@ Story first, light SimpleShrink plug only at the very end (callback twist by def
 - [x] **Squirrel nuts.** Squirrels fake-bury nuts and remember most of them; the oaks come from the ones they never come back for. Callback: forgotten files just sit there and don't grow into anything. *Final cut rendered 2026-11-27 with the Charon narration (`marketing/shorts/squirrel-nuts/squirrel-v2-final.mp4`, checks pass); ready to post.*
 - [ ] **Muybridge's galloping horse (1878).** A bet, 12 cameras in a row, the first burst shot. Callback: burst picks ("your phone takes 40 every time you hold the button").
 - [ ] **Voyager Golden Record.** 116 images to show aliens all of Earth. Callback: "you have 116 photos of one brunch."
-- [ ] **The Collyer brothers.** NYC hoarders, about 140 tons of stuff, booby-trapped tunnels.
+- [ ] **The Collyer brothers.** NYC hoarders, 100+ tons of stuff, booby-trapped tunnels; one trap killed Langley, and blind Homer starved waiting for him. Callback: Langley saved every page for a day that never came; your phone saves photos for "someday". *Script approved with hook A 2026-11-27; scratch cut built (`marketing/shorts/collyer-brothers/`); waiting on the Charon narration.*
 - [ ] **BBC wiping Doctor Who.** Tapes reused to save shelf space; fans still hunt the lost episodes. Twist: deleting the *wrong* things hurts, so you approve every change.
 - [ ] **Squirrels forget most of their nuts.** The forgotten ones become forests. Callback: forgotten files don't grow into anything.
 - [ ] **Packrat middens.** Junk piles preserved in packrat urine for 50,000 years; scientists read them like time capsules.

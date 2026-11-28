@@ -4,7 +4,8 @@ Format: ~60 s (~230 words) vertical cartoon short, ~3.7 words/s, one steady dead
 Tone: dark and gripping, never jokey about the deaths (no `<chuckle>` anywhere).
 Ending: callback twist (Langley saved every paper for a day that never came; your phone saves photos for "someday"),
 with a light plug in the last ~5 s.
-Status: **draft, waiting for approval and a hook pick.**
+Status: **approved 2026-11-27 with hook A** (the script below). Built with placeholder timings and a scratch voice
+(see NOTES.md); waiting on the real narration (VOICE_SCRIPT.md).
 
 ## Facts and sources
 - Homer (born 1881) and Langley (born 1885) Collyer lived at 2078 Fifth Avenue, at 128th Street in Harlem, in a four-story brownstone. Both went to Columbia. Homer was an admiralty lawyer. Langley studied engineering and chemistry and was a concert pianist who played Carnegie Hall. ([Wikipedia](https://en.wikipedia.org/wiki/Collyer_brothers))
