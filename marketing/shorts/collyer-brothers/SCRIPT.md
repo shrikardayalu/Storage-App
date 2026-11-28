@@ -41,7 +41,8 @@ Firefighters still call a home packed like that a Collyer mansion.
 Your phone does it too. Thousands of photos, saved for someday.
 SimpleShrink cleans up gigabytes in minutes. Link in bio.
 ```
-About 235 words, roughly 63 s at 3.7 words/s. Three tags.
+About 255 words, roughly 69 s at 3.7 words/s, the top of the range. Three tags. To get near 60 s, cut "The phone, the
+lights, the water and the gas were all cut off." down to "The lights went out." and drop "People said he'd run away."
 
 ## Hook options (2026-11-27, pick one)
 Each option replaces only the first one or two lines. The rest of the script stays except where noted.
