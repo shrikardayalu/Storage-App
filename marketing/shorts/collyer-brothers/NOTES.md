@@ -33,6 +33,19 @@ packed modern hallway → the emptied parlor, one tied bundle on his chair → t
 - **Hoard** (x 800): a long room the dolly runs down; each thing sits on its own side so the camera turns to it.
 - **Hallway** (x 1200): a narrow modern corridor with boxes and bags on both sides, ceiling panels, a door at the end.
 
+## Status (2026-11-27, v2)
+- **Final cut with the Charon narration: `collyer-v2-final.mp4`** (75.1 s, not in git; full size at
+  `C:/Users/shrik/shorts-studio/out/collyer/final.mp4`).
+- The narration came in at 84.5 s with about 1 s of silence between lines. `collyer/tighten.py` shortened only those
+  gaps to 0.35 s (found from the audio level, so no speech is cut): 84.5 s -> 74.8 s. The untouched take is
+  `collyer/voice/voice_raw.wav`. Whisper then aligned 253 of 255 words ("Link in" interpolated); every line start sits
+  within 0.25 s of the speech onset, so no hand fixes.
+- Fixed: the parlor walls flickered (z-fighting). Each wallpaper face shared its plane with the inner face of the
+  wooden wall box behind it; the boxes now sit 3 cm behind. Floors got full anisotropic filtering. A bystander in the
+  ladder shot stood a metre from the lens and was moved 4+ m ahead.
+- Checks: motion median 2.9, still frames 1.4 %, -14.4 LUFS, peak -1.0 dBFS, no silences, no black, white or frozen
+  frames; one hard cut, on purpose (the lights going out).
+
 ## Status (2026-11-27, v1)
 - Script approved with hook A; built with placeholder timings (3.7 words/s, 72.3 s) and a Windows scratch voice.
 - Scratch cut: `collyer-v1-scratch-voice.mp4` in this folder (not in git); full size at
@@ -55,6 +68,9 @@ packed modern hallway → the emptied parlor, one tied bundle on his chair → t
 6. `bash scripts/final_collyer.sh collyer-v2-final` renders and runs the checks.
 
 ## Lessons from this build
+- A wall built as a textured face plus a solid box behind it z-fights when the box's inner face sits on the same
+  plane. Keep backing boxes a few cm behind any face that carries the texture.
+- TTS takes can run long from the pauses between lines alone; trim the gaps (tighten.py), never the speech.
 - Characters card scale is easy to misjudge in a tunnel: a 2 m card 2.5 m from a 58° lens fills the frame. Keep the
   camera 4+ m back from anyone it isn't meant to close in on.
 - A camera that trucks along the road will drive straight through a parked car: move props out of every path a later
@@ -66,3 +82,5 @@ packed modern hallway → the emptied parlor, one tied bundle on his chair → t
 - Script phase start: 5-hour window 2 %, weekly 26 % (2026-11-27).
 - Scratch cut done (five new sets, new characters and props, three still rounds, two full renders): 5-hour window
   2 % -> 22 %, weekly 26 % -> 29 %.
+- Real voice: flicker fix, gap tightening, align, re-time, cue stills and final render: 5-hour window 22 % -> 27 %,
+  weekly 29 % -> 30 %.
